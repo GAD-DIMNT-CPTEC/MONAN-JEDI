@@ -20,8 +20,12 @@
 # For MPI tests, use:
 #   scripts/06_test_mpas_jedi_pbs.sh
 #
-# To override manually:
-#   MONAN_JEDI_CTEST_REGEX='^mpasjedi_coding_norms$' bash scripts/06_test_mpas_jedi.sh
+# Safety behavior
+# ---------------
+# If MONAN_JEDI_CTEST_REGEX is already exported from a previous PBS run as
+# '^mpasjedi_' or another broad MPAS-JEDI expression, this script resets it to
+# the login-node-safe default unless ALLOW_LOGIN_NODE_MPI_TESTS=1 is explicitly
+# set.
 # =============================================================================
 
 set -euo pipefail
@@ -33,9 +37,23 @@ source "${script_dir}/00_common.sh"
 load_monan_jedi_stack
 require_cmd ctest
 
-export MONAN_JEDI_CTEST_REGEX="${MONAN_JEDI_CTEST_REGEX:-^mpasjedi_coding_norms$}"
+login_safe_regex='^mpasjedi_coding_norms$'
+export MONAN_JEDI_CTEST_REGEX="${MONAN_JEDI_CTEST_REGEX:-${login_safe_regex}}"
 export MONAN_JEDI_CTEST_EXCLUDE_REGEX="${MONAN_JEDI_CTEST_EXCLUDE_REGEX:-}"
 export MONAN_JEDI_CTEST_JOBS="${MONAN_JEDI_CTEST_JOBS:-1}"
+export ALLOW_LOGIN_NODE_MPI_TESTS="${ALLOW_LOGIN_NODE_MPI_TESTS:-0}"
+
+if [[ "${ALLOW_LOGIN_NODE_MPI_TESTS}" != "1" ]]; then
+  case "${MONAN_JEDI_CTEST_REGEX}" in
+    '^mpasjedi_'*|'mpasjedi_'*|'.*mpasjedi_'*)
+      if [[ "${MONAN_JEDI_CTEST_REGEX}" != "${login_safe_regex}" ]]; then
+        log_warn "Resetting MONAN_JEDI_CTEST_REGEX from '${MONAN_JEDI_CTEST_REGEX}' to '${login_safe_regex}' for login-node safety."
+        log_warn "Use scripts/06_test_mpas_jedi_pbs.sh for MPI tests."
+        export MONAN_JEDI_CTEST_REGEX="${login_safe_regex}"
+      fi
+      ;;
+  esac
+fi
 
 if [[ ! -f "${JEDI_BUNDLE_BUILD_DIR}/CTestTestfile.cmake" ]]; then
   log_error "Build tree does not contain CTestTestfile.cmake: ${JEDI_BUNDLE_BUILD_DIR}"
