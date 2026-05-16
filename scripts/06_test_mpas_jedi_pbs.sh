@@ -108,49 +108,36 @@ export LATEST_CTEST_LOG='${latest_ctest_log}'
 source ${script_dir}/00_common.sh
 load_monan_jedi_stack
 
-cd "
-${JEDI_BUNDLE_BUILD_DIR}"
-EOF
+cd "${JEDI_BUNDLE_BUILD_DIR}"
 
-# Fix the intentional line break risk above by replacing the generated cd block.
-python - <<PY
-from pathlib import Path
-p = Path('${pbs_script}')
-s = p.read_text()
-s = s.replace('cd "\n${JEDI_BUNDLE_BUILD_DIR}"', 'cd "${JEDI_BUNDLE_BUILD_DIR}"')
-p.write_text(s)
-PY
-
-cat >> "${pbs_script}" <<'EOF'
-
-ctest_args=(--output-on-failure -j "${MONAN_JEDI_CTEST_JOBS}" -R "${MONAN_JEDI_CTEST_REGEX}")
-if [[ -n "${MONAN_JEDI_CTEST_EXCLUDE_REGEX}" ]]; then
-  ctest_args+=(-E "${MONAN_JEDI_CTEST_EXCLUDE_REGEX}")
+ctest_args=(--output-on-failure -j "\${MONAN_JEDI_CTEST_JOBS}" -R "\${MONAN_JEDI_CTEST_REGEX}")
+if [[ -n "\${MONAN_JEDI_CTEST_EXCLUDE_REGEX}" ]]; then
+  ctest_args+=(-E "\${MONAN_JEDI_CTEST_EXCLUDE_REGEX}")
 fi
 
 {
   echo "=== MONAN-JEDI PBS CTest job ==="
-  echo "GeneratedAt=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  echo "Host=$(hostname)"
-  echo "PBS_JOBID=${PBS_JOBID:-}"
-  echo "PBS_QUEUE=${PBS_QUEUE:-}"
-  echo "PBS_NODEFILE=${PBS_NODEFILE:-}"
-  echo "PWD=$(pwd)"
-  echo "MONAN_JEDI_CTEST_REGEX=${MONAN_JEDI_CTEST_REGEX}"
-  echo "MONAN_JEDI_CTEST_EXCLUDE_REGEX=${MONAN_JEDI_CTEST_EXCLUDE_REGEX}"
-  echo "MONAN_JEDI_CTEST_JOBS=${MONAN_JEDI_CTEST_JOBS}"
-  echo "CTEST_LOG=${CTEST_LOG}"
-  echo "which ctest=$(command -v ctest || echo NOT_FOUND)"
-  echo "which mpiexec=$(command -v mpiexec || echo NOT_FOUND)"
-  echo "which mpirun=$(command -v mpirun || echo NOT_FOUND)"
+  echo "GeneratedAt=\$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo "Host=\$(hostname)"
+  echo "PBS_JOBID=\${PBS_JOBID:-}"
+  echo "PBS_QUEUE=\${PBS_QUEUE:-}"
+  echo "PBS_NODEFILE=\${PBS_NODEFILE:-}"
+  echo "PWD=\$(pwd)"
+  echo "MONAN_JEDI_CTEST_REGEX=\${MONAN_JEDI_CTEST_REGEX}"
+  echo "MONAN_JEDI_CTEST_EXCLUDE_REGEX=\${MONAN_JEDI_CTEST_EXCLUDE_REGEX}"
+  echo "MONAN_JEDI_CTEST_JOBS=\${MONAN_JEDI_CTEST_JOBS}"
+  echo "CTEST_LOG=\${CTEST_LOG}"
+  echo "which ctest=\$(command -v ctest || echo NOT_FOUND)"
+  echo "which mpiexec=\$(command -v mpiexec || echo NOT_FOUND)"
+  echo "which mpirun=\$(command -v mpirun || echo NOT_FOUND)"
   module list 2>&1 || true
   echo "=== MPI smoke test ==="
   mpiexec -n 1 /bin/hostname
   echo "=== CTest execution ==="
 } | tee "${MONAN_JEDI_LOG_ROOT}/06_ctest_pbs_environment.log"
 
-ctest "${ctest_args[@]}" 2>&1 | tee "${CTEST_LOG}"
-cp -f "${CTEST_LOG}" "${LATEST_CTEST_LOG}"
+ctest "\${ctest_args[@]}" 2>&1 | tee "\${CTEST_LOG}"
+cp -f "\${CTEST_LOG}" "\${LATEST_CTEST_LOG}"
 EOF
 
 chmod +x "${pbs_script}"
