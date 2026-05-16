@@ -37,6 +37,16 @@ scan_file_for_errors() {
     || true
 }
 
+print_ctest_result_summary() {
+  local file="$1"
+
+  if [[ ! -f "${file}" ]]; then
+    return 0
+  fi
+
+  grep -nE 'tests passed|tests failed|The following tests FAILED|Total Test time|Label Time Summary' "${file}" || true
+}
+
 {
   echo "# MONAN-JEDI log summary"
   echo "GeneratedAt=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -50,11 +60,17 @@ scan_file_for_errors() {
   echo "## Last build lines"
   tail -n 120 "${MONAN_JEDI_LOG_ROOT}/05_make.log" 2>/dev/null || true
   echo
-  echo "## Login-node CTest summary"
+  echo "## Login-node CTest final result"
+  print_ctest_result_summary "${MONAN_JEDI_LOG_ROOT}/06_ctest.log"
+  echo
+  echo "## Login-node CTest tail"
   tail -n 80 "${MONAN_JEDI_LOG_ROOT}/06_ctest.log" 2>/dev/null || true
   echo
-  echo "## PBS CTest summary"
-  tail -n 80 "${MONAN_JEDI_LOG_ROOT}/06_ctest_pbs.log" 2>/dev/null || true
+  echo "## PBS CTest final result"
+  print_ctest_result_summary "${MONAN_JEDI_LOG_ROOT}/06_ctest_pbs.log"
+  echo
+  echo "## PBS CTest tail"
+  tail -n 160 "${MONAN_JEDI_LOG_ROOT}/06_ctest_pbs.log" 2>/dev/null || true
   echo
   echo "## Focused error scan"
   while IFS= read -r file; do
