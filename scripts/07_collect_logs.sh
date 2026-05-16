@@ -47,6 +47,16 @@ print_ctest_result_summary() {
   grep -nE 'tests passed|tests failed|The following tests FAILED|Total Test time|Label Time Summary' "${file}" || true
 }
 
+print_failed_tests() {
+  local file="$1"
+
+  if [[ ! -f "${file}" ]]; then
+    return 0
+  fi
+
+  grep -nE 'Test #[0-9]+: .*\*\*\*Failed|^[[:space:]]*[0-9]+ - .*\(Failed\)' "${file}" || true
+}
+
 {
   echo "# MONAN-JEDI log summary"
   echo "GeneratedAt=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -63,14 +73,25 @@ print_ctest_result_summary() {
   echo "## Login-node CTest final result"
   print_ctest_result_summary "${MONAN_JEDI_LOG_ROOT}/06_ctest.log"
   echo
+  echo "## Login-node failed tests"
+  print_failed_tests "${MONAN_JEDI_LOG_ROOT}/06_ctest.log"
+  echo
   echo "## Login-node CTest tail"
   tail -n 80 "${MONAN_JEDI_LOG_ROOT}/06_ctest.log" 2>/dev/null || true
   echo
   echo "## PBS CTest final result"
   print_ctest_result_summary "${MONAN_JEDI_LOG_ROOT}/06_ctest_pbs.log"
+  print_ctest_result_summary "${MONAN_JEDI_LOG_ROOT}/06_ctest_pbs.out"
+  echo
+  echo "## PBS failed tests"
+  print_failed_tests "${MONAN_JEDI_LOG_ROOT}/06_ctest_pbs.log"
+  print_failed_tests "${MONAN_JEDI_LOG_ROOT}/06_ctest_pbs.out"
   echo
   echo "## PBS CTest tail"
   tail -n 160 "${MONAN_JEDI_LOG_ROOT}/06_ctest_pbs.log" 2>/dev/null || true
+  echo
+  echo "## PBS stdout tail"
+  tail -n 160 "${MONAN_JEDI_LOG_ROOT}/06_ctest_pbs.out" 2>/dev/null || true
   echo
   echo "## Focused error scan"
   while IFS= read -r file; do
