@@ -2,11 +2,11 @@
 # =============================================================================
 # 06_test_mpas_jedi_pbs.sh
 # =============================================================================
-# Submit MPAS-JEDI CTest execution to a PBS compute node on JACI.
+# Submit CTest execution to a PBS compute node on JACI.
 #
 # This script follows the validated pattern from the predecessor repository:
-# MPAS-JEDI tests that use Cray PALS must run inside a scheduler allocation.
-# On the login node, even simple MPI launches can fail with:
+# tests that use Cray PALS must run inside a scheduler allocation. On the login
+# node, even simple MPI launches can fail with:
 #
 #   No host list provided
 #
@@ -18,6 +18,10 @@
 #   MONAN_JEDI_CTEST_REGEX='^mpasjedi_' \
 #   MONAN_JEDI_CTEST_EXCLUDE_REGEX='^mpasjedi_lgetkf_height_vloc$' \
 #   bash scripts/06_test_mpas_jedi_pbs.sh
+#
+# For the full CTest suite, prefer:
+#
+#   bash scripts/11_test_all_ctest_pbs.sh
 #
 # =============================================================================
 
@@ -37,6 +41,7 @@ export MONAN_JEDI_CTEST_EXCLUDE_REGEX="${MONAN_JEDI_CTEST_EXCLUDE_REGEX:-}"
 export MONAN_JEDI_CTEST_JOBS="${MONAN_JEDI_CTEST_JOBS:-1}"
 export MONAN_JEDI_SUBMIT_JOB="${MONAN_JEDI_SUBMIT_JOB:-1}"
 export MONAN_JEDI_TEST_LOG_STAMP="${MONAN_JEDI_TEST_LOG_STAMP:-$(date -u +%Y%m%dT%H%M%SZ)}"
+export MONAN_JEDI_TEST_LABEL="${MONAN_JEDI_TEST_LABEL:-mpas_jedi_tests}"
 
 mkdir -p "${MONAN_JEDI_LOG_ROOT}"
 
@@ -63,12 +68,14 @@ case "${JEDI_BUNDLE_BUILD_DIR}" in
     ;;
 esac
 
-safe_regex_name="$(printf '%s' "${MONAN_JEDI_CTEST_REGEX}" | sed -E 's/[^A-Za-z0-9_.-]+/_/g; s/^_+//; s/_+$//')"
-[[ -n "${safe_regex_name}" ]] || safe_regex_name="mpasjedi"
+safe_regex_name="$(printf '%s' "${MONAN_JEDI_CTEST_REGEX:-all}" | sed -E 's/[^A-Za-z0-9_.-]+/_/g; s/^_+//; s/_+$//')"
+[[ -n "${safe_regex_name}" ]] || safe_regex_name="all"
+safe_label_name="$(printf '%s' "${MONAN_JEDI_TEST_LABEL}" | sed -E 's/[^A-Za-z0-9_.-]+/_/g; s/^_+//; s/_+$//')"
+[[ -n "${safe_label_name}" ]] || safe_label_name="ctest"
 
-pbs_script="${MONAN_JEDI_LOG_ROOT}/mpas_jedi_tests_${safe_regex_name}_${MONAN_JEDI_TEST_LOG_STAMP}.pbs"
-pbs_log="${MONAN_JEDI_LOG_ROOT}/mpas_jedi_tests_${safe_regex_name}_${MONAN_JEDI_TEST_LOG_STAMP}.pbs.log"
-ctest_log="${MONAN_JEDI_LOG_ROOT}/mpas_jedi_tests_${safe_regex_name}_${MONAN_JEDI_TEST_LOG_STAMP}.ctest.log"
+pbs_script="${MONAN_JEDI_LOG_ROOT}/${safe_label_name}_${safe_regex_name}_${MONAN_JEDI_TEST_LOG_STAMP}.pbs"
+pbs_log="${MONAN_JEDI_LOG_ROOT}/${safe_label_name}_${safe_regex_name}_${MONAN_JEDI_TEST_LOG_STAMP}.pbs.log"
+ctest_log="${MONAN_JEDI_LOG_ROOT}/${safe_label_name}_${safe_regex_name}_${MONAN_JEDI_TEST_LOG_STAMP}.ctest.log"
 latest_pbs_script="${MONAN_JEDI_LOG_ROOT}/06_mpas_jedi_ctest.pbs"
 latest_pbs_log="${MONAN_JEDI_LOG_ROOT}/06_ctest_pbs.out"
 latest_pbs_err="${MONAN_JEDI_LOG_ROOT}/06_ctest_pbs.err"
@@ -110,7 +117,10 @@ load_monan_jedi_stack
 
 cd "${JEDI_BUNDLE_BUILD_DIR}"
 
-ctest_args=(--output-on-failure -j "\${MONAN_JEDI_CTEST_JOBS}" -R "\${MONAN_JEDI_CTEST_REGEX}")
+ctest_args=(--output-on-failure -j "\${MONAN_JEDI_CTEST_JOBS}")
+if [[ -n "\${MONAN_JEDI_CTEST_REGEX}" ]]; then
+  ctest_args+=(-R "\${MONAN_JEDI_CTEST_REGEX}")
+fi
 if [[ -n "\${MONAN_JEDI_CTEST_EXCLUDE_REGEX}" ]]; then
   ctest_args+=(-E "\${MONAN_JEDI_CTEST_EXCLUDE_REGEX}")
 fi
@@ -134,6 +144,9 @@ fi
   echo "=== MPI smoke test ==="
   mpiexec -n 1 /bin/hostname
   echo "=== CTest execution ==="
+  printf 'ctest command:'
+  printf ' %q' ctest "\${ctest_args[@]}"
+  printf '\n'
 } | tee "${MONAN_JEDI_LOG_ROOT}/06_ctest_pbs_environment.log"
 
 ctest "\${ctest_args[@]}" 2>&1 | tee "\${CTEST_LOG}"
@@ -145,7 +158,7 @@ cp -f "${pbs_script}" "${latest_pbs_script}"
 : > "${latest_pbs_err}"
 ln -sfn "$(basename "${pbs_log}")" "${latest_pbs_log}"
 
-log_info "PBS MPAS-JEDI CTest job prepared"
+log_info "PBS CTest job prepared"
 log_info "  PBS script=${pbs_script}"
 log_info "  latest PBS script=${latest_pbs_script}"
 log_info "  PBS output=${pbs_log}"
@@ -155,8 +168,8 @@ log_info "  latest CTest log=${latest_ctest_log}"
 log_info "  queue=${MONAN_JEDI_PBS_QUEUE}"
 log_info "  ncpus=${MONAN_JEDI_PBS_NCPUS}"
 log_info "  walltime=${MONAN_JEDI_PBS_WALLTIME}"
-log_info "  regex=${MONAN_JEDI_CTEST_REGEX}"
-log_info "  exclude=${MONAN_JEDI_CTEST_EXCLUDE_REGEX}"
+log_info "  regex=${MONAN_JEDI_CTEST_REGEX:-<none, full suite>}"
+log_info "  exclude=${MONAN_JEDI_CTEST_EXCLUDE_REGEX:-<none>}"
 
 if [[ "${MONAN_JEDI_SUBMIT_JOB}" == "1" ]]; then
   qsub "${pbs_script}" | tee "${MONAN_JEDI_LOG_ROOT}/06_ctest_pbs_jobid.txt"
