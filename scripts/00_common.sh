@@ -78,7 +78,7 @@ load_monan_jedi_stack() {
   module load "${STACK_ENV_MODULE}"
 
   # shellcheck disable=SC1091
-  source setup.sh
+  #source setup.sh
 
   export CC="$(command -v cc)"
   export CXX="$(command -v CC)"
