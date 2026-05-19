@@ -25,25 +25,53 @@ jedi-mpas-env/1.0.0
 
 The stack must already have been created and validated by `spack-stack-inpe` before running the scripts in this repository.
 
+## User-mode stack consumption
+
+The scripts in this repository consume a previously generated stack through environment modules.
+They do not create, concretize, install, refresh or administer the stack.
+
+Normal users should not source the root `setup.sh` from the shared `spack-stack` tree. That script is for stack administration and may update files inside the Spack installation, such as shell completion files. In a shared stack owned by another user, that can cause permission errors or Git `dubious ownership` warnings.
+
+The intended interface for users is:
+
+```bash
+source "${STACK_ROOT}/configs/sites/tier2/jaci/setup.sh"
+module use "${STACK_MODULE_ROOT}"
+module load "${STACK_ENV_MODULE}"
+```
+
 ## Expected stack location
 
 By default, scripts expect:
 
 ```text
-/p/projetos/monan_das/${USER}/work/${STACK_TEST_ID}/spack-stack
+/p/projetos/monan_das/${STACK_OWNER}/work/${STACK_TEST_ID}/spack-stack
 ```
 
 where `STACK_TEST_ID` is the identifier used when the stack was created by `spack-stack-inpe`.
 
-Example:
+For a user consuming their own stack, the default `STACK_OWNER=${USER}` is enough.
+
+For a user consuming a stack maintained by another account, define `STACK_OWNER` or define `STACK_ROOT` explicitly.
+
+Example using a stack maintained by `joao.gerd`:
+
+```bash
+export STACK_OWNER="joao.gerd"
+export STACK_TEST_ID="spack-stack-inpe-overlay-20260515T181917Z"
+```
+
+Equivalent explicit form:
 
 ```bash
 export STACK_TEST_ID="spack-stack-inpe-overlay-20260515T181917Z"
+export STACK_ROOT="/p/projetos/monan_das/joao.gerd/work/${STACK_TEST_ID}/spack-stack"
 ```
 
 ## Workflow
 
 ```bash
+export STACK_OWNER="joao.gerd"
 export STACK_TEST_ID="spack-stack-inpe-overlay-20260515T181917Z"
 export MONAN_JEDI_TEST_ID="monan-jedi-mpas-only-$(date -u +%Y%m%dT%H%M%SZ)"
 
@@ -54,6 +82,18 @@ bash scripts/04_configure_mpas_jedi.sh
 bash scripts/05_build_mpas_jedi.sh
 bash scripts/06_test_mpas_jedi.sh
 bash scripts/07_collect_logs.sh
+```
+
+`PROJECT_ROOT` controls the user-owned work and log area. By default:
+
+```text
+/p/projetos/monan_das/${USER}
+```
+
+If the user wants to keep builds under another location, set it explicitly:
+
+```bash
+export PROJECT_ROOT="/p/projetos/monan_das/${USER}/SPACK/jgerd"
 ```
 
 ## Repository layout
