@@ -17,11 +17,31 @@ require_cmd() {
   fi
 }
 
+# =============================================================================
+# Directory model
+# =============================================================================
+# MONAN-JEDI consumes a previously installed spack-stack environment.
+# The stack may be shared and read-only, while the MONAN-JEDI work and log trees
+# belong to the user running this workflow.
+#
+# Important separation:
+#   PROJECT_ROOT            user workspace for MONAN-JEDI builds and logs
+#   STACK_ROOT              shared spack-stack installation, usually read-only
+#   MONAN_JEDI_WORK_ROOT    user-owned build/source workspace
+#   MONAN_JEDI_LOG_ROOT     user-owned logs
+#
+# Do not source ${STACK_ROOT}/setup.sh in this workflow. That script initializes
+# the spack-stack administration environment and may update files inside the
+# shared Spack tree. Normal MONAN-JEDI users should consume only the generated
+# environment modules.
+# =============================================================================
+
 export PROJECT_ROOT="${PROJECT_ROOT:-/p/projetos/monan_das/${USER}}"
+export STACK_OWNER="${STACK_OWNER:-${USER}}"
 export STACK_TEST_ID="${STACK_TEST_ID:-spack-stack-inpe-overlay-20260515T181917Z}"
 export MONAN_JEDI_TEST_ID="${MONAN_JEDI_TEST_ID:-monan-jedi-mpas-only}"
 
-export STACK_WORK_ROOT="${STACK_WORK_ROOT:-${PROJECT_ROOT}/work/${STACK_TEST_ID}}"
+export STACK_WORK_ROOT="${STACK_WORK_ROOT:-/p/projetos/monan_das/${STACK_OWNER}/work/${STACK_TEST_ID}}"
 export STACK_ENV_NAME="${STACK_ENV_NAME:-jaci-mpas-jedi-gcc12-craympich}"
 export STACK_ROOT="${STACK_ROOT:-${STACK_WORK_ROOT}/spack-stack}"
 export STACK_MODULE_ROOT="${STACK_MODULE_ROOT:-${STACK_ROOT}/envs/${STACK_ENV_NAME}/modules}"
@@ -35,6 +55,34 @@ export JEDI_BUNDLE_REF="${JEDI_BUNDLE_REF:-develop}"
 export JEDI_BUNDLE_SRC_DIR="${JEDI_BUNDLE_SRC_DIR:-${MONAN_JEDI_WORK_ROOT}/jedi-bundle}"
 export JEDI_BUNDLE_BUILD_DIR="${JEDI_BUNDLE_BUILD_DIR:-${MONAN_JEDI_WORK_ROOT}/build-jedi-bundle-mpas-only}"
 
+validate_monan_jedi_paths() {
+  local vars=(
+    PROJECT_ROOT
+    STACK_WORK_ROOT
+    STACK_ROOT
+    STACK_MODULE_ROOT
+    MONAN_JEDI_WORK_ROOT
+    MONAN_JEDI_LOG_ROOT
+    JEDI_BUNDLE_SRC_DIR
+    JEDI_BUNDLE_BUILD_DIR
+  )
+
+  local var value
+  for var in "${vars[@]}"; do
+    value="${!var:-}"
+    if [[ -z "${value}" ]]; then
+      log_error "Required path variable is empty: ${var}"
+      exit 1
+    fi
+    if [[ "${value}" == *"}" ]]; then
+      log_error "Invalid trailing brace detected in ${var}: ${value}"
+      log_error "Check exported variables and scripts/00_common.sh."
+      exit 1
+    fi
+  done
+}
+
+validate_monan_jedi_paths
 mkdir -p "${MONAN_JEDI_WORK_ROOT}" "${MONAN_JEDI_LOG_ROOT}"
 
 reset_jaci_modules() {
@@ -58,27 +106,28 @@ reset_jaci_modules() {
 load_monan_jedi_stack() {
   if [[ ! -d "${STACK_ROOT}" ]]; then
     log_error "STACK_ROOT not found: ${STACK_ROOT}"
-    log_error "Create and validate the stack first using spack-stack-inpe."
+    log_error "Create and validate the stack first using spack-stack-inpe, or set STACK_ROOT explicitly."
     exit 1
   fi
 
   if [[ ! -d "${STACK_MODULE_ROOT}" ]]; then
     log_error "STACK_MODULE_ROOT not found: ${STACK_MODULE_ROOT}"
-    log_error "Run module generation in spack-stack-inpe first."
+    log_error "Run module generation in spack-stack-inpe first, or set STACK_MODULE_ROOT explicitly."
     exit 1
   fi
 
   reset_jaci_modules
 
-  cd "${STACK_ROOT}"
+  # Load the JACI site baseline from the shared stack configuration. This sets
+  # the CrayPE programming environment and compiler drivers, but does not source
+  # the spack-stack administration setup.
   # shellcheck disable=SC1091
-  source configs/sites/tier2/jaci/setup.sh
+  source "${STACK_ROOT}/configs/sites/tier2/jaci/setup.sh"
 
+  # Load only the generated environment module. This is the user-mode interface
+  # to a shared spack-stack installation.
   module use "${STACK_MODULE_ROOT}"
   module load "${STACK_ENV_MODULE}"
-
-  # shellcheck disable=SC1091
-  #source setup.sh
 
   export CC="$(command -v cc)"
   export CXX="$(command -v CC)"
@@ -91,9 +140,13 @@ load_monan_jedi_stack() {
   export MPIF77="${FC}"
   export MPIF90="${FC}"
 
-  log_info "Loaded MONAN-JEDI stack environment"
+  log_info "Loaded MONAN-JEDI stack environment in user mode"
+  log_info "  PROJECT_ROOT=${PROJECT_ROOT}"
   log_info "  STACK_ROOT=${STACK_ROOT}"
+  log_info "  STACK_MODULE_ROOT=${STACK_MODULE_ROOT}"
   log_info "  STACK_ENV_MODULE=${STACK_ENV_MODULE}"
+  log_info "  MONAN_JEDI_WORK_ROOT=${MONAN_JEDI_WORK_ROOT}"
+  log_info "  MONAN_JEDI_LOG_ROOT=${MONAN_JEDI_LOG_ROOT}"
   log_info "  CC=${CC}"
   log_info "  CXX=${CXX}"
   log_info "  FC=${FC}"
@@ -104,9 +157,12 @@ record_environment_snapshot() {
   {
     echo "GeneratedAt=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     echo "PROJECT_ROOT=${PROJECT_ROOT}"
+    echo "STACK_OWNER=${STACK_OWNER}"
     echo "STACK_TEST_ID=${STACK_TEST_ID}"
+    echo "STACK_WORK_ROOT=${STACK_WORK_ROOT}"
     echo "STACK_ROOT=${STACK_ROOT}"
     echo "STACK_ENV_NAME=${STACK_ENV_NAME}"
+    echo "STACK_MODULE_ROOT=${STACK_MODULE_ROOT}"
     echo "STACK_ENV_MODULE=${STACK_ENV_MODULE}"
     echo "MONAN_JEDI_TEST_ID=${MONAN_JEDI_TEST_ID}"
     echo "MONAN_JEDI_WORK_ROOT=${MONAN_JEDI_WORK_ROOT}"
