@@ -897,7 +897,7 @@ ctest:
 pbs:
   queue: pesqmini
   ncpus: 64
-  walltime: "06:00:00"
+  walltime: "02:00:00"
   submit_job: true
 ```
 
