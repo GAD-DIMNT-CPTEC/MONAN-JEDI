@@ -105,11 +105,12 @@ ctest:
   # Login-node-safe CTest subset.
   login_regex: "^mpasjedi_coding_norms$"
 
-  # PBS/compute-node CTest subset.
-  pbs_regex: "^mpasjedi_geometry$"
+  # Full PBS/compute-node CTest run.
+  # Empty means: do not restrict with -R.
+  pbs_regex: ""
 
-  # Optional CTest exclusion regex.
-  exclude_regex: ""
+  # Known failing tests excluded from the full suite.
+  exclude_regex: "^(ioda_bufr_python_encoder|ioda_bufr_python_parallel|mpasjedi_lgetkf_height_vloc)$"
 
   # Number of parallel CTest jobs.
   jobs: 1
