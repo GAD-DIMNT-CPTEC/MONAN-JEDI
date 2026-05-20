@@ -21,19 +21,15 @@
 #       Test and batch-system settings.
 #
 # Expected result:
-#   After load_monan_jedi_config completes, the workflow modules can use:
-#
-#     STACK_ROOT
-#     STACK_MODULE_ROOT
-#     MONAN_JEDI_WORK_ROOT
-#     MONAN_JEDI_LOG_ROOT
-#     JEDI_BUNDLE_SRC_DIR
-#     JEDI_BUNDLE_BUILD_DIR
-#
-#   and all compiler/MPI variables required by configure and build.
+#   After load_monan_jedi_config completes, the workflow modules can use the
+#   derived stack paths, work paths, log paths, JEDI bundle paths and tool
+#   variables without reading the YAML file again.
 
 load_monan_jedi_config() {
   local default_config="config/jaci.yaml"
+
+  # Allow the user to override the configuration file while keeping the JACI
+  # configuration as the default workflow entry point.
   export MONAN_JEDI_CONFIG="${MONAN_JEDI_CONFIG:-${default_config}}"
 
   if [[ ! -f "${MONAN_JEDI_CONFIG}" ]]; then
@@ -43,12 +39,18 @@ load_monan_jedi_config() {
 
   require_cmd python3
 
+  # Convert YAML values into shell exports. The output is generated with shell
+  # quoting by read_config.py and is evaluated in the current shell.
   # shellcheck disable=SC1090
   eval "$(python3 "$(dirname "${BASH_SOURCE[0]}")/read_config.py" "${MONAN_JEDI_CONFIG}")"
 
+  # PROJECT_ROOT is the user-owned workspace root. STACK_OWNER may be different
+  # from USER when the spack-stack installation is shared by another account.
   export PROJECT_ROOT="${PROJECT_ROOT:-/p/projetos/monan_das/${USER}}"
   export STACK_OWNER="${STACK_OWNER:-${USER}}"
 
+  # These identifiers define the stack instance, stack environment and workflow
+  # instance. Empty values would make the derived paths unsafe or ambiguous.
   if [[ -z "${STACK_INSTANCE:-}" ]]; then
     log_error "STACK_INSTANCE is empty. Set stack.instance in ${MONAN_JEDI_CONFIG}."
     exit 1
@@ -71,9 +73,12 @@ load_monan_jedi_config() {
   export STACK_ROOT="${STACK_ROOT:-${STACK_WORK_ROOT}/spack-stack}"
   export STACK_MODULE_ROOT="${STACK_MODULE_ROOT:-${STACK_ROOT}/envs/${STACK_ENV_NAME}/modules}"
 
+  # User-owned workflow directories. They are intentionally derived separately
+  # from the shared spack-stack installation.
   export MONAN_JEDI_WORK_ROOT="${MONAN_JEDI_WORK_ROOT:-${PROJECT_ROOT}/work/${MONAN_JEDI_RUN_ID}}"
   export MONAN_JEDI_LOG_ROOT="${MONAN_JEDI_LOG_ROOT:-${PROJECT_ROOT}/logs/${MONAN_JEDI_RUN_ID}}"
 
+  # Default JEDI bundle source and build paths for the selected run id.
   export JEDI_BUNDLE_SRC_DIR="${JEDI_BUNDLE_SRC_DIR:-${MONAN_JEDI_WORK_ROOT}/jedi-bundle}"
   export JEDI_BUNDLE_BUILD_DIR="${JEDI_BUNDLE_BUILD_DIR:-${MONAN_JEDI_WORK_ROOT}/build-jedi-bundle-mpas-only}"
 
