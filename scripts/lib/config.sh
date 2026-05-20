@@ -15,7 +15,28 @@ load_monan_jedi_config() {
   # shellcheck disable=SC1090
   eval "$(python3 "$(dirname "${BASH_SOURCE[0]}")/read_config.py" "${MONAN_JEDI_CONFIG}")"
 
-  export STACK_WORK_ROOT="${STACK_WORK_ROOT:-${PROJECT_ROOT}/work/${STACK_INSTANCE}}"
+  export PROJECT_ROOT="${PROJECT_ROOT:-/p/projetos/monan_das/${USER}}"
+  export STACK_OWNER="${STACK_OWNER:-${USER}}"
+
+  if [[ -z "${STACK_INSTANCE:-}" ]]; then
+    log_error "STACK_INSTANCE is empty. Set stack.instance in ${MONAN_JEDI_CONFIG}."
+    exit 1
+  fi
+
+  if [[ -z "${STACK_ENV_NAME:-}" ]]; then
+    log_error "STACK_ENV_NAME is empty. Set stack.env_name in ${MONAN_JEDI_CONFIG}."
+    exit 1
+  fi
+
+  if [[ -z "${MONAN_JEDI_RUN_ID:-}" ]]; then
+    log_error "MONAN_JEDI_RUN_ID is empty. Set build.id in ${MONAN_JEDI_CONFIG}."
+    exit 1
+  fi
+
+  # The stack may be owned by another account, while PROJECT_ROOT is the
+  # user-owned MONAN-JEDI workspace. Do not derive STACK_WORK_ROOT from
+  # PROJECT_ROOT unless stack.work_root is explicitly set that way.
+  export STACK_WORK_ROOT="${STACK_WORK_ROOT:-/p/projetos/monan_das/${STACK_OWNER}/work/${STACK_INSTANCE}}"
   export STACK_ROOT="${STACK_ROOT:-${STACK_WORK_ROOT}/spack-stack}"
   export STACK_MODULE_ROOT="${STACK_MODULE_ROOT:-${STACK_ROOT}/envs/${STACK_ENV_NAME}/modules}"
 
