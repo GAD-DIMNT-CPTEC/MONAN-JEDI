@@ -1,17 +1,79 @@
+# =============================================================================
+# MONAN-JEDI site configuration for JACI
+# =============================================================================
+#
+# This file is the user-editable configuration entry point for the MONAN-JEDI
+# workflow. The shell scripts should not be edited for normal use.
+#
+# Important concept
+# -----------------
+# The MONAN-JEDI workflow has two independent filesystem areas:
+#
+#   1. project.root
+#      User-owned area where MONAN-JEDI writes source trees, build trees and logs.
+#      This should be writable by the user running the workflow.
+#
+#   2. stack.root or stack.owner + stack.instance
+#      Location of an existing spack-stack installation. This stack may be owned
+#      by another user and may be read-only for normal MONAN-JEDI users.
+#
+# Do not assume that the stack is under project.root.
+# A user may work in their own directory while consuming a stack maintained by
+# another account.
+# =============================================================================
+
 site: jaci
 
 project:
+  # User-owned MONAN-JEDI workspace root.
+  # Work trees are created under: ${project.root}/work/${workflow.run_id}
+  # Logs are created under:      ${project.root}/logs/${workflow.run_id}
   root: /p/projetos/monan_das/${USER}
 
 stack:
+  # Unix account that owns the validated spack-stack tree.
+  # If the current user owns the stack, this may be ${USER}.
+  # If a shared stack maintained by another account is used, set that owner here.
+  owner: joao.gerd
+
+  # Stack instance identifier produced by spack-stack-inpe.
+  # Used only to derive stack.work_root and stack.root when those are not set.
   instance: spack-stack-inpe-overlay-20260515T181917Z
+
+  # Optional explicit stack work root.
+  # If empty or omitted, the workflow derives:
+  #   /p/projetos/monan_das/${stack.owner}/work/${stack.instance}
+  work_root:
+
+  # Optional explicit spack-stack root.
+  # If empty or omitted, the workflow derives:
+  #   ${stack.work_root}/spack-stack
+  root:
+
+  # Name of the generated spack-stack environment.
   env_name: jaci-mpas-jedi-gcc12-craympich
+
+  # Optional explicit module root.
+  # If empty or omitted, the workflow derives:
+  #   ${stack.root}/envs/${stack.env_name}/modules
+  module_root:
+
+  # JACI site setup script inside the spack-stack tree.
+  # This is the site setup, not the root spack-stack setup.sh.
+  # Normal users should not source ${stack.root}/setup.sh.
+  site_setup: configs/sites/tier2/jaci/setup.sh
+
+  # Generated environment module to load after module use ${stack.module_root}.
   env_module: cray-mpich/8.1.31/none/none/jedi-mpas-env/1.0.0
 
 workflow:
+  # Identifier for this MONAN-JEDI run/build attempt.
+  # Change this when you want a new independent work/log tree.
   run_id: monan-jedi-mpas-only
 
 compilers:
+  # Compiler commands or absolute paths used by CMake/ecbuild.
+  # On JACI CrayPE these should normally remain as cc, CC and ftn.
   cc: cc
   cxx: CC
   fc: ftn
@@ -19,6 +81,8 @@ compilers:
   f90: ftn
 
 mpi:
+  # MPI compiler commands or absolute paths.
+  # On CrayPE, the compiler wrappers cc, CC and ftn are also the MPI wrappers.
   mpicc: cc
   mpicxx: CC
   mpifc: ftn
@@ -26,21 +90,38 @@ mpi:
   mpif90: ftn
 
 jedi_bundle:
+  # Repository and reference used to prepare the local JEDI bundle source tree.
   repo: https://github.com/JCSDA/jedi-bundle.git
   ref: develop
 
+  # Template copied to jedi-bundle/CMakeLists.txt by the reduce step.
+  cmakelists_template: templates/CMakeLists.monan-jedi-mpas-only.txt
+
 build:
+  # Number of parallel build jobs passed to make.
   jobs: 8
 
 ctest:
+  # Login-node-safe CTest subset.
   login_regex: "^mpasjedi_coding_norms$"
+
+  # PBS/compute-node CTest subset.
   pbs_regex: "^mpasjedi_geometry$"
+
+  # Optional CTest exclusion regex.
   exclude_regex: ""
+
+  # Number of parallel CTest jobs.
   jobs: 1
+
+  # Keep false unless you explicitly know the selected tests do not require PBS.
   allow_login_node_mpi_tests: false
 
 pbs:
+  # PBS settings for compute-node tests.
   queue: pesqmini
   ncpus: 64
   walltime: "00:30:00"
+
+  # If false, the PBS script is generated but not submitted.
   submit_job: true
