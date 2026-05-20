@@ -1,0 +1,46 @@
+site: jaci
+
+project:
+  root: /p/projetos/monan_das/${USER}
+
+stack:
+  instance: spack-stack-inpe-overlay-20260515T181917Z
+  env_name: jaci-mpas-jedi-gcc12-craympich
+  env_module: cray-mpich/8.1.31/none/none/jedi-mpas-env/1.0.0
+
+workflow:
+  run_id: monan-jedi-mpas-only
+
+compilers:
+  cc: cc
+  cxx: CC
+  fc: ftn
+  f77: ftn
+  f90: ftn
+
+mpi:
+  mpicc: cc
+  mpicxx: CC
+  mpifc: ftn
+  mpif77: ftn
+  mpif90: ftn
+
+jedi_bundle:
+  repo: https://github.com/JCSDA/jedi-bundle.git
+  ref: develop
+
+build:
+  jobs: 8
+
+ctest:
+  login_regex: "^mpasjedi_coding_norms$"
+  pbs_regex: "^mpasjedi_geometry$"
+  exclude_regex: ""
+  jobs: 1
+  allow_login_node_mpi_tests: false
+
+pbs:
+  queue: pesqmini
+  ncpus: 64
+  walltime: "00:30:00"
+  submit_job: true
