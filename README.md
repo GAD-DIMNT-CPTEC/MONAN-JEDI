@@ -81,9 +81,9 @@ Or, for the main sequence:
 bash scripts/monan-jedi.sh all --config config/jaci.yaml
 ```
 
-## Manual minimal build
+## Manual minimal build and test
 
-Users who do not want to use the workflow scripts can load the stack and build directly from the repository root:
+Users who do not want to use the workflow scripts can load the stack, build and run a minimal login-node-safe test directly from the repository root:
 
 ```bash
 module --force purge 2>/dev/null || module purge
@@ -127,6 +127,18 @@ ecbuild .. \
   -DBUILD_GSIBEC=OFF
 
 make -j 8
+
+ctest -N
+ctest --output-on-failure -R '^mpasjedi_coding_norms$'
+```
+
+The `ctest -N` command lists the configured tests without executing them. The `mpasjedi_coding_norms` test is the minimal login-node-safe test currently used by the scripted workflow.
+
+For full validation, do not run the complete CTest suite directly on a login node. Use the workflow PBS helper instead:
+
+```bash
+cd /p/projetos/monan_das/${USER}/work/MONAN-JEDI
+bash scripts/monan-jedi.sh test-pbs --config config/jaci.yaml
 ```
 
 ## Repository layout
