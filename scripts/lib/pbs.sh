@@ -86,6 +86,9 @@ monan_jedi_test_pbs() {
 
 set -euo pipefail
 
+# Keep CTest logs and generated files writable by the project group.
+umask 002
+
 cd ${repo_dir}
 
 export MONAN_JEDI_CONFIG=${MONAN_JEDI_CONFIG}
@@ -126,6 +129,7 @@ fi
   echo "GeneratedAt=\$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "Host=\$(hostname)"
   echo "PBS_JOBID=\${PBS_JOBID:-}"
+  echo "Umask=\$(umask)"
   echo "MONAN_JEDI_CTEST_EXCLUDE_REGEX=\${MONAN_JEDI_CTEST_EXCLUDE_REGEX}"
   module list 2>&1 || true
   echo "=== CTest inventory ==="
