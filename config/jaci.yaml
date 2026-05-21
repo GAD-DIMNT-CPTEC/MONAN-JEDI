@@ -2,8 +2,8 @@
 # MONAN-JEDI site configuration for JACI
 # =============================================================================
 #
-# This file is the user-editable configuration entry point for preparing,
-# compiling and testing MPAS-JEDI with an existing spack-stack installation.
+# This file is the user-editable configuration entry point for compiling and
+# testing the MONAN-JEDI bundle with an existing spack-stack installation.
 # The shell scripts should not be edited for normal use.
 #
 # Important concept
@@ -11,7 +11,7 @@
 # This build/test setup has two independent filesystem areas:
 #
 #   1. project.root
-#      User-owned area where MONAN-JEDI writes source trees, build trees and logs.
+#      User-owned area where MONAN-JEDI writes build trees and logs.
 #      This must be writable by the user running the scripts.
 #
 #   2. stack.root or stack.owner + stack.instance
@@ -27,8 +27,8 @@ site: jaci
 
 project:
   # User-owned MONAN-JEDI workspace root.
-  # Source/build trees are created under: ${project.root}/work/${build.id}
-  # Logs are created under:               ${project.root}/logs/${build.id}
+  # Build trees are created under: ${project.root}/work/${build.id}
+  # Logs are created under:        ${project.root}/logs/${build.id}
   root: /p/projetos/monan_das/${USER}
 
 stack:
@@ -68,8 +68,8 @@ stack:
   env_module: cray-mpich/8.1.31/none/none/jedi-mpas-env/1.0.0
 
 build:
-  # Identifier for this preparation/compilation/test attempt.
-  # Change this when you want a new independent source/build/log tree.
+  # Identifier for this compilation/test attempt.
+  # Change this when you want a new independent build/log tree.
   id: monan-jedi-mpas-only
 
   # Number of parallel build jobs passed to make.
@@ -92,14 +92,6 @@ mpi:
   mpifc: ftn
   mpif77: ftn
   mpif90: ftn
-
-jedi_bundle:
-  # Repository and reference used to prepare the local JEDI bundle source tree.
-  repo: https://github.com/JCSDA/jedi-bundle.git
-  ref: develop
-
-  # Template copied to jedi-bundle/CMakeLists.txt by the reduce step.
-  cmakelists_template: templates/CMakeLists.monan-jedi-mpas-only.txt
 
 ctest:
   # Login-node-safe CTest subset.
