@@ -32,15 +32,24 @@ Usage:
   bash scripts/monan-jedi.sh <command> [--config config/jaci.yaml]
 
 Commands:
-  load        Load and validate the spack-stack environment
-  prepare     Clone/update jedi-bundle
-  reduce      Generate reduced MPAS-JEDI-only CMakeLists.txt
-  configure   Configure the bundle with ecbuild
-  build       Build the configured bundle
-  test        Run login-node-safe CTest subset
-  test-pbs    Submit CTest to PBS
-  logs        Collect logs
-  all         Run load, prepare, reduce, configure, build, test, logs
+  load              Load and validate the spack-stack environment
+  prepare           Clone/update jedi-bundle
+  reduce            Generate reduced MPAS-JEDI-only CMakeLists.txt
+  configure         Configure the bundle with ecbuild
+  build             Build the configured bundle
+  test              Run login-node-safe CTest subset
+  test-pbs          Submit CTest to PBS
+  logs              Collect logs
+  all               Run load, prepare, reduce, configure, build, test, logs
+
+Resume commands:
+  from-load         Resume from load, then run prepare, reduce, configure, build, test, logs
+  from-prepare      Resume from prepare, then run reduce, configure, build, test, logs
+  from-reduce       Resume from reduce, then run configure, build, test, logs
+  from-configure    Resume from configure, then run build, test, logs
+  from-build        Resume from build, then run test, logs
+  from-test         Resume from test, then run logs
+  from-test-pbs     Resume from PBS test submission, then run logs
 EOF
 }
 
@@ -93,7 +102,7 @@ case "${command_name}" in
   logs)
     monan_jedi_collect_logs
     ;;
-  all)
+  all|from-load)
     monan_jedi_load_stack
     monan_jedi_record_environment_snapshot "${MONAN_JEDI_LOG_ROOT}/01_stack_environment.log"
     monan_jedi_prepare_bundle
@@ -101,6 +110,40 @@ case "${command_name}" in
     monan_jedi_configure_bundle
     monan_jedi_build_bundle
     monan_jedi_test_login
+    monan_jedi_collect_logs
+    ;;
+  from-prepare)
+    monan_jedi_prepare_bundle
+    monan_jedi_create_mpas_only_bundle
+    monan_jedi_configure_bundle
+    monan_jedi_build_bundle
+    monan_jedi_test_login
+    monan_jedi_collect_logs
+    ;;
+  from-reduce)
+    monan_jedi_create_mpas_only_bundle
+    monan_jedi_configure_bundle
+    monan_jedi_build_bundle
+    monan_jedi_test_login
+    monan_jedi_collect_logs
+    ;;
+  from-configure)
+    monan_jedi_configure_bundle
+    monan_jedi_build_bundle
+    monan_jedi_test_login
+    monan_jedi_collect_logs
+    ;;
+  from-build)
+    monan_jedi_build_bundle
+    monan_jedi_test_login
+    monan_jedi_collect_logs
+    ;;
+  from-test)
+    monan_jedi_test_login
+    monan_jedi_collect_logs
+    ;;
+  from-test-pbs)
+    monan_jedi_test_pbs
     monan_jedi_collect_logs
     ;;
   ""|-h|--help)
