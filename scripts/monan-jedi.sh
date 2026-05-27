@@ -47,6 +47,8 @@ Notes:
   The MONAN-JEDI repository root is now the bundle source tree.
   Commands prepare and reduce were removed from the main workflow.
   Generated files use umask 002 to remain writable by the project group.
+  MPAS precision is configured in YAML with model.double_precision.
+  Use ON for CTest validation and OFF only when a workflow/tutorial requires single precision.
 EOF
 }
 

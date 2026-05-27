@@ -82,6 +82,19 @@ build:
   # Number of parallel build jobs passed to make.
   jobs: 8
 
+model:
+  # MONAN/MPAS precision mode passed to ecbuild/CMake as MPAS_DOUBLE_PRECISION.
+  #
+  # Recommended values:
+  #   ON  - validation mode. Use this when running the mpas-jedi CTest suite.
+  #         Upstream CTest reference files are produced with double precision.
+  #   OFF - workflow mode. Use this only when the target workflow/tutorial
+  #         requires a single-precision MPAS build.
+  #
+  # Some CTest cases may fail with OFF because single-precision output can
+  # differ from double-precision reference files by more than the test tolerance.
+  double_precision: ON
+
 compilers:
   # Compiler commands or absolute paths used by CMake/ecbuild.
   # On CrayPE systems these may be cc, CC and ftn.

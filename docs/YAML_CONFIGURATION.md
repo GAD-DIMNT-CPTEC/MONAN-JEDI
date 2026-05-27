@@ -255,7 +255,59 @@ MONAN_JEDI_BUILD_JOBS
 
 Increase only if the node and filesystem can handle it. Decrease if builds fail due to memory pressure or filesystem stress.
 
-## 6. `compilers` block
+## 6. `model` block
+
+The `model` block controls MPAS-specific CMake configuration options used during `ecbuild`.
+
+### `model.double_precision`
+
+```yaml
+model:
+  double_precision: ON
+```
+
+Controls the CMake option passed to `mpas-bundle`:
+
+```text
+MPAS_DOUBLE_PRECISION
+```
+
+Mapped internal variable:
+
+```text
+MONAN_JEDI_MODEL_DOUBLE_PRECISION
+```
+
+Accepted values:
+
+```text
+ON
+OFF
+```
+
+Use `ON` when validating the build with the `mpas-jedi` CTest suite. This is the upstream default and matches the precision used to produce the upstream CTest reference files.
+
+Use `OFF` only when the target workflow or tutorial requires a single-precision MPAS build, for example MPAS-Workflow calculations using the `mpas-bundle` build.
+
+This distinction is important because the MPAS-JEDI tutorial documents that CTest reference files are produced with a double-precision build. Therefore, some CTest cases may fail when the bundle is compiled in single precision because the numerical difference can be larger than the test tolerance.
+
+Recommended validation setting:
+
+```yaml
+model:
+  double_precision: ON
+```
+
+Single-precision workflow setting:
+
+```yaml
+model:
+  double_precision: OFF
+```
+
+Do not interpret CTest failures from a single-precision build as MPI, compiler, filesystem, or platform failures without first checking the detailed CTest logs.
+
+## 7. `compilers` block
 
 ```yaml
 compilers:
@@ -290,7 +342,7 @@ F90
 
 Recommended JACI values are `cc`, `CC` and `ftn`. Avoid raw `gcc`, `g++` or `gfortran` on JACI unless you are intentionally bypassing CrayPE.
 
-## 7. `mpi` block
+## 8. `mpi` block
 
 ```yaml
 mpi:
@@ -325,7 +377,7 @@ MPIF90
 
 On CrayPE, `cc`, `CC` and `ftn` act as compiler and MPI-aware wrappers.
 
-## 8. `ctest` block
+## 9. `ctest` block
 
 ### `ctest.login_regex`
 
@@ -412,7 +464,7 @@ ALLOW_LOGIN_NODE_MPI_TESTS
 
 Keep `false` on JACI for normal use.
 
-## 9. `pbs` block
+## 10. `pbs` block
 
 ### `pbs.queue`
 
@@ -478,7 +530,7 @@ MONAN_JEDI_SUBMIT_JOB
 
 Use `false` when reviewing the generated PBS script before submission.
 
-## 10. Recommended current JACI testing configuration
+## 11. Recommended current JACI testing configuration
 
 For a full PBS validation excluding the three known failing tests:
 
@@ -497,7 +549,7 @@ pbs:
   submit_job: true
 ```
 
-## 11. Environment-variable override behavior
+## 12. Environment-variable override behavior
 
 The YAML values are read by `scripts/lib/read_config.py`. If an environment variable is already exported before running the workflow, that value takes precedence over the YAML-derived value.
 

@@ -20,9 +20,18 @@ monan_jedi_configure_bundle() {
     exit 1
   }
 
+  case "${MONAN_JEDI_MODEL_DOUBLE_PRECISION}" in
+    ON|OFF) ;;
+    *)
+      log_error "Invalid MPAS double precision value: ${MONAN_JEDI_MODEL_DOUBLE_PRECISION}. Use ON or OFF."
+      exit 1
+      ;;
+  esac
+
   local cache_file="${MONAN_JEDI_BUILD_DIR}/monan-jedi-initial-cache.cmake"
   local after_project_file="${MONAN_JEDI_BUILD_DIR}/monan-jedi-after-project.cmake"
   local python_exe python_prefix python_include python_library
+
 
   python_exe="$(command -v python)"
   python_prefix="$(${python_exe} -c 'import sys; print(sys.prefix)')"
@@ -83,5 +92,6 @@ EOF
     "-DPYTHON_EXECUTABLE=${python_exe}" \
     "-DBUILD_MPAS=ON" \
     "-DBUILD_GSIBEC=OFF" \
+    "-DMPAS_DOUBLE_PRECISION=${MONAN_JEDI_MODEL_DOUBLE_PRECISION}" \
     2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/04_ecbuild.log"
 }

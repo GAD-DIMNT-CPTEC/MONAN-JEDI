@@ -14,6 +14,7 @@ The YAML file is expected to use a nested structure, for example:
 * ``project.*`` for user workspace paths.
 * ``stack.*`` for the shared spack-stack installation.
 * ``build.*`` for the workflow instance.
+* ``model.*`` for the model instance.
 * ``compilers.*`` and ``mpi.*`` for wrapper commands.
 * ``ctest.*`` and ``pbs.*`` for test and batch-system settings.
 
@@ -128,6 +129,7 @@ def main():
         "JEDI_BUNDLE_REF": "jedi_bundle.ref",
         "JEDI_BUNDLE_CMAKELISTS_TEMPLATE": "jedi_bundle.cmakelists_template",
         "MONAN_JEDI_BUILD_JOBS": "build.jobs",
+        "MONAN_JEDI_MODEL_DOUBLE_PRECISION": "model.double_precision",
         "MONAN_JEDI_CTEST_REGEX": "ctest.login_regex",
         "MONAN_JEDI_CTEST_PBS_REGEX": "ctest.pbs_regex",
         "MONAN_JEDI_CTEST_EXCLUDE_REGEX": "ctest.exclude_regex",
@@ -158,6 +160,7 @@ def main():
         "JEDI_BUNDLE_REF": "develop",
         "JEDI_BUNDLE_CMAKELISTS_TEMPLATE": "templates/CMakeLists.monan-jedi-mpas-only.txt",
         "MONAN_JEDI_BUILD_JOBS": "8",
+        "MONAN_JEDI_MODEL_DOUBLE_PRECISION": "ON",
         "MONAN_JEDI_CTEST_JOBS": "1",
         "MONAN_JEDI_PBS_QUEUE": "pesqmini",
         "MONAN_JEDI_PBS_NCPUS": "64",
