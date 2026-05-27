@@ -18,6 +18,8 @@ source "${script_dir}/lib/common.sh"
 source "${script_dir}/lib/config.sh"
 # shellcheck source=lib/stack.sh
 source "${script_dir}/lib/stack.sh"
+# shellcheck source=lib/lfs_data.sh
+source "${script_dir}/lib/lfs_data.sh"
 # shellcheck source=lib/configure.sh
 source "${script_dir}/lib/configure.sh"
 # shellcheck source=lib/build.sh

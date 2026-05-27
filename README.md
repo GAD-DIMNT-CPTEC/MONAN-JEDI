@@ -172,6 +172,16 @@ cd ../
 bash scripts/monan-jedi.sh test-pbs --config config/jaci.yaml
 ```
 
+## Troubleshooting
+
+If the build succeeds but one or more tests fail, first run the initial checks documented in:
+
+```text
+docs/TEST_TROUBLESHOOTING.md
+```
+
+That checklist covers common non-code causes such as Conda or Anaconda contamination, missing Git LFS content, incomplete submodules, stale CMake cache, incorrect compiler or MPI wrappers, missing input data and PBS walltime termination.
+
 ## Repository layout
 
 ```text
@@ -184,6 +194,7 @@ MONAN-JEDI/
 ├── docs/
 │   ├── BUNDLE_ORIGIN.md
 │   ├── JACI_MPAS_JEDI_BUILD_STEPS.md
+│   ├── TEST_TROUBLESHOOTING.md
 │   └── YAML_CONFIGURATION.md
 └── scripts/
     ├── monan-jedi.sh

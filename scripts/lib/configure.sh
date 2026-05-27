@@ -13,6 +13,8 @@ monan_jedi_configure_bundle() {
     exit 1
   fi
 
+  monan_jedi_ensure_lfs_test_data
+
   rm -rf "${MONAN_JEDI_BUILD_DIR}"
   mkdir -p "${MONAN_JEDI_BUILD_DIR}" "${MONAN_JEDI_LOG_ROOT}"
   cd "${MONAN_JEDI_BUILD_DIR}" || {
