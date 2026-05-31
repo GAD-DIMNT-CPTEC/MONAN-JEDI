@@ -14,6 +14,9 @@
 #     build.*
 #       User-owned MONAN-JEDI workflow instance.
 #
+#     obs2ioda.*
+#       Auxiliary NCAR/obs2ioda source, build and install settings.
+#
 #     compilers.*, mpi.*
 #       Compiler and MPI wrapper commands.
 #
@@ -88,6 +91,12 @@ load_monan_jedi_config() {
   export MONAN_JEDI_BUILD_DIR="${MONAN_JEDI_BUILD_DIR:-${MONAN_JEDI_SOURCE_DIR}/build}"
   export JEDI_BUNDLE_SRC_DIR="${JEDI_BUNDLE_SRC_DIR:-${MONAN_JEDI_SOURCE_DIR}}"
   export JEDI_BUNDLE_BUILD_DIR="${JEDI_BUNDLE_BUILD_DIR:-${MONAN_JEDI_BUILD_DIR}}"
+
+  # obs2ioda is an auxiliary executable built with the same stack environment,
+  # but outside the main MONAN-JEDI bundle build tree.
+  export MONAN_JEDI_OBS2IODA_SOURCE_DIR="${MONAN_JEDI_OBS2IODA_SOURCE_DIR:-${PROJECT_ROOT}/work/obs2ioda}"
+  export MONAN_JEDI_OBS2IODA_BUILD_DIR="${MONAN_JEDI_OBS2IODA_BUILD_DIR:-${PROJECT_ROOT}/work/obs2ioda/build}"
+  export MONAN_JEDI_OBS2IODA_INSTALL_DIR="${MONAN_JEDI_OBS2IODA_INSTALL_DIR:-${PROJECT_ROOT}/install/obs2ioda}"
 
   mkdir -p "${MONAN_JEDI_WORK_ROOT}" "${MONAN_JEDI_LOG_ROOT}"
 }

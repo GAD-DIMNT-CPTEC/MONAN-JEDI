@@ -96,6 +96,37 @@ model:
   # differ from double-precision reference files by more than the test tolerance.
   double_precision: 'ON'
 
+obs2ioda:
+  # Build NCAR/obs2ioda as an auxiliary executable using the same stack
+  # environment used by MONAN-JEDI. This does not add obs2ioda to the main
+  # MPAS-JEDI bundle build tree.
+  enabled: true
+
+  # Source repository and reference. Use main for the current NCAR/obs2ioda state,
+  # or pin a commit/tag here for a stricter reproducibility record.
+  repo: https://github.com/NCAR/obs2ioda.git
+  ref: main
+
+  # User-owned source/build/install paths. Empty values are derived by the scripts.
+  source_dir:
+  build_dir:
+  install_dir:
+
+  # JACI/spack-stack-inpe currently provides NOAA BUFR as libbufr_4.so, not as
+  # libbufr.so or libbufr.a. Leave this empty to auto-detect it from the loaded
+  # stack. Set it explicitly if the automatic search finds the wrong library.
+  bufr_root:
+  bufr_lib:
+
+  # Extra CMake prefixes, separated by semicolon if needed. NetCDF C, Fortran and
+  # CXX prefixes are detected automatically through nc-config, nf-config and
+  # ncxx4-config.
+  cmake_prefix_path:
+
+  build_type: Release
+  build_goes_abi_converter: 'OFF'
+  jobs: 8
+
 compilers:
   # Compiler commands or absolute paths used by CMake/ecbuild.
   # On JACI CrayPE these should normally remain as cc, CC and ftn.

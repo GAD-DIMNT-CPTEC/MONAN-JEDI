@@ -15,6 +15,7 @@ The YAML file is expected to use a nested structure, for example:
 * ``stack.*`` for the shared spack-stack installation.
 * ``build.*`` for the workflow instance.
 * ``model.*`` for the model instance.
+* ``obs2ioda.*`` for the auxiliary obs2ioda build.
 * ``compilers.*`` and ``mpi.*`` for wrapper commands.
 * ``ctest.*`` and ``pbs.*`` for test and batch-system settings.
 
@@ -130,6 +131,18 @@ def main():
         "JEDI_BUNDLE_CMAKELISTS_TEMPLATE": "jedi_bundle.cmakelists_template",
         "MONAN_JEDI_BUILD_JOBS": "build.jobs",
         "MONAN_JEDI_MODEL_DOUBLE_PRECISION": "model.double_precision",
+        "MONAN_JEDI_OBS2IODA_ENABLED": "obs2ioda.enabled",
+        "MONAN_JEDI_OBS2IODA_REPO": "obs2ioda.repo",
+        "MONAN_JEDI_OBS2IODA_REF": "obs2ioda.ref",
+        "MONAN_JEDI_OBS2IODA_SOURCE_DIR": "obs2ioda.source_dir",
+        "MONAN_JEDI_OBS2IODA_BUILD_DIR": "obs2ioda.build_dir",
+        "MONAN_JEDI_OBS2IODA_INSTALL_DIR": "obs2ioda.install_dir",
+        "MONAN_JEDI_OBS2IODA_BUFR_ROOT": "obs2ioda.bufr_root",
+        "MONAN_JEDI_OBS2IODA_BUFR_LIB": "obs2ioda.bufr_lib",
+        "MONAN_JEDI_OBS2IODA_CMAKE_PREFIX_PATH": "obs2ioda.cmake_prefix_path",
+        "MONAN_JEDI_OBS2IODA_BUILD_TYPE": "obs2ioda.build_type",
+        "MONAN_JEDI_OBS2IODA_BUILD_GOES_ABI_CONVERTER": "obs2ioda.build_goes_abi_converter",
+        "MONAN_JEDI_OBS2IODA_JOBS": "obs2ioda.jobs",
         "MONAN_JEDI_CTEST_REGEX": "ctest.login_regex",
         "MONAN_JEDI_CTEST_PBS_REGEX": "ctest.pbs_regex",
         "MONAN_JEDI_CTEST_EXCLUDE_REGEX": "ctest.exclude_regex",
@@ -161,6 +174,12 @@ def main():
         "JEDI_BUNDLE_CMAKELISTS_TEMPLATE": "templates/CMakeLists.monan-jedi-mpas-only.txt",
         "MONAN_JEDI_BUILD_JOBS": "8",
         "MONAN_JEDI_MODEL_DOUBLE_PRECISION": "ON",
+        "MONAN_JEDI_OBS2IODA_ENABLED": "0",
+        "MONAN_JEDI_OBS2IODA_REPO": "https://github.com/NCAR/obs2ioda.git",
+        "MONAN_JEDI_OBS2IODA_REF": "main",
+        "MONAN_JEDI_OBS2IODA_BUILD_TYPE": "Release",
+        "MONAN_JEDI_OBS2IODA_BUILD_GOES_ABI_CONVERTER": "OFF",
+        "MONAN_JEDI_OBS2IODA_JOBS": "8",
         "MONAN_JEDI_CTEST_JOBS": "1",
         "MONAN_JEDI_PBS_QUEUE": "pesqmini",
         "MONAN_JEDI_PBS_NCPUS": "64",
