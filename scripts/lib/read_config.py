@@ -14,6 +14,7 @@ The YAML file is expected to use a nested structure, for example:
 * ``project.*`` for user workspace paths.
 * ``stack.*`` for the shared spack-stack installation.
 * ``build.*`` for the workflow instance.
+* ``install.*`` for executable publication paths.
 * ``model.*`` for the model instance.
 * ``obs2ioda.*`` for the auxiliary obs2ioda build.
 * ``compilers.*`` and ``mpi.*`` for wrapper commands.
@@ -43,27 +44,9 @@ except ImportError:
 
 
 def get_value(data, path, default=""):
-    """Return a nested YAML value converted to a shell-friendly string.
-
-    Parameters
-    ----------
-    data : dict
-        Parsed YAML document.
-    path : str
-        Dot-separated path inside the YAML document.
-    default : str, optional
-        Value returned when the path is missing or evaluates to ``None``.
-
-    Returns
-    -------
-    str
-        Expanded string value. Boolean values are converted to ``"1"`` or
-        ``"0"`` to make them easier to consume from Bash.
-    """
+    """Return a nested YAML value converted to a shell-friendly string."""
     cur = data
 
-    # Walk through the dot-separated path, returning the default as soon as a
-    # key is missing or the current object is no longer a dictionary.
     for key in path.split("."):
         if not isinstance(cur, dict) or key not in cur:
             return default
@@ -75,16 +58,11 @@ def get_value(data, path, default=""):
     if isinstance(cur, bool):
         return "1" if cur else "0"
 
-    # Expand variables such as ${USER} that may appear in YAML paths.
     return os.path.expandvars(str(cur))
 
 
 def emit(name, value):
-    """Print one safely quoted shell export statement.
-
-    Existing environment variables take precedence over values read from YAML.
-    This preserves command-line or scheduler-provided overrides.
-    """
+    """Print one safely quoted shell export statement."""
     env_value = os.environ.get(name, value)
     sys.stdout.write("export {0}={1}\n".format(name, shlex.quote(env_value)))
 
@@ -104,7 +82,6 @@ def main():
 
     data = read_yaml(sys.argv[1])
 
-    # Map exported environment variables to their YAML paths.
     mapping = {
         "PROJECT_ROOT": "project.root",
         "STACK_OWNER": "stack.owner",
@@ -116,6 +93,9 @@ def main():
         "STACK_SITE_SETUP": "stack.site_setup",
         "STACK_ENV_MODULE": "stack.env_module",
         "MONAN_JEDI_RUN_ID": "build.id",
+        "MONAN_JEDI_BUILD_DIR": "build.dir",
+        "MONAN_JEDI_INSTALL_ROOT": "install.root",
+        "MONAN_JEDI_INSTALL_BIN_DIR": "install.bin_dir",
         "MONAN_JEDI_CC": "compilers.cc",
         "MONAN_JEDI_CXX": "compilers.cxx",
         "MONAN_JEDI_FC": "compilers.fc",
@@ -137,6 +117,7 @@ def main():
         "MONAN_JEDI_OBS2IODA_SOURCE_DIR": "obs2ioda.source_dir",
         "MONAN_JEDI_OBS2IODA_BUILD_DIR": "obs2ioda.build_dir",
         "MONAN_JEDI_OBS2IODA_INSTALL_DIR": "obs2ioda.install_dir",
+        "MONAN_JEDI_OBS2IODA_EXECUTABLE_NAME": "obs2ioda.executable_name",
         "MONAN_JEDI_OBS2IODA_BUFR_ROOT": "obs2ioda.bufr_root",
         "MONAN_JEDI_OBS2IODA_BUFR_LIB": "obs2ioda.bufr_lib",
         "MONAN_JEDI_OBS2IODA_CMAKE_PREFIX_PATH": "obs2ioda.cmake_prefix_path",
@@ -154,8 +135,6 @@ def main():
         "MONAN_JEDI_SUBMIT_JOB": "pbs.submit_job",
     }
 
-    # Defaults are intentionally conservative and aligned with the JACI reduced
-    # MPAS-JEDI workflow.
     defaults = {
         "STACK_OWNER": os.environ.get("USER", "unknown"),
         "STACK_SITE_SETUP": "configs/sites/tier2/jaci/setup.sh",
@@ -177,6 +156,7 @@ def main():
         "MONAN_JEDI_OBS2IODA_ENABLED": "0",
         "MONAN_JEDI_OBS2IODA_REPO": "https://github.com/NCAR/obs2ioda.git",
         "MONAN_JEDI_OBS2IODA_REF": "main",
+        "MONAN_JEDI_OBS2IODA_EXECUTABLE_NAME": "obs2ioda.x",
         "MONAN_JEDI_OBS2IODA_BUILD_TYPE": "Release",
         "MONAN_JEDI_OBS2IODA_BUILD_GOES_ABI_CONVERTER": "OFF",
         "MONAN_JEDI_OBS2IODA_JOBS": "8",
