@@ -14,7 +14,7 @@ monan_jedi_configure_bundle() {
   fi
 
   rm -rf "${MONAN_JEDI_BUILD_DIR}"
-  mkdir -p "${MONAN_JEDI_BUILD_DIR}" "${MONAN_JEDI_LOG_ROOT}"
+  mkdir -p "${MONAN_JEDI_BUILD_DIR}" "${MONAN_JEDI_LOG_ROOT}" "${MONAN_JEDI_INSTALL_BIN_DIR}"
   cd "${MONAN_JEDI_BUILD_DIR}" || {
     log_error "Failed to enter build directory: ${MONAN_JEDI_BUILD_DIR}"
     exit 1
@@ -31,7 +31,6 @@ monan_jedi_configure_bundle() {
   local cache_file="${MONAN_JEDI_BUILD_DIR}/monan-jedi-initial-cache.cmake"
   local after_project_file="${MONAN_JEDI_BUILD_DIR}/monan-jedi-after-project.cmake"
   local python_exe python_prefix python_include python_library
-
 
   python_exe="$(command -v python)"
   python_prefix="$(${python_exe} -c 'import sys; print(sys.prefix)')"
@@ -77,6 +76,8 @@ EOF
   log_info "Configuring MONAN-JEDI bundle"
   log_info "  source=${MONAN_JEDI_SOURCE_DIR}"
   log_info "  build=${MONAN_JEDI_BUILD_DIR}"
+  log_info "  install=${MONAN_JEDI_INSTALL_ROOT}"
+  log_info "  install_bin=${MONAN_JEDI_INSTALL_BIN_DIR}"
 
   ecbuild "${MONAN_JEDI_SOURCE_DIR}" \
     "-C${cache_file}" \
@@ -90,6 +91,12 @@ EOF
     "-DPython3_EXECUTABLE=${python_exe}" \
     "-DPython_EXECUTABLE=${python_exe}" \
     "-DPYTHON_EXECUTABLE=${python_exe}" \
+    "-DCMAKE_INSTALL_PREFIX=${MONAN_JEDI_INSTALL_ROOT}" \
+    "-DCMAKE_INSTALL_BINDIR=bin" \
+    "-DCMAKE_INSTALL_LIBDIR=lib" \
+    "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${MONAN_JEDI_INSTALL_BIN_DIR}" \
+    "-DCMAKE_INSTALL_RPATH=\$ORIGIN/../lib" \
+    "-DCMAKE_INSTALL_RPATH_USE_LINK_PATH=ON" \
     "-DBUILD_MPAS=ON" \
     "-DBUILD_GSIBEC=OFF" \
     "-DMPAS_DOUBLE_PRECISION=${MONAN_JEDI_MODEL_DOUBLE_PRECISION}" \
