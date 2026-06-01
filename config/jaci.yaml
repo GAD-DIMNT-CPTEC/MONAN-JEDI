@@ -2,43 +2,42 @@
 # MONAN-JEDI site configuration for JACI
 # =============================================================================
 #
-# This file is the user-editable configuration entry point for compiling and
-# testing the MONAN-JEDI bundle with an existing spack-stack installation.
-# The shell scripts should not be edited for normal use.
+# This file is the user-editable configuration entry point for compiling,
+# installing and testing the MONAN-JEDI bundle with an existing spack-stack
+# installation.
 #
-# Important concept
-# -----------------
-# This build/test setup has three independent filesystem areas:
+# The workflow uses four independent filesystem areas:
 #
 #   1. project.root
-#      User-owned workspace root.
+#      User-owned workspace root. Default working, log and install paths are
+#      derived from this root.
 #
 #   2. stack.root or stack.owner + stack.instance
-#      Location of an existing spack-stack installation. This stack may be owned
-#      by another user and may be read-only for normal MONAN-JEDI users.
+#      Existing spack-stack installation. This stack may be owned by another
+#      user and may be read-only for normal MONAN-JEDI users.
 #
-#   3. install.root
-#      User-owned publication area for executables produced by this workflow.
-#      Final executables are collected under install.bin_dir.
+#   3. build.dir
+#      CMake/ecbuild build tree for the MONAN-JEDI bundle.
 #
-# Do not assume that the stack is under project.root.
-# A user may work in their own directory while consuming a stack maintained by
-# another account.
+#   4. install.root / install.bin_dir
+#      Installation/publication tree. Final executables from the MONAN-JEDI
+#      bundle and auxiliary tools such as obs2ioda are collected under
+#      install.bin_dir.
+#
+# Do not assume that the stack, build tree and install tree are under the same
+# root. They can be configured independently.
 # =============================================================================
 
 site: jaci
 
 project:
   # User-owned MONAN-JEDI workspace root.
-  # Build trees are created under: ${project.root}/work
-  # Logs are created under:        ${project.root}/logs
-  # Executables are published under install.bin_dir.
+  # Empty derived paths use this root together with build.id.
   root: /p/projetos/monan_das/${USER}
 
 stack:
   # Unix account that owns the validated spack-stack tree.
   # If the current user owns the stack, this may be ${USER}.
-  # If a shared stack maintained by another account is used, set that owner here.
   owner: joao.gerd
 
   # Stack instance identifier produced by spack-stack-inpe.
@@ -46,12 +45,12 @@ stack:
   instance: spack-stack-inpe-overlay-20260515T181917Z
 
   # Optional explicit stack work root.
-  # If empty or omitted, the scripts derive:
+  # If empty, derived as:
   #   /p/projetos/monan_das/${stack.owner}/work/${stack.instance}
   work_root:
 
   # Optional explicit spack-stack root.
-  # If empty or omitted, the scripts derive:
+  # If empty, derived as:
   #   ${stack.work_root}/spack-stack
   root:
 
@@ -59,32 +58,32 @@ stack:
   env_name: jaci-mpas-jedi-gcc12-craympich
 
   # Optional explicit module root.
-  # If empty or omitted, the scripts derive:
+  # If empty, derived as:
   #   ${stack.root}/envs/${stack.env_name}/modules
   module_root:
 
   # JACI site setup script inside the spack-stack tree.
-  # This is the site setup, not the root spack-stack setup.sh.
-  # Normal users should not source ${stack.root}/setup.sh.
+  # The workflow sources ${stack.root}/${stack.site_setup}.
   site_setup: configs/sites/tier2/jaci/setup.sh
 
   # Generated environment module to load after module use ${stack.module_root}.
+  # This value will be simplified after spack-stack-inpe adjusts its module tree.
   env_module: cray-mpich/8.1.31/none/none/jedi-mpas-env/1.0.0
 
 build:
   # Identifier for this compilation/test attempt.
-  # Change this when you want a new independent build/log/install tree.
+  # Used to derive work, log and install paths when they are not explicit.
   id: monan-jedi-mpas-only
 
-  # Main MONAN-JEDI bundle build tree.
+  # Main MONAN-JEDI CMake/ecbuild build tree.
   # Empty means: ${project.root}/work/${build.id}/build
   dir:
 
-  # Number of parallel build jobs passed to make.
+  # Number of parallel jobs passed to make/cmake --build.
   jobs: 8
 
 install:
-  # Publication root for executables produced by this workflow.
+  # Installation prefix used by make install and auxiliary tool publication.
   # Empty means: ${project.root}/builds/${build.id}
   root:
 
@@ -100,8 +99,8 @@ model:
 obs2ioda:
   # Build NCAR/obs2ioda as an auxiliary executable using the same stack
   # environment used by MONAN-JEDI. It is downloaded and compiled outside the
-  # main MPAS-JEDI bundle build tree, but the final executable is published in
-  # the same install.bin_dir used by the bundle executables.
+  # main MONAN-JEDI build tree, but the final executable is published in the
+  # same install.bin_dir used by the bundle executables.
   enabled: true
 
   repo: https://github.com/NCAR/obs2ioda.git
@@ -109,15 +108,16 @@ obs2ioda:
 
   # Source checkout and CMake build tree for obs2ioda.
   # Empty means:
-  #   source_dir: ${project.root}/work/obs2ioda/src
-  #   build_dir:  ${project.root}/work/obs2ioda/build
+  #   source_dir: ${project.root}/work/${build.id}/obs2ioda/src
+  #   build_dir:  ${project.root}/work/${build.id}/obs2ioda/build
   source_dir:
   build_dir:
 
   # Optional install root for obs2ioda. Empty means install.root.
-  # The published executable is copied to install.bin_dir/executable_name.
+  # The executable is ultimately published to:
+  #   ${install.bin_dir}/${obs2ioda.executable_name}
   install_dir:
-  executable_name: obs2ioda.x
+  executable_name: obs2ioda_v3
 
   # JACI/spack-stack-inpe currently provides NOAA BUFR as libbufr_4.so, not as
   # libbufr.so or libbufr.a. Leave this empty to auto-detect it from the loaded
@@ -132,7 +132,7 @@ obs2ioda:
 
   build_type: Release
   build_goes_abi_converter: 'OFF'
-  
+
 compilers:
   # Compiler commands or absolute paths used by CMake/ecbuild.
   # On JACI CrayPE these should normally remain as cc, CC and ftn.
