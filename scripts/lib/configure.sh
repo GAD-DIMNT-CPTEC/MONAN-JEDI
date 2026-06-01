@@ -1,6 +1,46 @@
 #!/usr/bin/env bash
 # ecbuild/CMake configuration for the MONAN-JEDI repository bundle.
 
+monan_jedi_prepare_crtm_coefficients() {
+  local crtm_tgz crtm_build_tgz crtm_build_dir
+
+  crtm_tgz="${MONAN_JEDI_CRTM_COEFFS_TGZ}"
+  crtm_build_dir="${MONAN_JEDI_BUILD_DIR}/test_data/3.1.3"
+  crtm_build_tgz="${crtm_build_dir}/fix_REL-3.1.2.0.tgz"
+
+  mkdir -p "$(dirname "${crtm_tgz}")" "${crtm_build_dir}"
+
+  if [[ ! -s "${crtm_tgz}" ]]; then
+    log_info "Downloading CRTM coefficient archive"
+    log_info "  url=${MONAN_JEDI_CRTM_COEFFS_URL}"
+    log_info "  cache=${crtm_tgz}"
+
+    if command -v wget >/dev/null 2>&1; then
+      wget --continue --tries=5 --timeout=60 --waitretry=10 \
+        -O "${crtm_tgz}" \
+        "${MONAN_JEDI_CRTM_COEFFS_URL}" \
+        2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/03_crtm_coeffs_download.log"
+    elif command -v curl >/dev/null 2>&1; then
+      curl --fail --location --retry 5 --retry-delay 10 \
+        --output "${crtm_tgz}" \
+        "${MONAN_JEDI_CRTM_COEFFS_URL}" \
+        2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/03_crtm_coeffs_download.log"
+    else
+      log_warn "Neither wget nor curl is available. CMake will try to download CRTM coefficients during configure."
+    fi
+  fi
+
+  if [[ -s "${crtm_tgz}" ]]; then
+    cp -p "${crtm_tgz}" "${crtm_build_tgz}"
+    log_info "Prepared CRTM coefficient archive for CMake"
+    log_info "  source=${crtm_tgz}"
+    log_info "  target=${crtm_build_tgz}"
+  else
+    log_warn "CRTM coefficient archive is not available before configure."
+    log_warn "CMake may fail if it cannot download ${MONAN_JEDI_CRTM_COEFFS_URL}."
+  fi
+}
+
 monan_jedi_configure_bundle() {
   monan_jedi_load_stack
 
@@ -19,6 +59,8 @@ monan_jedi_configure_bundle() {
     log_error "Failed to enter build directory: ${MONAN_JEDI_BUILD_DIR}"
     exit 1
   }
+
+  monan_jedi_prepare_crtm_coefficients
 
   case "${MONAN_JEDI_MODEL_DOUBLE_PRECISION}" in
     ON|OFF) ;;
