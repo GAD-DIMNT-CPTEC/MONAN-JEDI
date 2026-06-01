@@ -45,6 +45,8 @@ monan_jedi_reset_modules() {
 }
 
 monan_jedi_load_stack() {
+  local setup_script
+
   if [[ ! -d "${STACK_ROOT}" ]]; then
     log_error "STACK_ROOT not found: ${STACK_ROOT}"
     exit 1
@@ -55,13 +57,20 @@ monan_jedi_load_stack() {
     exit 1
   fi
 
+  setup_script="${STACK_ROOT}/${STACK_SITE_SETUP}"
+  if [[ ! -f "${setup_script}" ]]; then
+    log_error "STACK site setup script not found: ${setup_script}"
+    exit 1
+  fi
+
   monan_jedi_reset_modules
 
   cd "${STACK_ROOT}" || {
     log_error "Failed to enter stack root: ${STACK_ROOT}"
     exit 1
   }
-  source configs/sites/tier2/jaci/setup.sh
+  # shellcheck disable=SC1090
+  source "${setup_script}"
 
   module use "${STACK_MODULE_ROOT}"
   module load "${STACK_ENV_MODULE}"
@@ -82,6 +91,7 @@ monan_jedi_load_stack() {
   log_info "  STACK_INSTANCE=${STACK_INSTANCE}"
   log_info "  MONAN_JEDI_RUN_ID=${MONAN_JEDI_RUN_ID}"
   log_info "  STACK_ROOT=${STACK_ROOT}"
+  log_info "  STACK_SITE_SETUP=${STACK_SITE_SETUP}"
   log_info "  STACK_ENV_MODULE=${STACK_ENV_MODULE}"
   log_info "  CC=${CC}"
   log_info "  CXX=${CXX}"
@@ -98,12 +108,15 @@ monan_jedi_record_environment_snapshot() {
     echo "STACK_INSTANCE=${STACK_INSTANCE}"
     echo "STACK_ROOT=${STACK_ROOT}"
     echo "STACK_ENV_NAME=${STACK_ENV_NAME}"
+    echo "STACK_SITE_SETUP=${STACK_SITE_SETUP}"
     echo "STACK_ENV_MODULE=${STACK_ENV_MODULE}"
     echo "MONAN_JEDI_RUN_ID=${MONAN_JEDI_RUN_ID}"
     echo "MONAN_JEDI_WORK_ROOT=${MONAN_JEDI_WORK_ROOT}"
     echo "MONAN_JEDI_LOG_ROOT=${MONAN_JEDI_LOG_ROOT}"
     echo "MONAN_JEDI_SOURCE_DIR=${MONAN_JEDI_SOURCE_DIR}"
     echo "MONAN_JEDI_BUILD_DIR=${MONAN_JEDI_BUILD_DIR}"
+    echo "MONAN_JEDI_INSTALL_ROOT=${MONAN_JEDI_INSTALL_ROOT}"
+    echo "MONAN_JEDI_INSTALL_BIN_DIR=${MONAN_JEDI_INSTALL_BIN_DIR}"
     echo
     echo "module list:"
     module list 2>&1 || true
