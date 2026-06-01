@@ -1,6 +1,19 @@
 #!/usr/bin/env bash
 # ecbuild/CMake configuration for the MONAN-JEDI repository bundle.
 
+monan_jedi_valid_crtm_archive() {
+  local archive="$1"
+
+  [[ -s "${archive}" ]] || return 1
+
+  if command -v tar >/dev/null 2>&1; then
+    tar -tzf "${archive}" >/dev/null 2>&1
+    return $?
+  fi
+
+  return 0
+}
+
 monan_jedi_prepare_crtm_coefficients() {
   local crtm_tgz crtm_build_tgz crtm_build_dir
 
@@ -9,6 +22,12 @@ monan_jedi_prepare_crtm_coefficients() {
   crtm_build_tgz="${crtm_build_dir}/fix_REL-3.1.2.0.tgz"
 
   mkdir -p "$(dirname "${crtm_tgz}")" "${crtm_build_dir}"
+
+  if [[ -s "${crtm_tgz}" ]] && ! monan_jedi_valid_crtm_archive "${crtm_tgz}"; then
+    log_warn "Cached CRTM coefficient archive is incomplete or invalid: ${crtm_tgz}"
+    log_warn "Removing invalid cache file before re-download."
+    rm -f "${crtm_tgz}"
+  fi
 
   if [[ ! -s "${crtm_tgz}" ]]; then
     log_info "Downloading CRTM coefficient archive"
@@ -30,13 +49,13 @@ monan_jedi_prepare_crtm_coefficients() {
     fi
   fi
 
-  if [[ -s "${crtm_tgz}" ]]; then
+  if monan_jedi_valid_crtm_archive "${crtm_tgz}"; then
     cp -p "${crtm_tgz}" "${crtm_build_tgz}"
     log_info "Prepared CRTM coefficient archive for CMake"
     log_info "  source=${crtm_tgz}"
     log_info "  target=${crtm_build_tgz}"
   else
-    log_warn "CRTM coefficient archive is not available before configure."
+    log_warn "CRTM coefficient archive is not available or is invalid before configure."
     log_warn "CMake may fail if it cannot download ${MONAN_JEDI_CRTM_COEFFS_URL}."
   fi
 }
