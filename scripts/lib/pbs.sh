@@ -7,7 +7,7 @@
 #   use MPI and must not be executed directly on login nodes.
 #
 # Requires:
-#   A configured and built JEDI bundle under JEDI_BUNDLE_BUILD_DIR.
+#   A configured and built MONAN-JEDI build tree under MONAN_JEDI_BUILD_DIR.
 #   qsub available in PATH.
 #
 # Produces:
@@ -24,13 +24,13 @@
 monan_jedi_test_pbs() {
   require_cmd qsub
 
-  if [[ ! -d "${JEDI_BUNDLE_BUILD_DIR}" ]]; then
-    log_error "JEDI_BUNDLE_BUILD_DIR not found: ${JEDI_BUNDLE_BUILD_DIR}"
+  if [[ ! -d "${MONAN_JEDI_BUILD_DIR}" ]]; then
+    log_error "MONAN_JEDI_BUILD_DIR not found: ${MONAN_JEDI_BUILD_DIR}"
     exit 1
   fi
 
-  if [[ ! -f "${JEDI_BUNDLE_BUILD_DIR}/CTestTestfile.cmake" ]]; then
-    log_error "Build tree does not contain CTestTestfile.cmake: ${JEDI_BUNDLE_BUILD_DIR}"
+  if [[ ! -f "${MONAN_JEDI_BUILD_DIR}/CTestTestfile.cmake" ]]; then
+    log_error "Build tree does not contain CTestTestfile.cmake: ${MONAN_JEDI_BUILD_DIR}"
     exit 1
   fi
 
@@ -104,8 +104,10 @@ export STACK_ENV_MODULE=${STACK_ENV_MODULE}
 export MONAN_JEDI_RUN_ID=${MONAN_JEDI_RUN_ID}
 export MONAN_JEDI_WORK_ROOT=${MONAN_JEDI_WORK_ROOT}
 export MONAN_JEDI_LOG_ROOT=${MONAN_JEDI_LOG_ROOT}
-export JEDI_BUNDLE_SRC_DIR=${JEDI_BUNDLE_SRC_DIR}
-export JEDI_BUNDLE_BUILD_DIR=${JEDI_BUNDLE_BUILD_DIR}
+export MONAN_JEDI_SOURCE_DIR=${MONAN_JEDI_SOURCE_DIR}
+export MONAN_JEDI_BUILD_DIR=${MONAN_JEDI_BUILD_DIR}
+export MONAN_JEDI_INSTALL_ROOT=${MONAN_JEDI_INSTALL_ROOT}
+export MONAN_JEDI_INSTALL_BIN_DIR=${MONAN_JEDI_INSTALL_BIN_DIR}
 export MONAN_JEDI_CTEST_EXCLUDE_REGEX='${MONAN_JEDI_CTEST_EXCLUDE_REGEX}'
 export MONAN_JEDI_CTEST_JOBS=${MONAN_JEDI_CTEST_JOBS}
 export CTEST_LOG='${ctest_log}'
@@ -117,7 +119,7 @@ source ${script_dir}/lib/stack.sh
 load_monan_jedi_config
 monan_jedi_load_stack
 
-cd "${JEDI_BUNDLE_BUILD_DIR}"
+cd "\${MONAN_JEDI_BUILD_DIR}"
 
 ctest_args=(--output-on-failure -j "\${MONAN_JEDI_CTEST_JOBS}")
 if [[ -n "\${MONAN_JEDI_CTEST_EXCLUDE_REGEX}" ]]; then
