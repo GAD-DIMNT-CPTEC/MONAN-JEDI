@@ -16,7 +16,7 @@ The YAML file is expected to use a nested structure, for example:
 * ``build.*`` for the MONAN-JEDI build tree and build options.
 * ``install.*`` for the MONAN-JEDI install/publication tree.
 * ``model.*`` for the model configuration.
-* ``crtm.*`` for CRTM coefficient download/cache handling.
+* ``data.*`` for external test-data cache and local-data handling.
 * ``obs2ioda.*`` for the auxiliary obs2ioda build.
 * ``compilers.*`` and ``mpi.*`` for wrapper commands.
 * ``ctest.*`` and ``pbs.*`` for test and batch-system settings.
@@ -113,8 +113,11 @@ def main():
         "MONAN_JEDI_MPIF77": "mpi.mpif77",
         "MONAN_JEDI_MPIF90": "mpi.mpif90",
         "MONAN_JEDI_MODEL_DOUBLE_PRECISION": "model.double_precision",
-        "MONAN_JEDI_CRTM_COEFFS_URL": "crtm.coeffs_url",
-        "MONAN_JEDI_CRTM_COEFFS_TGZ": "crtm.coeffs_tgz",
+        "MONAN_JEDI_DATA_ROOT": "data.root",
+        "MONAN_JEDI_DATA_LOCAL_ROOT": "data.local_root",
+        "MONAN_JEDI_DATA_DOWNLOAD_MISSING": "data.download_missing",
+        "MONAN_JEDI_CRTM_COEFFS_URL": "data.crtm_coeffs_url",
+        "MONAN_JEDI_CRTM_COEFFS_TGZ": "data.crtm_coeffs_tgz",
         "MONAN_JEDI_OBS2IODA_ENABLED": "obs2ioda.enabled",
         "MONAN_JEDI_OBS2IODA_REPO": "obs2ioda.repo",
         "MONAN_JEDI_OBS2IODA_REF": "obs2ioda.ref",
@@ -153,6 +156,7 @@ def main():
         "MONAN_JEDI_MPIF77": "ftn",
         "MONAN_JEDI_MPIF90": "ftn",
         "MONAN_JEDI_MODEL_DOUBLE_PRECISION": "ON",
+        "MONAN_JEDI_DATA_DOWNLOAD_MISSING": "1",
         "MONAN_JEDI_CRTM_COEFFS_URL": "https://bin.ssec.wisc.edu/pub/s4/CRTM/fix_REL-3.1.2.0.tgz",
         "MONAN_JEDI_OBS2IODA_ENABLED": "0",
         "MONAN_JEDI_OBS2IODA_REPO": "https://github.com/NCAR/obs2ioda.git",
