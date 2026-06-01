@@ -96,6 +96,16 @@ model:
   # Keep this value quoted because YAML may interpret unquoted ON/OFF as booleans.
   double_precision: 'ON'
 
+crtm:
+  # CRTM downloads coefficient data during CMake configure. On login nodes this
+  # can fail due to transient network drops. The workflow therefore downloads the
+  # archive with retry support into a persistent cache and copies it into the
+  # build tree before ecbuild runs.
+  coeffs_url: https://bin.ssec.wisc.edu/pub/s4/CRTM/fix_REL-3.1.2.0.tgz
+
+  # Empty means: ${project.root}/work/${build.id}/cache/crtm/fix_REL-3.1.2.0.tgz
+  coeffs_tgz:
+
 obs2ioda:
   # Build NCAR/obs2ioda as an auxiliary executable using the same stack
   # environment used by MONAN-JEDI. It is downloaded and compiled outside the
