@@ -96,15 +96,33 @@ model:
   # Keep this value quoted because YAML may interpret unquoted ON/OFF as booleans.
   double_precision: 'ON'
 
-crtm:
-  # CRTM downloads coefficient data during CMake configure. On login nodes this
-  # can fail due to transient network drops. The workflow therefore downloads the
-  # archive with retry support into a persistent cache and copies it into the
-  # build tree before ecbuild runs.
-  coeffs_url: https://bin.ssec.wisc.edu/pub/s4/CRTM/fix_REL-3.1.2.0.tgz
+data:
+  # External data used by bundle components and tests may already exist in a
+  # shared local area. The workflow checks data.local_root first, then its own
+  # cache under data.root, and only downloads missing files when
+  # data.download_missing is true.
+  #
+  # Suggested shared layout:
+  #   ${data.local_root}/crtm/fix_REL-3.1.2.0.tgz
+  #
+  # Empty means: ${project.root}/work/${build.id}/cache/data
+  root:
 
-  # Empty means: ${project.root}/work/${build.id}/cache/crtm/fix_REL-3.1.2.0.tgz
-  coeffs_tgz:
+  # Optional shared read-only or group-managed directory with pre-downloaded data.
+  # Leave empty if no shared local data directory exists yet.
+  local_root:
+
+  # If false, the workflow will not download missing external data. This is useful
+  # for fully offline runs where all required data must be staged under
+  # data.local_root or data.root beforehand.
+  download_missing: true
+
+  # CRTM coefficient archive used by CRTM tests during CMake configure.
+  crtm_coeffs_url: https://bin.ssec.wisc.edu/pub/s4/CRTM/fix_REL-3.1.2.0.tgz
+
+  # Optional explicit cache file for the CRTM coefficient archive.
+  # Empty means: ${data.root}/crtm/fix_REL-3.1.2.0.tgz
+  crtm_coeffs_tgz:
 
 obs2ioda:
   # Build NCAR/obs2ioda as an auxiliary executable using the same stack
