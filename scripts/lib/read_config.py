@@ -13,12 +13,16 @@ The YAML file is expected to use a nested structure, for example:
 
 * ``project.*`` for user workspace paths.
 * ``stack.*`` for the shared spack-stack installation.
-* ``build.*`` for the workflow instance.
-* ``install.*`` for executable publication paths.
-* ``model.*`` for the model instance.
+* ``build.*`` for the MONAN-JEDI build tree and build options.
+* ``install.*`` for the MONAN-JEDI install/publication tree.
+* ``model.*`` for the model configuration.
 * ``obs2ioda.*`` for the auxiliary obs2ioda build.
 * ``compilers.*`` and ``mpi.*`` for wrapper commands.
 * ``ctest.*`` and ``pbs.*`` for test and batch-system settings.
+
+Only variables consumed by the current workflow are exported. Historical
+``JEDI_BUNDLE_*`` variables are intentionally not emitted because the repository
+root is now the bundle source tree.
 
 Environment precedence
 ----------------------
@@ -94,6 +98,7 @@ def main():
         "STACK_ENV_MODULE": "stack.env_module",
         "MONAN_JEDI_RUN_ID": "build.id",
         "MONAN_JEDI_BUILD_DIR": "build.dir",
+        "MONAN_JEDI_BUILD_JOBS": "build.jobs",
         "MONAN_JEDI_INSTALL_ROOT": "install.root",
         "MONAN_JEDI_INSTALL_BIN_DIR": "install.bin_dir",
         "MONAN_JEDI_CC": "compilers.cc",
@@ -106,10 +111,6 @@ def main():
         "MONAN_JEDI_MPIFC": "mpi.mpifc",
         "MONAN_JEDI_MPIF77": "mpi.mpif77",
         "MONAN_JEDI_MPIF90": "mpi.mpif90",
-        "JEDI_BUNDLE_REPO": "jedi_bundle.repo",
-        "JEDI_BUNDLE_REF": "jedi_bundle.ref",
-        "JEDI_BUNDLE_CMAKELISTS_TEMPLATE": "jedi_bundle.cmakelists_template",
-        "MONAN_JEDI_BUILD_JOBS": "build.jobs",
         "MONAN_JEDI_MODEL_DOUBLE_PRECISION": "model.double_precision",
         "MONAN_JEDI_OBS2IODA_ENABLED": "obs2ioda.enabled",
         "MONAN_JEDI_OBS2IODA_REPO": "obs2ioda.repo",
@@ -137,6 +138,7 @@ def main():
     defaults = {
         "STACK_OWNER": os.environ.get("USER", "unknown"),
         "STACK_SITE_SETUP": "configs/sites/tier2/jaci/setup.sh",
+        "MONAN_JEDI_BUILD_JOBS": "8",
         "MONAN_JEDI_CC": "cc",
         "MONAN_JEDI_CXX": "CC",
         "MONAN_JEDI_FC": "ftn",
@@ -147,15 +149,11 @@ def main():
         "MONAN_JEDI_MPIFC": "ftn",
         "MONAN_JEDI_MPIF77": "ftn",
         "MONAN_JEDI_MPIF90": "ftn",
-        "JEDI_BUNDLE_REPO": "https://github.com/JCSDA/jedi-bundle.git",
-        "JEDI_BUNDLE_REF": "develop",
-        "JEDI_BUNDLE_CMAKELISTS_TEMPLATE": "templates/CMakeLists.monan-jedi-mpas-only.txt",
-        "MONAN_JEDI_BUILD_JOBS": "8",
         "MONAN_JEDI_MODEL_DOUBLE_PRECISION": "ON",
         "MONAN_JEDI_OBS2IODA_ENABLED": "0",
         "MONAN_JEDI_OBS2IODA_REPO": "https://github.com/NCAR/obs2ioda.git",
         "MONAN_JEDI_OBS2IODA_REF": "main",
-        "MONAN_JEDI_OBS2IODA_EXECUTABLE_NAME": "obs2ioda.x",
+        "MONAN_JEDI_OBS2IODA_EXECUTABLE_NAME": "obs2ioda_v3",
         "MONAN_JEDI_OBS2IODA_BUILD_TYPE": "Release",
         "MONAN_JEDI_OBS2IODA_BUILD_GOES_ABI_CONVERTER": "OFF",
         "MONAN_JEDI_CTEST_JOBS": "1",
