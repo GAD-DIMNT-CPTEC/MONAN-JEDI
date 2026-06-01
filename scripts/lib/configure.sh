@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 # ecbuild/CMake configuration for the MONAN-JEDI repository bundle.
 
-monan_jedi_valid_crtm_archive() {
+monan_jedi_download_enabled() {
+  case "${MONAN_JEDI_DATA_DOWNLOAD_MISSING:-1}" in
+    1|true|TRUE|yes|YES|on|ON) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+monan_jedi_valid_tgz_archive() {
   local archive="$1"
 
   [[ -s "${archive}" ]] || return 1
@@ -14,50 +21,96 @@ monan_jedi_valid_crtm_archive() {
   return 0
 }
 
-monan_jedi_prepare_crtm_coefficients() {
-  local crtm_tgz crtm_build_tgz crtm_build_dir
+monan_jedi_find_local_data_file() {
+  local relative_path="$1"
+  local filename
+  filename="$(basename "${relative_path}")"
 
-  crtm_tgz="${MONAN_JEDI_CRTM_COEFFS_TGZ}"
-  crtm_build_dir="${MONAN_JEDI_BUILD_DIR}/test_data/3.1.3"
-  crtm_build_tgz="${crtm_build_dir}/fix_REL-3.1.2.0.tgz"
+  [[ -n "${MONAN_JEDI_DATA_LOCAL_ROOT:-}" && -d "${MONAN_JEDI_DATA_LOCAL_ROOT}" ]] || return 1
 
-  mkdir -p "$(dirname "${crtm_tgz}")" "${crtm_build_dir}"
+  for candidate in \
+    "${MONAN_JEDI_DATA_LOCAL_ROOT}/${relative_path}" \
+    "${MONAN_JEDI_DATA_LOCAL_ROOT}/${filename}"
+  do
+    if [[ -s "${candidate}" ]]; then
+      printf '%s\n' "${candidate}"
+      return 0
+    fi
+  done
 
-  if [[ -s "${crtm_tgz}" ]] && ! monan_jedi_valid_crtm_archive "${crtm_tgz}"; then
-    log_warn "Cached CRTM coefficient archive is incomplete or invalid: ${crtm_tgz}"
-    log_warn "Removing invalid cache file before re-download."
-    rm -f "${crtm_tgz}"
-  fi
+  find "${MONAN_JEDI_DATA_LOCAL_ROOT}" -type f -name "${filename}" -print -quit 2>/dev/null
+}
 
-  if [[ ! -s "${crtm_tgz}" ]]; then
-    log_info "Downloading CRTM coefficient archive"
-    log_info "  url=${MONAN_JEDI_CRTM_COEFFS_URL}"
-    log_info "  cache=${crtm_tgz}"
+monan_jedi_stage_tgz_data_file() {
+  local name="$1"
+  local url="$2"
+  local cache_file="$3"
+  local build_file="$4"
+  local relative_path="$5"
+  local local_file=""
 
-    if command -v wget >/dev/null 2>&1; then
-      wget --continue --tries=5 --timeout=60 --waitretry=10 \
-        -O "${crtm_tgz}" \
-        "${MONAN_JEDI_CRTM_COEFFS_URL}" \
-        2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/03_crtm_coeffs_download.log"
-    elif command -v curl >/dev/null 2>&1; then
-      curl --fail --location --retry 5 --retry-delay 10 \
-        --output "${crtm_tgz}" \
-        "${MONAN_JEDI_CRTM_COEFFS_URL}" \
-        2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/03_crtm_coeffs_download.log"
+  mkdir -p "$(dirname "${cache_file}")" "$(dirname "${build_file}")"
+
+  local_file="$(monan_jedi_find_local_data_file "${relative_path}" || true)"
+  if [[ -n "${local_file}" ]]; then
+    if monan_jedi_valid_tgz_archive "${local_file}"; then
+      cp -p "${local_file}" "${cache_file}"
+      log_info "Using local ${name} archive"
+      log_info "  local=${local_file}"
+      log_info "  cache=${cache_file}"
     else
-      log_warn "Neither wget nor curl is available. CMake will try to download CRTM coefficients during configure."
+      log_warn "Local ${name} archive exists but is invalid: ${local_file}"
     fi
   fi
 
-  if monan_jedi_valid_crtm_archive "${crtm_tgz}"; then
-    cp -p "${crtm_tgz}" "${crtm_build_tgz}"
-    log_info "Prepared CRTM coefficient archive for CMake"
-    log_info "  source=${crtm_tgz}"
-    log_info "  target=${crtm_build_tgz}"
-  else
-    log_warn "CRTM coefficient archive is not available or is invalid before configure."
-    log_warn "CMake may fail if it cannot download ${MONAN_JEDI_CRTM_COEFFS_URL}."
+  if [[ -s "${cache_file}" ]] && ! monan_jedi_valid_tgz_archive "${cache_file}"; then
+    log_warn "Cached ${name} archive is incomplete or invalid: ${cache_file}"
+    log_warn "Removing invalid cache file."
+    rm -f "${cache_file}"
   fi
+
+  if [[ ! -s "${cache_file}" ]]; then
+    if monan_jedi_download_enabled; then
+      log_info "Downloading ${name} archive"
+      log_info "  url=${url}"
+      log_info "  cache=${cache_file}"
+
+      if command -v wget >/dev/null 2>&1; then
+        wget --continue --tries=5 --timeout=60 --waitretry=10 \
+          -O "${cache_file}" \
+          "${url}" \
+          2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/03_${name}_download.log"
+      elif command -v curl >/dev/null 2>&1; then
+        curl --fail --location --retry 5 --retry-delay 10 \
+          --output "${cache_file}" \
+          "${url}" \
+          2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/03_${name}_download.log"
+      else
+        log_warn "Neither wget nor curl is available. CMake may try to download ${name} during configure."
+      fi
+    else
+      log_warn "Download disabled and ${name} archive was not found locally or in cache."
+    fi
+  fi
+
+  if monan_jedi_valid_tgz_archive "${cache_file}"; then
+    cp -p "${cache_file}" "${build_file}"
+    log_info "Prepared ${name} archive for CMake"
+    log_info "  source=${cache_file}"
+    log_info "  target=${build_file}"
+  else
+    log_warn "${name} archive is not available or is invalid before configure."
+    log_warn "CMake may fail if it cannot obtain ${url}."
+  fi
+}
+
+monan_jedi_prepare_external_data() {
+  monan_jedi_stage_tgz_data_file \
+    "crtm_coeffs" \
+    "${MONAN_JEDI_CRTM_COEFFS_URL}" \
+    "${MONAN_JEDI_CRTM_COEFFS_TGZ}" \
+    "${MONAN_JEDI_BUILD_DIR}/test_data/3.1.3/fix_REL-3.1.2.0.tgz" \
+    "crtm/fix_REL-3.1.2.0.tgz"
 }
 
 monan_jedi_configure_bundle() {
@@ -79,7 +132,7 @@ monan_jedi_configure_bundle() {
     exit 1
   }
 
-  monan_jedi_prepare_crtm_coefficients
+  monan_jedi_prepare_external_data
 
   case "${MONAN_JEDI_MODEL_DOUBLE_PRECISION}" in
     ON|OFF) ;;
