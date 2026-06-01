@@ -56,8 +56,14 @@ load_monan_jedi_config() {
   export MONAN_JEDI_INSTALL_ROOT="${MONAN_JEDI_INSTALL_ROOT:-${PROJECT_ROOT}/builds/${MONAN_JEDI_RUN_ID}}"
   export MONAN_JEDI_INSTALL_BIN_DIR="${MONAN_JEDI_INSTALL_BIN_DIR:-${MONAN_JEDI_INSTALL_ROOT}/bin}"
 
+  # External data may already exist in a shared local directory. When local_root
+  # is set, the workflow tries it first and only downloads missing files when
+  # data.download_missing is enabled.
+  export MONAN_JEDI_DATA_ROOT="${MONAN_JEDI_DATA_ROOT:-${MONAN_JEDI_WORK_ROOT}/cache/data}"
+  export MONAN_JEDI_DATA_LOCAL_ROOT="${MONAN_JEDI_DATA_LOCAL_ROOT:-}"
+  export MONAN_JEDI_DATA_DOWNLOAD_MISSING="${MONAN_JEDI_DATA_DOWNLOAD_MISSING:-1}"
   export MONAN_JEDI_CRTM_COEFFS_URL="${MONAN_JEDI_CRTM_COEFFS_URL:-https://bin.ssec.wisc.edu/pub/s4/CRTM/fix_REL-3.1.2.0.tgz}"
-  export MONAN_JEDI_CRTM_COEFFS_TGZ="${MONAN_JEDI_CRTM_COEFFS_TGZ:-${MONAN_JEDI_WORK_ROOT}/cache/crtm/fix_REL-3.1.2.0.tgz}"
+  export MONAN_JEDI_CRTM_COEFFS_TGZ="${MONAN_JEDI_CRTM_COEFFS_TGZ:-${MONAN_JEDI_DATA_ROOT}/crtm/fix_REL-3.1.2.0.tgz}"
 
   export MONAN_JEDI_OBS2IODA_SOURCE_DIR="${MONAN_JEDI_OBS2IODA_SOURCE_DIR:-${MONAN_JEDI_WORK_ROOT}/obs2ioda/src}"
   export MONAN_JEDI_OBS2IODA_BUILD_DIR="${MONAN_JEDI_OBS2IODA_BUILD_DIR:-${MONAN_JEDI_WORK_ROOT}/obs2ioda/build}"
@@ -69,5 +75,6 @@ load_monan_jedi_config() {
     "${MONAN_JEDI_LOG_ROOT}" \
     "${MONAN_JEDI_BUILD_DIR}" \
     "${MONAN_JEDI_INSTALL_BIN_DIR}" \
+    "${MONAN_JEDI_DATA_ROOT}" \
     "$(dirname "${MONAN_JEDI_CRTM_COEFFS_TGZ}")"
 }
