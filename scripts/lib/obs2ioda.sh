@@ -102,7 +102,12 @@ monan_jedi_build_obs2ioda() {
     2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/08_obs2ioda_cmake.log"
 
   cmake --build . -j "${MONAN_JEDI_BUILD_JOBS}" 2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/08_obs2ioda_build.log"
-  cmake --install . 2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/08_obs2ioda_install.log" || true
+
+  if cmake --install . 2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/08_obs2ioda_install.log"; then
+    log_info "obs2ioda install target completed"
+  else
+    log_warn "obs2ioda install target failed or is not available; falling back to direct executable publication"
+  fi
 
   built_exe="${MONAN_JEDI_OBS2IODA_BUILD_DIR}/bin/obs2ioda_v3"
   installed_exe="${MONAN_JEDI_OBS2IODA_INSTALL_DIR}/bin/obs2ioda_v3"
