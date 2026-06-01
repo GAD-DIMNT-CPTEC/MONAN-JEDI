@@ -61,27 +61,38 @@ monan_jedi_build_obs2ioda() {
   require_cmd nc-config
   require_cmd nf-config
   require_cmd ncxx4-config
+  require_cmd install
 
   mkdir -p "${MONAN_JEDI_LOG_ROOT}" "${MONAN_JEDI_INSTALL_BIN_DIR}"
   monan_jedi_prepare_obs2ioda_source
 
-  local bufr_lib cmake_prefix_path built_exe published_exe
+  local bufr_lib cmake_prefix_path built_exe installed_exe published_exe
   bufr_lib="$(monan_jedi_find_obs2ioda_bufr_lib)"
   cmake_prefix_path="$(nc-config --prefix);$(nf-config --prefix);$(ncxx4-config --prefix)"
+  if [[ -n "${MONAN_JEDI_OBS2IODA_CMAKE_PREFIX_PATH:-}" ]]; then
+    cmake_prefix_path="${cmake_prefix_path};${MONAN_JEDI_OBS2IODA_CMAKE_PREFIX_PATH}"
+  fi
 
-  log_info "obs2ioda source=${MONAN_JEDI_OBS2IODA_SOURCE_DIR}"
-  log_info "obs2ioda build=${MONAN_JEDI_OBS2IODA_BUILD_DIR}"
-  log_info "obs2ioda publish_bin=${MONAN_JEDI_INSTALL_BIN_DIR}"
-  log_info "obs2ioda executable=${MONAN_JEDI_OBS2IODA_EXECUTABLE_NAME}"
-  log_info "obs2ioda BUFR=${bufr_lib}"
+  log_info "Configuring obs2ioda"
+  log_info "  source=${MONAN_JEDI_OBS2IODA_SOURCE_DIR}"
+  log_info "  build=${MONAN_JEDI_OBS2IODA_BUILD_DIR}"
+  log_info "  install=${MONAN_JEDI_OBS2IODA_INSTALL_DIR}"
+  log_info "  install_bin=${MONAN_JEDI_INSTALL_BIN_DIR}"
+  log_info "  executable=${MONAN_JEDI_OBS2IODA_EXECUTABLE_NAME}"
+  log_info "  BUFR=${bufr_lib}"
 
   rm -rf "${MONAN_JEDI_OBS2IODA_BUILD_DIR}"
-  mkdir -p "${MONAN_JEDI_OBS2IODA_BUILD_DIR}"
+  mkdir -p "${MONAN_JEDI_OBS2IODA_BUILD_DIR}" "${MONAN_JEDI_OBS2IODA_INSTALL_DIR}" "${MONAN_JEDI_INSTALL_BIN_DIR}"
   cd "${MONAN_JEDI_OBS2IODA_BUILD_DIR}"
 
   cmake "${MONAN_JEDI_OBS2IODA_SOURCE_DIR}" \
     "-DCMAKE_BUILD_TYPE=${MONAN_JEDI_OBS2IODA_BUILD_TYPE}" \
     "-DCMAKE_INSTALL_PREFIX=${MONAN_JEDI_OBS2IODA_INSTALL_DIR}" \
+    "-DCMAKE_INSTALL_BINDIR=bin" \
+    "-DCMAKE_INSTALL_LIBDIR=lib" \
+    "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${MONAN_JEDI_INSTALL_BIN_DIR}" \
+    "-DCMAKE_INSTALL_RPATH=\$ORIGIN/../lib" \
+    "-DCMAKE_INSTALL_RPATH_USE_LINK_PATH=ON" \
     "-DCMAKE_C_COMPILER=${CC}" \
     "-DCMAKE_CXX_COMPILER=${CXX}" \
     "-DCMAKE_Fortran_COMPILER=${FC}" \
@@ -91,17 +102,20 @@ monan_jedi_build_obs2ioda() {
     2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/08_obs2ioda_cmake.log"
 
   cmake --build . -j "${MONAN_JEDI_BUILD_JOBS}" 2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/08_obs2ioda_build.log"
+  cmake --install . 2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/08_obs2ioda_install.log" || true
 
   built_exe="${MONAN_JEDI_OBS2IODA_BUILD_DIR}/bin/obs2ioda_v3"
+  installed_exe="${MONAN_JEDI_OBS2IODA_INSTALL_DIR}/bin/obs2ioda_v3"
   published_exe="${MONAN_JEDI_INSTALL_BIN_DIR}/${MONAN_JEDI_OBS2IODA_EXECUTABLE_NAME}"
 
-  [[ -x "${built_exe}" ]] || {
-    log_error "obs2ioda_v3 was not created: ${built_exe}"
+  if [[ -x "${installed_exe}" ]]; then
+    install -D -m 755 "${installed_exe}" "${published_exe}"
+  elif [[ -x "${built_exe}" ]]; then
+    install -D -m 755 "${built_exe}" "${published_exe}"
+  else
+    log_error "obs2ioda_v3 was not created in expected locations: ${installed_exe} or ${built_exe}"
     exit 1
-  }
-
-  cp -p "${built_exe}" "${published_exe}"
-  chmod 755 "${published_exe}"
+  fi
 
   if ldd "${published_exe}" 2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/08_obs2ioda_ldd.log" | grep -q 'not found'; then
     log_error "Missing runtime library for ${published_exe}"
