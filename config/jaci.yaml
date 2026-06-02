@@ -73,14 +73,14 @@ stack:
 build:
   # Identifier for this compilation/test attempt.
   # Used to derive work, log and install paths when they are not explicit.
-  id: monan-jedi-mpas-only
+  id: monan-jedi
 
   # Main MONAN-JEDI CMake/ecbuild build tree.
   # Empty means: ${project.root}/work/${build.id}/build
   dir:
 
   # Number of parallel jobs passed to make/cmake --build.
-  jobs: 8
+  jobs: 64
 
 install:
   # Installation prefix used by make install and auxiliary tool publication.
