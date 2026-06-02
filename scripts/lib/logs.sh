@@ -6,11 +6,11 @@
 #   workflow execution.
 #
 # Produces:
-#   ${MONAN_JEDI_LOG_ROOT}/07_summary.log
+#   ${MONAN_JEDI_LOG_ROOT}/09_summary.log
 #
 # Expected result:
 #   The summary file contains the list of generated logs and the tail sections
-#   of configure, build and CTest logs for quick inspection.
+#   of configure, build, install and CTest logs for quick inspection.
 
 monan_jedi_collect_logs() {
   if [[ ! -d "${MONAN_JEDI_LOG_ROOT}" ]]; then
@@ -18,7 +18,7 @@ monan_jedi_collect_logs() {
     exit 1
   fi
 
-  local summary_file="${MONAN_JEDI_LOG_ROOT}/07_summary.log"
+  local summary_file="${MONAN_JEDI_LOG_ROOT}/09_summary.log"
 
   {
     echo "# MONAN-JEDI log summary"
@@ -40,8 +40,16 @@ monan_jedi_collect_logs() {
     tail -n 120 "${MONAN_JEDI_LOG_ROOT}/05_make.log" 2>/dev/null || true
     echo
 
+    echo "## Install tail"
+    tail -n 120 "${MONAN_JEDI_LOG_ROOT}/06_make_install.log" 2>/dev/null || true
+    echo
+
     echo "## CTest tail"
-    tail -n 120 "${MONAN_JEDI_LOG_ROOT}/06_ctest.log" 2>/dev/null || true
+    tail -n 120 "${MONAN_JEDI_LOG_ROOT}/07_ctest.log" 2>/dev/null || true
+    echo
+
+    echo "## obs2ioda tail"
+    tail -n 120 "${MONAN_JEDI_LOG_ROOT}/08_obs2ioda_build.log" 2>/dev/null || true
   } | tee "${summary_file}"
 
   log_info "Log summary written to ${summary_file}"

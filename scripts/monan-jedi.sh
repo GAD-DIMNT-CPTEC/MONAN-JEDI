@@ -40,19 +40,19 @@ Commands:
   load          Load and validate the spack-stack environment
   configure     Configure the MONAN-JEDI bundle with ecbuild
   build         Build the configured bundle
+  install       Install the configured bundle into install.root
   test          Run login-node-safe CTest subset
   test-pbs      Submit CTest to PBS
-  obs2ioda      Build NCAR/obs2ioda with the MONAN-JEDI stack environment
+  obs2ioda      Build and publish NCAR/obs2ioda with the MONAN-JEDI stack
   logs          Collect logs
-  all           Run load, configure, build, test, logs
+  all           Run load, configure, build, install, obs2ioda, test, logs
 
 Notes:
-  The MONAN-JEDI repository root is now the bundle source tree.
-  Commands prepare and reduce were removed from the main workflow.
-  Generated files use umask 002 to remain writable by the project group.
-  MPAS precision is configured in YAML with model.double_precision.
-  Use ON for CTest validation and OFF only when a workflow/tutorial requires single precision.
-  obs2ioda is built as an auxiliary executable outside the main bundle build tree.
+  The MONAN-JEDI repository root is the bundle source tree.
+  build.dir controls the CMake/ecbuild build tree.
+  install.root controls the installation prefix.
+  install.bin_dir is the common executable publication directory.
+  obs2ioda is built outside the main bundle build tree but published to install.bin_dir.
 EOF
 }
 
@@ -90,6 +90,9 @@ case "${command_name}" in
   build)
     monan_jedi_build_bundle
     ;;
+  install)
+    monan_jedi_install_bundle
+    ;;
   test)
     monan_jedi_test_login
     ;;
@@ -107,6 +110,7 @@ case "${command_name}" in
     monan_jedi_record_environment_snapshot "${MONAN_JEDI_LOG_ROOT}/01_stack_environment.log"
     monan_jedi_configure_bundle
     monan_jedi_build_bundle
+    monan_jedi_install_bundle
     monan_jedi_build_obs2ioda
     monan_jedi_test_login
     monan_jedi_collect_logs
