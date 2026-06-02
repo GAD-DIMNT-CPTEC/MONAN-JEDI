@@ -93,7 +93,23 @@ install:
 
 model:
   # MONAN/MPAS precision mode passed to ecbuild/CMake as MPAS_DOUBLE_PRECISION.
-  # Keep this value quoted because YAML may interpret unquoted ON/OFF as booleans.
+  #
+  # IMPORTANT:
+  #   Keep this value quoted.
+  #
+  # YAML may interpret unquoted ON/OFF as boolean values. Therefore, always use:
+  #
+  #   double_precision: 'ON'
+  #   double_precision: 'OFF'
+  #
+  # Recommended values:
+  #   'ON'  - validation mode. Use this when running the mpas-jedi CTest suite.
+  #           Upstream CTest reference files are produced with double precision.
+  #   'OFF' - workflow mode. Use this only when the target workflow/tutorial
+  #           requires a single-precision MPAS build.
+  #
+  # Some CTest cases may fail with 'OFF' because single-precision output can
+  # differ from double-precision reference files by more than the test tolerance.
   double_precision: 'ON'
 
 data:
