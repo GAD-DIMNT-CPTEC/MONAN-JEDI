@@ -48,7 +48,7 @@ project:
   root: /p/projetos/monan_das/${USER}
 
 build:
-  id: monan-jedi-mpas-only
+  id: monan-jedi
   dir:
 
 install:
