@@ -33,15 +33,23 @@ The stack must already have been created and validated by `spack-stack-inpe` bef
 
 Runtime settings are centralized in YAML files under `config/`.
 
-For JACI, the default configuration is:
+For JACI, the default configuration file is:
 
 ```text
 config/jaci.yaml
 ```
 
-This file defines the stack instance, stack module, workflow run identifier, compiler wrappers, MPI wrappers, MPAS precision mode, build directory, installation directory, CTest options and PBS options.
+This file defines the stack instance, stack module, workflow run identifier, compiler wrappers, MPI wrappers, MPAS precision mode, build directory, installation directory, CTest options, and PBS options.
 
-The most important path settings are:
+A generic template for new sites is also available at:
+
+```text
+config/template.yaml
+```
+
+### Important path settings
+
+The most important path-related settings are:
 
 ```yaml
 project:
@@ -56,38 +64,45 @@ install:
   bin_dir:
 ```
 
-If `build.dir` is empty, the build tree is derived as:
+When some path fields are left empty, they are derived automatically:
 
-```text
-${project.root}/work/${build.id}/build
-```
+| Setting           | If empty, it is derived as               |
+| ----------------- | ---------------------------------------- |
+| `build.dir`       | `${project.root}/work/${build.id}/build` |
+| `install.root`    | `${project.root}/builds/${build.id}`     |
+| `install.bin_dir` | `${install.root}/bin`                    |
 
-If `install.root` is empty, the install prefix is derived as:
+### MPAS precision mode
 
-```text
-${project.root}/builds/${build.id}
-```
+The MPAS precision mode is controlled by the `model.double_precision` option.
 
-If `install.bin_dir` is empty, final executables are published under:
+> [!IMPORTANT]
+> Keep this value quoted.
+>
+> YAML may interpret unquoted `ON` and `OFF` values as booleans.
+> Therefore, always use quoted strings.
 
-```text
-${install.root}/bin
-```
-
-The MPAS precision mode is controlled by:
+Use one of the following values:
 
 ```yaml
 model:
   double_precision: 'ON'
 ```
 
-Use `ON` when validating the build with the `mpas-jedi` CTest suite. Use `OFF` only when the target workflow or tutorial requires a single-precision MPAS build.
+or:
 
-A generic template for new sites is available at:
-
-```text
-config/template.yaml
+```yaml
+model:
+  double_precision: 'OFF'
 ```
+
+### Recommended precision settings
+
+| Value   | Mode            | When to use                                                                                                                        |
+| ------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `'ON'`  | Validation mode | Use when validating the build with the `mpas-jedi` CTest suite. Upstream CTest reference files are produced with double precision. |
+| `'OFF'` | Workflow mode   | Use only when the target workflow or tutorial requires a single-precision MPAS build.                                              |
+
 
 ## Recommended scripted workflow
 
