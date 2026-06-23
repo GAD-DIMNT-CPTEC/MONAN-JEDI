@@ -390,20 +390,25 @@ Each component is pinned to a full Git commit SHA to ensure that the same source
 
 These entries describe components downloaded and built by the MONAN-JEDI bundle. They do not include packages supplied externally by the preconfigured `spack-stack` environment, such as compilers, MPI, NetCDF, ecbuild, `jedi-cmake`, BUFR and other system dependencies.
 
-| Component | Upstream repository | Commit SHA | Commit date | Official tag|
+For readability, commits are displayed using GitHub-style abbreviated SHAs; each link points to the corresponding full upstream commit.
+
+The complete 40-character SHAs used by the build remain defined in `CMakeLists.txt`.
+
+| Component | Upstream repository | Commit | Commit date | Official tag |
 |---|---|---|---|---|
-| IODA | `jcsda/ioda` | `1d390ad1c719cf9f8a30ff2f1e137461e4b925f9` | 2026-05-19 | — |
-| MPAS-JEDI | `jcsda/mpas-jedi` | `19eb7fb3273c7b3094825201af184834c15afdd0` | 2026-05-20 | — |
-| UFO | `jcsda/ufo` | `90979fa048477f2b240117d98efd1d1bfa8acd4d` | 2026-05-19 | — |
-| MPAS-JEDI data | `jcsda-internal/mpas-jedi-data` | `3307edcdb27cef650fe121367c3bb48d6cfa968b` | 2026-05-12 | — |
-| IODA data | `jcsda-internal/ioda-data` | `f0f963eef555c6d7ce8b22da490128374da75bc7` | 2026-05-19 | — |
-| GSW-Fortran | `jcsda/GSW-Fortran` | `697cbeb7605d70ed3857664c5f54a5c05346e31f` | 2024-04-01| `v3.08` |
-| SABER | `jcsda/saber` | `d05c06fcc7da97389a19594a2e5424e709648330` | 2026-05-18 | — |
-| VADER | `jcsda/vader` | `f74de9519c02084ac4ed80738374ddf1d7771e44` | 2026-05-11 | — |
-| OOPS | `jcsda/oops` | `192c83c4d706017d906ec0ad58d27e4093c7dced` | 2026-05-19 | — |
-| CRTMv3 | `jcsda/CRTMv3` | `9b63e4ef162e4738ec807938122f2e21296a629a` | 2026-04-09 | — |
-| MPAS-Model | `MPAS-Dev/MPAS-Model` | `0e5a47a0e1bcccd6e3d99909b76e740a643c4db6` | 2026-04-01 | — |
-| UFO data | `jcsda-internal/ufo-data` | `d8c77d388cd43b017fce3964b5a6c90e371015a7` | 2026-05-19 | — |
+| IODA | [`jcsda/ioda`](https://github.com/jcsda/ioda) | [`1d390ad`](https://github.com/jcsda/ioda/commit/1d390ad1c719cf9f8a30ff2f1e137461e4b925f9) | 2026-05-19T15:16:42-06:00 | — |
+| MPAS-JEDI | [`jcsda/mpas-jedi`](https://github.com/jcsda/mpas-jedi) | [`19eb7fb`](https://github.com/jcsda/mpas-jedi/commit/19eb7fb3273c7b3094825201af184834c15afdd0) | 2026-05-20T09:26:12-06:00 | — |
+| UFO | [`jcsda/ufo`](https://github.com/jcsda/ufo) | [`90979fa`](https://github.com/jcsda/ufo/commit/90979fa048477f2b240117d98efd1d1bfa8acd4d) | 2026-05-19T15:17:50-06:00 | — |
+| MPAS-JEDI data | [`jcsda-internal/mpas-jedi-data`](https://github.com/jcsda-internal/mpas-jedi-data) | [`3307edc`](https://github.com/jcsda-internal/mpas-jedi-data/commit/3307edcdb27cef650fe121367c3bb48d6cfa968b) | 2026-05-12T12:17:24-06:00 | — |
+| IODA data | [`jcsda-internal/ioda-data`](https://github.com/jcsda-internal/ioda-data) | [`f0f963e`](https://github.com/jcsda-internal/ioda-data/commit/f0f963eef555c6d7ce8b22da490128374da75bc7) | 2026-05-19T15:16:16-06:00 | — |
+| GSW-Fortran | [`jcsda/GSW-Fortran`](https://github.com/jcsda/GSW-Fortran) | [`697cbeb`](https://github.com/jcsda/GSW-Fortran/commit/697cbeb7605d70ed3857664c5f54a5c05346e31f) | 2024-04-01T14:33:24-06:00 | [`v3.08`](https://github.com/jcsda/GSW-Fortran/releases/tag/v3.08) |
+| SABER | [`jcsda/saber`](https://github.com/jcsda/saber) | [`d05c06f`](https://github.com/jcsda/saber/commit/d05c06fcc7da97389a19594a2e5424e709648330) | 2026-05-18T13:02:44-06:00 | — |
+| VADER | [`jcsda/vader`](https://github.com/jcsda/vader) | [`f74de95`](https://github.com/jcsda/vader/commit/f74de9519c02084ac4ed80738374ddf1d7771e44) | 2026-05-11T09:59:47-06:00 | — |
+| OOPS | [`jcsda/oops`](https://github.com/jcsda/oops) | [`192c83c`](https://github.com/jcsda/oops/commit/192c83c4d706017d906ec0ad58d27e4093c7dced) | 2026-05-19T15:50:38-06:00 | — |
+| CRTMv3 | [`jcsda/CRTMv3`](https://github.com/jcsda/CRTMv3) | [`9b63e4e`](https://github.com/jcsda/CRTMv3/commit/9b63e4ef162e4738ec807938122f2e21296a629a) | 2026-04-09T16:17:42-06:00 | — |
+| MPAS-Model | [`MPAS-Dev/MPAS-Model`](https://github.com/MPAS-Dev/MPAS-Model) | [`0e5a47a`](https://github.com/MPAS-Dev/MPAS-Model/commit/0e5a47a0e1bcccd6e3d99909b76e740a643c4db6) | 2026-04-01T15:06:53-06:00 | — |
+| UFO data | [`jcsda-internal/ufo-data`](https://github.com/jcsda-internal/ufo-data) | [`d8c77d3`](https://github.com/jcsda-internal/ufo-data/commit/d8c77d388cd43b017fce3964b5a6c90e371015a7) | 2026-05-19T15:17:41-06:00 | — |
+
 
 > [!NOTE]
 > `GSIbec` is available as an optional component through `BUILD_GSIBEC`, but it is disabled in the default MONAN-JEDI configuration.
