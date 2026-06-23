@@ -382,6 +382,35 @@ MONAN-JEDI/
         └── test.sh
 ```
 
+## Pinned component revisions
+
+The MONAN-JEDI bundle builds a reduced MPAS-JEDI-oriented set of JEDI and MPAS components. The source revisions below are declared directly in the top-level `CMakeLists.txt` through `ecbuild_bundle(...)`.
+
+Each component is pinned to a full Git commit SHA to ensure that the same source revision is selected in future builds. The commit date corresponds to the Git commit timestamp reported by the upstream repository.
+
+These entries describe components downloaded and built by the MONAN-JEDI bundle. They do not include packages supplied externally by the preconfigured `spack-stack` environment, such as compilers, MPI, NetCDF, ecbuild, `jedi-cmake`, BUFR and other system dependencies.
+
+| Component | Upstream repository | Commit SHA | Commit date | Official tag|
+|---|---|---|---|---|
+| IODA | `jcsda/ioda` | `1d390ad1c719cf9f8a30ff2f1e137461e4b925f9` | 2026-05-19 | — |
+| MPAS-JEDI | `jcsda/mpas-jedi` | `19eb7fb3273c7b3094825201af184834c15afdd0` | 2026-05-20 | — |
+| UFO | `jcsda/ufo` | `90979fa048477f2b240117d98efd1d1bfa8acd4d` | 2026-05-19 | — |
+| MPAS-JEDI data | `jcsda-internal/mpas-jedi-data` | `3307edcdb27cef650fe121367c3bb48d6cfa968b` | 2026-05-12 | — |
+| IODA data | `jcsda-internal/ioda-data` | `f0f963eef555c6d7ce8b22da490128374da75bc7` | 2026-05-19 | — |
+| GSW-Fortran | `jcsda/GSW-Fortran` | `697cbeb7605d70ed3857664c5f54a5c05346e31f` | 2024-04-01| `v3.08` |
+| SABER | `jcsda/saber` | `d05c06fcc7da97389a19594a2e5424e709648330` | 2026-05-18 | — |
+| VADER | `jcsda/vader` | `f74de9519c02084ac4ed80738374ddf1d7771e44` | 2026-05-11 | — |
+| OOPS | `jcsda/oops` | `192c83c4d706017d906ec0ad58d27e4093c7dced` | 2026-05-19 | — |
+| CRTMv3 | `jcsda/CRTMv3` | `9b63e4ef162e4738ec807938122f2e21296a629a` | 2026-04-09 | — |
+| MPAS-Model | `MPAS-Dev/MPAS-Model` | `0e5a47a0e1bcccd6e3d99909b76e740a643c4db6` | 2026-04-01 | — |
+| UFO data | `jcsda-internal/ufo-data` | `d8c77d388cd43b017fce3964b5a6c90e371015a7` | 2026-05-19 | — |
+
+> [!NOTE]
+> `GSIbec` is available as an optional component through `BUILD_GSIBEC`, but it is disabled in the default MONAN-JEDI configuration.
+>
+> `obs2ioda` is built separately by the workflow scripts and is currently configured from the `main` branch. It is therefore not included in the pinned-revision table until its configuration is changed to a specific commit SHA.
+
+
 ## Design principle
 
 User-editable settings should live in YAML configuration files, not inside shell scripts.
