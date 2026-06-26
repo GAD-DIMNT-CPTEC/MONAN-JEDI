@@ -2,8 +2,60 @@
 # Build WPS/UNGRIB with the MONAN-JEDI stack and publish stable runtime paths.
 #
 # WPS uses its legacy in-source ./configure + ./compile workflow. The selected
-# configure menu entry is therefore explicit in site YAML and recorded in a
-# manifest; it must be reviewed whenever compilers or the stack change.
+# configure menu entry is explicit in the site YAML and recorded in a manifest.
+# It must be reviewed whenever compilers or the stack change.
+
+monan_jedi_load_wps_config() {
+  local values
+
+  [[ -n "${MONAN_JEDI_CONFIG:-}" && -f "${MONAN_JEDI_CONFIG}" ]] || {
+    log_error "MONAN_JEDI_CONFIG is not available for WPS configuration."
+    exit 1
+  }
+
+  values="$(python3 - "${MONAN_JEDI_CONFIG}" <<'PY'
+import os
+import shlex
+import sys
+import yaml
+
+with open(sys.argv[1], encoding="utf-8") as stream:
+    config = yaml.safe_load(stream) or {}
+wps = config.get("wps", {})
+if not isinstance(wps, dict):
+    raise SystemExit("wps must be a YAML mapping")
+
+mapping = {
+    "MONAN_JEDI_WPS_ENABLED": ("enabled", "0"),
+    "MONAN_JEDI_WPS_REPO": ("repo", "https://github.com/wrf-model/WPS.git"),
+    "MONAN_JEDI_WPS_REF": ("ref", "master"),
+    "MONAN_JEDI_WPS_VERSION": ("version", "4.6.0"),
+    "MONAN_JEDI_WPS_SOURCE_DIR": ("source_dir", ""),
+    "MONAN_JEDI_WPS_INSTALL_DIR": ("install_dir", ""),
+    "MONAN_JEDI_WPS_CONFIGURE_OPTION": ("configure_option", ""),
+    "MONAN_JEDI_WPS_COMPILE_TARGET": ("compile_target", "ungrib"),
+    "MONAN_JEDI_WPS_JASPER_ROOT": ("jasper_root", ""),
+    "MONAN_JEDI_WPS_UNGRIB_NAME": ("ungrib_name", "ungrib.exe"),
+    "MONAN_JEDI_WPS_LINK_GRIB_NAME": ("link_grib_name", "link_grib.csh"),
+}
+for env_name, (key, default) in mapping.items():
+    value = wps.get(key, default)
+    if value is None:
+        value = default
+    if isinstance(value, bool):
+        value = "1" if value else "0"
+    value = os.path.expandvars(str(value))
+    value = os.environ.get(env_name, value)
+    print(f"export {env_name}={shlex.quote(value)}")
+PY
+)" || exit 1
+
+  # shellcheck disable=SC1090
+  eval "${values}"
+
+  export MONAN_JEDI_WPS_SOURCE_DIR="${MONAN_JEDI_WPS_SOURCE_DIR:-${MONAN_JEDI_WORK_ROOT}/wps/src}"
+  export MONAN_JEDI_WPS_INSTALL_DIR="${MONAN_JEDI_WPS_INSTALL_DIR:-${MONAN_JEDI_INSTALL_ROOT}/wps/WPS-${MONAN_JEDI_WPS_VERSION}}"
+}
 
 monan_jedi_wps_enabled() {
   case "${MONAN_JEDI_WPS_ENABLED:-0}" in
@@ -69,6 +121,7 @@ monan_jedi_write_wps_manifest() {
 
   python3 - "${manifest}" "${commit}" "${netcdf_root}" "${jasper_root}" <<'PY'
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -77,12 +130,12 @@ path = Path(sys.argv[1])
 record = {
     "schema_version": 1,
     "built_at": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
-    "source_repo": __import__("os").environ["MONAN_JEDI_WPS_REPO"],
-    "source_ref": __import__("os").environ["MONAN_JEDI_WPS_REF"],
+    "source_repo": os.environ["MONAN_JEDI_WPS_REPO"],
+    "source_ref": os.environ["MONAN_JEDI_WPS_REF"],
     "source_commit": sys.argv[2],
-    "version_label": __import__("os").environ["MONAN_JEDI_WPS_VERSION"],
-    "configure_option": __import__("os").environ["MONAN_JEDI_WPS_CONFIGURE_OPTION"],
-    "compile_target": __import__("os").environ["MONAN_JEDI_WPS_COMPILE_TARGET"],
+    "version_label": os.environ["MONAN_JEDI_WPS_VERSION"],
+    "configure_option": os.environ["MONAN_JEDI_WPS_CONFIGURE_OPTION"],
+    "compile_target": os.environ["MONAN_JEDI_WPS_COMPILE_TARGET"],
     "netcdf_root": sys.argv[3],
     "jasper_root": sys.argv[4],
     "published": {
@@ -96,6 +149,7 @@ PY
 }
 
 monan_jedi_build_wps() {
+  monan_jedi_load_wps_config
   monan_jedi_wps_enabled || {
     log_error "WPS is disabled in ${MONAN_JEDI_CONFIG}. Set wps.enabled: true."
     exit 1
