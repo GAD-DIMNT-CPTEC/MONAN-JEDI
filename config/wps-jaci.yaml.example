@@ -1,25 +1,19 @@
 # Merge this section into config/jaci.yaml before building WPS.
-#
-# Do not guess configure_option. Run ./configure under the loaded JACI stack,
-# identify the serial option with GRIB2 support, record its menu number here,
-# then run scripts/monan-jedi-wps.sh.
+# The ref is fixed to the upstream WPS 4.6.0 release integration commit.
+# Determine configure_option from the serial GRIB2 choice shown on JACI.
 
 wps:
   enabled: true
   repo: https://github.com/wrf-model/WPS.git
-  ref: master
+  ref: 335c76a111f84503e8b963abaf273ea8053645bb
   version: 4.6.0
-
-  # Example only. Replace with the menu choice observed on JACI.
   configure_option: ""
   compile_target: ungrib
-
-  # Empty paths are derived from project.root and install.root.
   source_dir:
   install_dir:
-
-  # Leave empty to attempt `spack location -i jasper` in the loaded stack.
+  netcdf_compat_dir:
   jasper_root:
-
+  png_root:
+  zlib_root:
   ungrib_name: ungrib.exe
   link_grib_name: link_grib.csh
