@@ -1,55 +1,36 @@
 #!/usr/bin/env bash
-# Log collection helpers for MONAN-JEDI.
-#
-# Purpose:
-#   Generate a compact summary of the logs produced during the MONAN-JEDI
-#   workflow execution.
-#
-# Produces:
-#   ${MONAN_JEDI_LOG_ROOT}/09_summary.log
-#
-# Expected result:
-#   The summary file contains the list of generated logs and the tail sections
-#   of configure, build, install and CTest logs for quick inspection.
+# Generate a compact index and tail summary for workflow logs.
 
 monan_jedi_collect_logs() {
-  if [[ ! -d "${MONAN_JEDI_LOG_ROOT}" ]]; then
+  [[ -d "${MONAN_JEDI_LOG_ROOT}" ]] || {
     log_error "Log directory not found: ${MONAN_JEDI_LOG_ROOT}"
     exit 1
-  fi
+  }
 
-  local summary_file="${MONAN_JEDI_LOG_ROOT}/09_summary.log"
-
+  local summary_file="${MONAN_JEDI_LOG_ROOT}/99_summary.log"
   {
     echo "# MONAN-JEDI log summary"
     echo "GeneratedAt=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     echo
-
-    # List all generated logs so the summary works as a compact index.
     echo "## Files"
     find "${MONAN_JEDI_LOG_ROOT}" -type f | sort
     echo
 
-    # Tail sections keep the summary readable while still exposing the most
-    # relevant failures usually printed near the end of each log.
-    echo "## Configure tail"
-    tail -n 80 "${MONAN_JEDI_LOG_ROOT}/04_ecbuild.log" 2>/dev/null || true
-    echo
-
-    echo "## Build tail"
-    tail -n 120 "${MONAN_JEDI_LOG_ROOT}/05_make.log" 2>/dev/null || true
-    echo
-
-    echo "## Install tail"
-    tail -n 120 "${MONAN_JEDI_LOG_ROOT}/06_make_install.log" 2>/dev/null || true
-    echo
-
-    echo "## CTest tail"
-    tail -n 120 "${MONAN_JEDI_LOG_ROOT}/07_ctest.log" 2>/dev/null || true
-    echo
-
-    echo "## obs2ioda tail"
-    tail -n 120 "${MONAN_JEDI_LOG_ROOT}/08_obs2ioda_build.log" 2>/dev/null || true
+    local label file lines
+    while IFS='|' read -r label file lines; do
+      echo "## ${label}"
+      tail -n "${lines}" "${MONAN_JEDI_LOG_ROOT}/${file}" 2>/dev/null || true
+      echo
+    done <<'EOF_TAILS'
+Configure tail|04_ecbuild.log|80
+Bundle build tail|05_make.log|120
+Bundle install tail|06_make_install.log|120
+CTest tail|07_ctest.log|120
+obs2ioda build tail|08_obs2ioda_build.log|120
+WPS configure tail|09_wps_cmake.log|120
+WPS build tail|09_wps_build.log|120
+WPS validation|09_wps_validate.log|120
+EOF_TAILS
   } | tee "${summary_file}"
 
   log_info "Log summary written to ${summary_file}"
