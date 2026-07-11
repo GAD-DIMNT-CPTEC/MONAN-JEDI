@@ -1,7 +1,7 @@
 diff --git a/ungrib/src/ngl/g2/dec_jpeg2000.c b/ungrib/src/ngl/g2/dec_jpeg2000.c
 --- a/ungrib/src/ngl/g2/dec_jpeg2000.c
 +++ b/ungrib/src/ngl/g2/dec_jpeg2000.c
-@@ -82,9 +82,9 @@
+@@ -82,8 +82,8 @@
  /*   
   *     Decode JPEG200 codestream into jas_image_t structure.
   */      
