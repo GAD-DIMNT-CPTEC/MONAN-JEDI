@@ -1,63 +1,9 @@
 #!/usr/bin/env bash
-# Build WPS/UNGRIB with the MONAN-JEDI stack and publish stable runtime paths.
+# Build, validate and atomically publish WPS/UNGRIB with the MONAN-JEDI stack.
 
 _wps_lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=wps_grib2.sh
-source "${_wps_lib_dir}/wps_grib2.sh"
-
-monan_jedi_load_wps_config() {
-  local values
-  [[ -n "${MONAN_JEDI_CONFIG:-}" && -f "${MONAN_JEDI_CONFIG}" ]] || {
-    log_error "MONAN_JEDI_CONFIG is not available for WPS configuration."
-    exit 1
-  }
-
-  values="$(python3 - "${MONAN_JEDI_CONFIG}" <<'PY'
-import os
-import shlex
-import sys
-import yaml
-
-with open(sys.argv[1], encoding="utf-8") as stream:
-    config = yaml.safe_load(stream) or {}
-wps = config.get("wps", {})
-if not isinstance(wps, dict):
-    raise SystemExit("wps must be a YAML mapping")
-
-mapping = {
-    "MONAN_JEDI_WPS_ENABLED": ("enabled", "0"),
-    "MONAN_JEDI_WPS_REPO": ("repo", "https://github.com/wrf-model/WPS.git"),
-    "MONAN_JEDI_WPS_REF": ("ref", "335c76a111f84503e8b963abaf273ea8053645bb"),
-    "MONAN_JEDI_WPS_VERSION": ("version", "4.6.0"),
-    "MONAN_JEDI_WPS_SOURCE_DIR": ("source_dir", ""),
-    "MONAN_JEDI_WPS_INSTALL_DIR": ("install_dir", ""),
-    "MONAN_JEDI_WPS_NETCDF_COMPAT_DIR": ("netcdf_compat_dir", ""),
-    "MONAN_JEDI_WPS_CONFIGURE_OPTION": ("configure_option", ""),
-    "MONAN_JEDI_WPS_COMPILE_TARGET": ("compile_target", "ungrib"),
-    "MONAN_JEDI_WPS_JASPER_ROOT": ("jasper_root", ""),
-    "MONAN_JEDI_WPS_PNG_ROOT": ("png_root", ""),
-    "MONAN_JEDI_WPS_ZLIB_ROOT": ("zlib_root", ""),
-    "MONAN_JEDI_WPS_UNGRIB_NAME": ("ungrib_name", "ungrib.exe"),
-    "MONAN_JEDI_WPS_LINK_GRIB_NAME": ("link_grib_name", "link_grib.csh"),
-}
-for env_name, (key, default) in mapping.items():
-    value = wps.get(key, default)
-    if value is None:
-        value = default
-    if isinstance(value, bool):
-        value = "1" if value else "0"
-    value = os.path.expandvars(str(value))
-    value = os.environ.get(env_name, value)
-    print(f"export {env_name}={shlex.quote(value)}")
-PY
-)" || exit 1
-
-  # shellcheck disable=SC1090
-  eval "${values}"
-  export MONAN_JEDI_WPS_SOURCE_DIR="${MONAN_JEDI_WPS_SOURCE_DIR:-${MONAN_JEDI_WORK_ROOT}/wps/src}"
-  export MONAN_JEDI_WPS_INSTALL_DIR="${MONAN_JEDI_WPS_INSTALL_DIR:-${MONAN_JEDI_INSTALL_ROOT}/wps/WPS-${MONAN_JEDI_WPS_VERSION}}"
-  export MONAN_JEDI_WPS_NETCDF_COMPAT_DIR="${MONAN_JEDI_WPS_NETCDF_COMPAT_DIR:-${MONAN_JEDI_WORK_ROOT}/wps/netcdf-compat}"
-}
+# shellcheck source=wps_dependencies.sh
+source "${_wps_lib_dir}/wps_dependencies.sh"
 
 monan_jedi_wps_enabled() {
   case "${MONAN_JEDI_WPS_ENABLED:-0}" in
@@ -66,116 +12,287 @@ monan_jedi_wps_enabled() {
   esac
 }
 
+monan_jedi_validate_wps_config() {
+  [[ -n "${MONAN_JEDI_WPS_REPO:-}" ]] || { log_error "wps.repo is empty."; exit 1; }
+  [[ -n "${MONAN_JEDI_WPS_REF:-}" ]] || { log_error "wps.ref is empty."; exit 1; }
+  [[ -n "${MONAN_JEDI_WPS_VERSION:-}" ]] || { log_error "wps.version is empty."; exit 1; }
+
+  case "${MONAN_JEDI_WPS_BUILD_TYPE}" in
+    Release|Debug|RelWithDebInfo|MinSizeRel) ;;
+    *)
+      log_error "Unsupported wps.build_type: ${MONAN_JEDI_WPS_BUILD_TYPE}"
+      exit 1
+      ;;
+  esac
+
+  [[ "${MONAN_JEDI_WPS_DEFAULT_VTABLE}" =~ ^[A-Za-z0-9._-]+$ ]] || {
+    log_error "wps.default_vtable must be a file name, not a path: ${MONAN_JEDI_WPS_DEFAULT_VTABLE}"
+    exit 1
+  }
+}
+
 monan_jedi_prepare_wps_source() {
-  require_cmd git
-  mkdir -p "$(dirname "${MONAN_JEDI_WPS_SOURCE_DIR}")"
+  mkdir -p "$(dirname "${MONAN_JEDI_WPS_SOURCE_DIR}")" "${MONAN_JEDI_LOG_ROOT}"
+
+  if [[ -e "${MONAN_JEDI_WPS_SOURCE_DIR}" && ! -d "${MONAN_JEDI_WPS_SOURCE_DIR}/.git" ]]; then
+    log_error "WPS source path exists but is not a Git checkout: ${MONAN_JEDI_WPS_SOURCE_DIR}"
+    exit 1
+  fi
+
   if [[ ! -d "${MONAN_JEDI_WPS_SOURCE_DIR}/.git" ]]; then
     git clone "${MONAN_JEDI_WPS_REPO}" "${MONAN_JEDI_WPS_SOURCE_DIR}" \
       2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/09_wps_clone.log"
   fi
-  cd "${MONAN_JEDI_WPS_SOURCE_DIR}"
-  git fetch --tags origin 2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/09_wps_fetch.log"
-  git checkout --detach "${MONAN_JEDI_WPS_REF}" \
+
+  git -C "${MONAN_JEDI_WPS_SOURCE_DIR}" remote set-url origin "${MONAN_JEDI_WPS_REPO}"
+  git -C "${MONAN_JEDI_WPS_SOURCE_DIR}" fetch --tags --prune origin \
+    2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/09_wps_fetch.log"
+  git -C "${MONAN_JEDI_WPS_SOURCE_DIR}" checkout --detach "${MONAN_JEDI_WPS_REF}" \
     2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/09_wps_checkout.log"
-  git reset --hard HEAD 2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/09_wps_reset.log"
-  git clean -fdx 2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/09_wps_clean.log"
+  git -C "${MONAN_JEDI_WPS_SOURCE_DIR}" reset --hard HEAD \
+    2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/09_wps_reset.log"
+  git -C "${MONAN_JEDI_WPS_SOURCE_DIR}" clean -fdx \
+    2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/09_wps_clean.log"
 }
 
-monan_jedi_publish_wps_file() {
-  local source="$1"
-  local target="$2"
-  [[ -f "${source}" ]] || { log_error "WPS publication source not found: ${source}"; exit 1; }
-  install -D -m 755 "${source}" "${target}"
+monan_jedi_wps_find_ungrib() {
+  local root="$1"
+  local candidate
+  for candidate in "${root}/bin/ungrib.exe" "${root}/bin/ungrib"; do
+    if [[ -x "${candidate}" ]]; then
+      printf '%s\n' "${candidate}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+monan_jedi_wps_prepare_runtime_tree() {
+  local stage_dir="$1"
+  local ungrib
+
+  ungrib="$(monan_jedi_wps_find_ungrib "${stage_dir}")" || {
+    log_error "WPS install did not create ungrib or ungrib.exe below ${stage_dir}/bin."
+    exit 1
+  }
+
+  if [[ "${ungrib}" != "${stage_dir}/bin/ungrib.exe" ]]; then
+    ln -sfn "$(basename "${ungrib}")" "${stage_dir}/bin/ungrib.exe"
+  fi
+
+  # The upstream CMake install creates link_grib.csh as a source-tree symlink.
+  # Replace it with a regular file so the published release is self-contained.
+  install -D -m 755 "${MONAN_JEDI_WPS_SOURCE_DIR}/link_grib.csh" "${stage_dir}/bin/link_grib.csh"
+
+  [[ -d "${MONAN_JEDI_WPS_SOURCE_DIR}/ungrib/Variable_Tables" ]] || {
+    log_error "WPS Variable_Tables directory not found in the source checkout."
+    exit 1
+  }
+  mkdir -p "${stage_dir}/share/wps"
+  cp -a "${MONAN_JEDI_WPS_SOURCE_DIR}/ungrib/Variable_Tables" "${stage_dir}/share/wps/"
+}
+
+monan_jedi_validate_wps_tree() {
+  local root="$1"
+  local log_file="${2:-${MONAN_JEDI_LOG_ROOT}/09_wps_validate.log}"
+  local ungrib="${root}/bin/ungrib.exe"
+  local link_grib="${root}/bin/link_grib.csh"
+  local vtable="${root}/share/wps/Variable_Tables/${MONAN_JEDI_WPS_DEFAULT_VTABLE}"
+
+  {
+    echo "root=${root}"
+    echo "ungrib=${ungrib}"
+    echo "link_grib=${link_grib}"
+    echo "vtable=${vtable}"
+
+    [[ -x "${ungrib}" ]] || { echo "Missing executable: ${ungrib}"; exit 1; }
+    [[ -x "${link_grib}" ]] || { echo "Missing helper: ${link_grib}"; exit 1; }
+    [[ -f "${vtable}" ]] || { echo "Missing default Vtable: ${vtable}"; exit 1; }
+
+    csh -n "${link_grib}"
+    if ldd "${ungrib}" | tee /dev/stderr | grep -q 'not found'; then
+      echo "A runtime library is missing for ${ungrib}."
+      exit 1
+    fi
+  } 2>&1 | tee "${log_file}"
 }
 
 monan_jedi_write_wps_manifest() {
-  local commit="$1"
-  local manifest="${MONAN_JEDI_WPS_INSTALL_DIR}/build-manifest.json"
-  python3 - "${manifest}" "${commit}" <<'PY'
+  local release_root="$1"
+  local source_commit="$2"
+  local manifest="${release_root}/build-manifest.json"
+
+  python3 - "${manifest}" "${source_commit}" <<'PY'
+import hashlib
 import json
 import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-path = Path(sys.argv[1])
+manifest = Path(sys.argv[1])
+patch_dir = Path(os.environ["MONAN_JEDI_WPS_PATCH_DIR"])
+patches = []
+for path in sorted(patch_dir.glob("*.patch")):
+    patches.append({
+        "name": path.name,
+        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+    })
+
 record = {
-    "schema_version": 2,
+    "schema_version": 3,
     "built_at": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
-    "source_repo": os.environ["MONAN_JEDI_WPS_REPO"],
-    "source_ref": os.environ["MONAN_JEDI_WPS_REF"],
-    "source_commit": sys.argv[2],
-    "version_label": os.environ["MONAN_JEDI_WPS_VERSION"],
-    "configure_option": os.environ["MONAN_JEDI_WPS_CONFIGURE_OPTION"],
-    "compile_target": os.environ["MONAN_JEDI_WPS_COMPILE_TARGET"],
-    "netcdf_c_root": os.environ["MONAN_JEDI_WPS_NETCDF_C_ROOT"],
-    "netcdf_fortran_root": os.environ["MONAN_JEDI_WPS_NETCDF_FORTRAN_ROOT"],
-    "netcdf_compat_root": os.environ["MONAN_JEDI_WPS_NETCDF_COMPAT_DIR"],
-    "jasper_root": os.environ["MONAN_JEDI_WPS_JASPER_RESOLVED_ROOT"],
-    "png_root": os.environ["MONAN_JEDI_WPS_PNG_RESOLVED_ROOT"],
-    "zlib_root": os.environ["MONAN_JEDI_WPS_ZLIB_RESOLVED_ROOT"],
-    "jasper_patch": "jas_image_decode",
-    "published": {
-        "ungrib": str(path.parent / "ungrib.exe"),
-        "link_grib": str(path.parent / "link_grib.csh"),
-        "vtable_gfs": str(path.parent / "ungrib" / "Variable_Tables" / "Vtable.GFS"),
+    "build_system": "cmake",
+    "source": {
+        "repository": os.environ["MONAN_JEDI_WPS_REPO"],
+        "requested_ref": os.environ["MONAN_JEDI_WPS_REF"],
+        "commit": sys.argv[2],
+        "version_label": os.environ["MONAN_JEDI_WPS_VERSION"],
+        "patches": patches,
+    },
+    "dependencies": {
+        "jasper_root": os.environ["MONAN_JEDI_WPS_JASPER_RESOLVED_ROOT"],
+        "png_root": os.environ["MONAN_JEDI_WPS_PNG_RESOLVED_ROOT"],
+        "zlib_root": os.environ["MONAN_JEDI_WPS_ZLIB_RESOLVED_ROOT"],
+    },
+    "configuration": {
+        "build_type": os.environ["MONAN_JEDI_WPS_BUILD_TYPE"],
+        "use_wrf": False,
+        "use_mpi": False,
+        "use_openmp": False,
+        "default_vtable": os.environ["MONAN_JEDI_WPS_DEFAULT_VTABLE"],
+    },
+    "artifacts": {
+        "ungrib": "bin/ungrib.exe",
+        "link_grib": "bin/link_grib.csh",
+        "variable_tables": "share/wps/Variable_Tables",
     },
 }
-path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+manifest.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 PY
 }
 
+monan_jedi_atomic_symlink() {
+  local source="$1"
+  local target="$2"
+  local temporary="${target}.tmp.$$"
+  mkdir -p "$(dirname "${target}")"
+  rm -f "${temporary}"
+  ln -s "${source}" "${temporary}"
+  mv -Tf "${temporary}" "${target}"
+}
+
+monan_jedi_promote_wps_release() {
+  local stage_dir="$1"
+  local final_dir="${MONAN_JEDI_WPS_INSTALL_DIR}"
+  local previous_dir="${final_dir}.previous"
+
+  rm -rf "${previous_dir}"
+  if [[ -e "${final_dir}" ]]; then
+    mv "${final_dir}" "${previous_dir}"
+  fi
+
+  if ! mv "${stage_dir}" "${final_dir}"; then
+    [[ ! -e "${previous_dir}" ]] || mv "${previous_dir}" "${final_dir}"
+    log_error "Could not promote the validated WPS release to ${final_dir}."
+    exit 1
+  fi
+
+  monan_jedi_atomic_symlink \
+    "${final_dir}/bin/ungrib.exe" \
+    "${MONAN_JEDI_INSTALL_BIN_DIR}/${MONAN_JEDI_WPS_UNGRIB_NAME}"
+  monan_jedi_atomic_symlink \
+    "${final_dir}/bin/link_grib.csh" \
+    "${MONAN_JEDI_INSTALL_BIN_DIR}/${MONAN_JEDI_WPS_LINK_GRIB_NAME}"
+  monan_jedi_atomic_symlink \
+    "${final_dir}/share/wps/Variable_Tables" \
+    "${MONAN_JEDI_INSTALL_ROOT}/share/wps/Variable_Tables"
+  monan_jedi_atomic_symlink \
+    "${final_dir}/share/wps/Variable_Tables/${MONAN_JEDI_WPS_DEFAULT_VTABLE}" \
+    "${MONAN_JEDI_INSTALL_ROOT}/share/wps/Vtable"
+
+  rm -rf "${previous_dir}"
+}
+
 monan_jedi_build_wps() {
-  monan_jedi_load_wps_config
-  monan_jedi_wps_enabled || { log_error "WPS is disabled. Set wps.enabled: true."; exit 1; }
-  [[ "${MONAN_JEDI_WPS_CONFIGURE_OPTION:-}" =~ ^[0-9]+$ ]] || {
-    log_error "wps.configure_option must be the numeric serial GRIB2 menu choice from ./configure."
+  monan_jedi_wps_enabled || {
+    log_error "WPS is disabled in ${MONAN_JEDI_CONFIG}. Set wps.enabled: true."
     exit 1
   }
 
+  monan_jedi_validate_wps_config
   monan_jedi_load_stack
-  require_cmd git install nc-config nf-config spack python3 find
-  mkdir -p "${MONAN_JEDI_LOG_ROOT}" "${MONAN_JEDI_WPS_INSTALL_DIR}" "${MONAN_JEDI_INSTALL_BIN_DIR}"
+  local command
+  for command in git cmake install spack python3 find sort csh ldd; do
+    require_cmd "${command}"
+  done
+
   monan_jedi_prepare_wps_source
+  monan_jedi_wps_resolve_dependencies
+
+  local source_commit cmake_prefix_path stage_dir
+  source_commit="$(git -C "${MONAN_JEDI_WPS_SOURCE_DIR}" rev-parse HEAD)"
+  cmake_prefix_path="$(monan_jedi_wps_cmake_prefix_path)"
+  stage_dir="$(dirname "${MONAN_JEDI_WPS_INSTALL_DIR}")/.staging-$(basename "${MONAN_JEDI_WPS_INSTALL_DIR}")-$$"
+
+  rm -rf "${MONAN_JEDI_WPS_BUILD_DIR}" "${stage_dir}"
+  mkdir -p "${MONAN_JEDI_WPS_BUILD_DIR}" "${stage_dir}" "${MONAN_JEDI_LOG_ROOT}"
 
   cd "${MONAN_JEDI_WPS_SOURCE_DIR}"
-  ./clean -a >/dev/null 2>&1 || true
-  rm -f configure.wps configure.wps.original ungrib.exe ungrib/src/ungrib.exe
-  monan_jedi_wps_patch_jasper
-  monan_jedi_wps_prepare_grib2_environment
-  local source_commit
-  source_commit="$(git rev-parse HEAD)"
+  monan_jedi_wps_apply_patches
 
-  log_info "Configuring WPS ref=${MONAN_JEDI_WPS_REF} commit=${source_commit}"
-  log_info "NETCDF=${NETCDF}; NETCDFF=${NETCDFF}; JASPERINC=${JASPERINC}"
-  printf '%s\n' "${MONAN_JEDI_WPS_CONFIGURE_OPTION}" \
-    | ./configure --nowrf 2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/09_wps_configure.log"
-  [[ -f configure.wps ]] || { log_error "WPS configure did not create configure.wps."; exit 1; }
-  cp configure.wps configure.wps.original
-  monan_jedi_wps_patch_configure
-  grep -nE '^(SFC|SCC|SCC_NOMPI|DM_FC|DM_CC|CC|FC|LD|COMPRESSION_INC|COMPRESSION_LIBS|NETCDF)[[:space:]]*=' configure.wps \
-    | tee "${MONAN_JEDI_LOG_ROOT}/09_wps_configure_values.log" || true
+  log_info "Configuring WPS/UNGRIB"
+  log_info "  source=${MONAN_JEDI_WPS_SOURCE_DIR}"
+  log_info "  commit=${source_commit}"
+  log_info "  build=${MONAN_JEDI_WPS_BUILD_DIR}"
+  log_info "  stage=${stage_dir}"
 
-  ./compile "${MONAN_JEDI_WPS_COMPILE_TARGET}" \
-    2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/09_wps_compile.log"
-  [[ -x ungrib.exe ]] || { log_error "WPS did not create ungrib.exe."; exit 1; }
+  cmake -S "${MONAN_JEDI_WPS_SOURCE_DIR}" -B "${MONAN_JEDI_WPS_BUILD_DIR}" \
+    "-DCMAKE_BUILD_TYPE=${MONAN_JEDI_WPS_BUILD_TYPE}" \
+    "-DCMAKE_INSTALL_PREFIX=${stage_dir}" \
+    "-DCMAKE_INSTALL_BINDIR=bin" \
+    "-DCMAKE_INSTALL_LIBDIR=lib" \
+    "-DCMAKE_INSTALL_RPATH=\$ORIGIN/../lib" \
+    "-DCMAKE_INSTALL_RPATH_USE_LINK_PATH=ON" \
+    "-DCMAKE_C_COMPILER=${CC}" \
+    "-DCMAKE_CXX_COMPILER=${CXX}" \
+    "-DCMAKE_Fortran_COMPILER=${FC}" \
+    "-DCMAKE_PREFIX_PATH=${cmake_prefix_path}" \
+    "-DJasper_ROOT=${MONAN_JEDI_WPS_JASPER_RESOLVED_ROOT}" \
+    "-DPNG_ROOT=${MONAN_JEDI_WPS_PNG_RESOLVED_ROOT}" \
+    "-DZLIB_ROOT=${MONAN_JEDI_WPS_ZLIB_RESOLVED_ROOT}" \
+    "-DUSE_WRF=OFF" \
+    "-DUSE_MPI=OFF" \
+    "-DUSE_OPENMP=OFF" \
+    "-DBUILD_EXTERNALS=OFF" \
+    2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/09_wps_cmake.log"
 
-  local published_ungrib published_link published_vtable
-  published_ungrib="${MONAN_JEDI_WPS_INSTALL_DIR}/ungrib.exe"
-  published_link="${MONAN_JEDI_WPS_INSTALL_DIR}/link_grib.csh"
-  published_vtable="${MONAN_JEDI_WPS_INSTALL_DIR}/ungrib/Variable_Tables/Vtable.GFS"
-  monan_jedi_publish_wps_file ungrib.exe "${published_ungrib}"
-  monan_jedi_publish_wps_file link_grib.csh "${published_link}"
-  [[ -f ungrib/Variable_Tables/Vtable.GFS ]] || { log_error "WPS Vtable.GFS not found."; exit 1; }
-  install -D -m 644 ungrib/Variable_Tables/Vtable.GFS "${published_vtable}"
-  ln -sfn "${published_ungrib}" "${MONAN_JEDI_INSTALL_BIN_DIR}/${MONAN_JEDI_WPS_UNGRIB_NAME}"
-  ln -sfn "${published_link}" "${MONAN_JEDI_INSTALL_BIN_DIR}/${MONAN_JEDI_WPS_LINK_GRIB_NAME}"
+  cmake --build "${MONAN_JEDI_WPS_BUILD_DIR}" \
+    --target ungrib g1print g2print \
+    --parallel "${MONAN_JEDI_BUILD_JOBS}" \
+    2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/09_wps_build.log"
 
-  if ldd "${published_ungrib}" 2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/09_wps_ungrib_ldd.log" | grep -q 'not found'; then
-    log_error "Missing runtime library for ${published_ungrib}"
-    exit 1
-  fi
-  monan_jedi_write_wps_manifest "${source_commit}"
-  log_info "WPS published=${MONAN_JEDI_WPS_INSTALL_DIR}"
+  cmake --install "${MONAN_JEDI_WPS_BUILD_DIR}" \
+    2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/09_wps_install.log"
+
+  monan_jedi_wps_prepare_runtime_tree "${stage_dir}"
+  monan_jedi_validate_wps_tree "${stage_dir}" "${MONAN_JEDI_LOG_ROOT}/09_wps_validate.log"
+  monan_jedi_write_wps_manifest "${stage_dir}" "${source_commit}"
+  monan_jedi_promote_wps_release "${stage_dir}"
+
+  log_info "WPS release published=${MONAN_JEDI_WPS_INSTALL_DIR}"
   log_info "ungrib=${MONAN_JEDI_INSTALL_BIN_DIR}/${MONAN_JEDI_WPS_UNGRIB_NAME}"
+  log_info "Vtable=${MONAN_JEDI_INSTALL_ROOT}/share/wps/Vtable"
+}
+
+monan_jedi_test_wps() {
+  monan_jedi_wps_enabled || {
+    log_error "WPS is disabled in ${MONAN_JEDI_CONFIG}."
+    exit 1
+  }
+  monan_jedi_load_stack
+  require_cmd csh
+  require_cmd ldd
+  monan_jedi_validate_wps_tree "${MONAN_JEDI_WPS_INSTALL_DIR}" "${MONAN_JEDI_LOG_ROOT}/09_wps_test.log"
+  log_info "WPS installation validation passed."
 }
