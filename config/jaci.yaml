@@ -1,185 +1,76 @@
-# =============================================================================
-# MONAN-JEDI site configuration for JACI
-# =============================================================================
-#
-# This file is the user-editable configuration entry point for compiling,
-# installing and testing the MONAN-JEDI bundle with an existing spack-stack
-# installation.
-#
-# The workflow uses four independent filesystem areas:
-#
-#   1. project.root
-#      User-owned workspace root. Default working, log and install paths are
-#      derived from this root.
-#
-#   2. stack.root or stack.owner + stack.instance
-#      Existing spack-stack installation. This stack may be owned by another
-#      user and may be read-only for normal MONAN-JEDI users.
-#
-#   3. build.dir
-#      CMake/ecbuild build tree for the MONAN-JEDI bundle.
-#
-#   4. install.root / install.bin_dir
-#      Installation/publication tree. Final executables from the MONAN-JEDI
-#      bundle and auxiliary tools such as obs2ioda are collected under
-#      install.bin_dir.
-#
-# Do not assume that the stack, build tree and install tree are under the same
-# root. They can be configured independently.
-# =============================================================================
+# MONAN-JEDI site configuration for JACI.
+# User-editable values belong here; workflow scripts should not need local edits.
 
 site: jaci
 
 project:
-  # User-owned MONAN-JEDI workspace root.
-  # Empty derived paths use this root together with build.id.
   root: /p/projetos/monan_das/${USER}
 
 stack:
-  # Unix account that owns the validated spack-stack tree.
-  # If the current user owns the stack, this may be ${USER}.
   owner: joao.gerd
-
-  # Stack instance identifier produced by spack-stack-inpe.
-  # Used only to derive stack.work_root and stack.root when those are not set.
   instance: spack-stack-inpe-overlay-20260515T181917Z
-
-  # Optional explicit stack work root.
-  # If empty, derived as:
-  #   /p/projetos/monan_das/${stack.owner}/work/${stack.instance}
   work_root:
-
-  # Optional explicit spack-stack root.
-  # If empty, derived as:
-  #   ${stack.work_root}/spack-stack
   root:
-
-  # Name of the generated spack-stack environment.
   env_name: jaci-mpas-jedi-gcc12-craympich
-
-  # Optional explicit module root.
-  # If empty, derived as:
-  #   ${stack.root}/envs/${stack.env_name}/modules
   module_root:
-
-  # JACI site setup script inside the spack-stack tree.
-  # The workflow sources ${stack.root}/${stack.site_setup}.
   site_setup: configs/sites/tier2/jaci/setup.sh
-
-  # Generated environment module to load after module use ${stack.module_root}.
-  # This value will be simplified after spack-stack-inpe adjusts its module tree.
   env_module: cray-mpich/8.1.31/none/none/jedi-mpas-env/1.0.0
 
 build:
-  # Identifier for this compilation/test attempt.
-  # Used to derive work, log and install paths when they are not explicit.
   id: monan-jedi
-
-  # Main MONAN-JEDI CMake/ecbuild build tree.
-  # Empty means: ${project.root}/work/${build.id}/build
   dir:
-
-  # Number of parallel jobs passed to make/cmake --build.
   jobs: 64
 
 install:
-  # Installation prefix used by make install and auxiliary tool publication.
-  # Empty means: ${project.root}/builds/${build.id}
   root:
-
-  # Common executable directory for the MONAN-JEDI bundle and auxiliary tools.
-  # Empty means: ${install.root}/bin
   bin_dir:
 
 model:
-  # MONAN/MPAS precision mode passed to ecbuild/CMake as MPAS_DOUBLE_PRECISION.
-  #
-  # IMPORTANT:
-  #   Keep this value quoted.
-  #
-  # YAML may interpret unquoted ON/OFF as boolean values. Therefore, always use:
-  #
-  #   double_precision: 'ON'
-  #   double_precision: 'OFF'
-  #
-  # Recommended values:
-  #   'ON'  - validation mode. Use this when running the mpas-jedi CTest suite.
-  #           Upstream CTest reference files are produced with double precision.
-  #   'OFF' - workflow mode. Use this only when the target workflow/tutorial
-  #           requires a single-precision MPAS build.
-  #
-  # Some CTest cases may fail with 'OFF' because single-precision output can
-  # differ from double-precision reference files by more than the test tolerance.
+  # Keep ON/OFF quoted because YAML may otherwise convert them to booleans.
   double_precision: 'ON'
 
 data:
-  # External data used by bundle components and tests may already exist in a
-  # shared local area. The workflow checks data.local_root first, then its own
-  # cache under data.root, and only downloads missing files when
-  # data.download_missing is true.
-  #
-  # Suggested shared layout:
-  #   ${data.local_root}/crtm/fix_REL-3.1.2.0.tgz
-  #
-  # Empty means: ${project.root}/work/${build.id}/cache/data
   root:
-
-  # Optional shared read-only or group-managed directory with pre-downloaded data.
-  # Leave empty if no shared local data directory exists yet.
   local_root:
-
-  # If false, the workflow will not download missing external data. This is useful
-  # for fully offline runs where all required data must be staged under
-  # data.local_root or data.root beforehand.
   download_missing: true
-
-  # CRTM coefficient archive used by CRTM tests during CMake configure.
   crtm_coeffs_url: https://bin.ssec.wisc.edu/pub/s4/CRTM/fix_REL-3.1.2.0.tgz
-
-  # Optional explicit cache file for the CRTM coefficient archive.
-  # Empty means: ${data.root}/crtm/fix_REL-3.1.2.0.tgz
   crtm_coeffs_tgz:
 
 obs2ioda:
-  # Build NCAR/obs2ioda as an auxiliary executable using the same stack
-  # environment used by MONAN-JEDI. It is downloaded and compiled outside the
-  # main MONAN-JEDI build tree, but the final executable is published in the
-  # same install.bin_dir used by the bundle executables.
   enabled: true
-
   repo: https://github.com/NCAR/obs2ioda.git
   ref: main
-
-  # Source checkout and CMake build tree for obs2ioda.
-  # Empty means:
-  #   source_dir: ${project.root}/work/${build.id}/obs2ioda/src
-  #   build_dir:  ${project.root}/work/${build.id}/obs2ioda/build
   source_dir:
   build_dir:
-
-  # Optional install root for obs2ioda. Empty means install.root.
-  # The executable is ultimately published to:
-  #   ${install.bin_dir}/${obs2ioda.executable_name}
   install_dir:
   executable_name: obs2ioda_v3
-
-  # JACI/spack-stack-inpe currently provides NOAA BUFR as libbufr_4.so, not as
-  # libbufr.so or libbufr.a. Leave this empty to auto-detect it from the loaded
-  # stack. Set it explicitly if the automatic search finds the wrong library.
   bufr_root:
   bufr_lib:
-
-  # Extra CMake prefixes, separated by semicolon if needed. NetCDF C, Fortran and
-  # CXX prefixes are detected automatically through nc-config, nf-config and
-  # ncxx4-config.
   cmake_prefix_path:
-
   build_type: Release
   build_goes_abi_converter: 'OFF'
 
+wps:
+  # Build only the WPS components that do not require WRF, primarily UNGRIB.
+  enabled: true
+  repo: https://github.com/wrf-model/WPS.git
+  ref: 335c76a111f84503e8b963abaf273ea8053645bb
+  version: 4.6.0
+  source_dir:
+  build_dir:
+  releases_dir:
+  install_dir:
+  patch_dir:
+  jasper_root:
+  png_root:
+  zlib_root:
+  cmake_prefix_path:
+  build_type: Release
+  ungrib_name: ungrib.exe
+  link_grib_name: link_grib.csh
+  default_vtable: Vtable.GFS
+
 compilers:
-  # Compiler commands or absolute paths used by CMake/ecbuild.
-  # On JACI CrayPE these should normally remain as cc, CC and ftn.
   cc: cc
   cxx: CC
   fc: ftn
@@ -187,8 +78,6 @@ compilers:
   f90: ftn
 
 mpi:
-  # MPI compiler commands or absolute paths.
-  # On CrayPE, the compiler wrappers cc, CC and ftn are also the MPI wrappers.
   mpicc: cc
   mpicxx: CC
   mpifc: ftn
@@ -196,27 +85,14 @@ mpi:
   mpif90: ftn
 
 ctest:
-  # Login-node-safe CTest subset.
   login_regex: "^mpasjedi_coding_norms$"
-
-  # Full PBS/compute-node CTest run.
-  # Empty means: do not restrict with -R.
   pbs_regex: ""
-
-  # Known failing tests excluded from the full suite.
   exclude_regex: "^(ioda_bufr_python_encoder|ioda_bufr_python_parallel|mpasjedi_lgetkf_height_vloc)$"
-
-  # Number of parallel CTest jobs.
   jobs: 1
-
-  # Keep false unless you explicitly know the selected tests do not require PBS.
   allow_login_node_mpi_tests: false
 
 pbs:
-  # PBS settings for compute-node tests.
   queue: pesqmini
   ncpus: 64
   walltime: "00:30:00"
-
-  # If false, the PBS script is generated but not submitted.
   submit_job: true
