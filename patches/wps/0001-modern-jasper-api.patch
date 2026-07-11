@@ -1,0 +1,14 @@
+diff --git a/ungrib/src/ngl/g2/dec_jpeg2000.c b/ungrib/src/ngl/g2/dec_jpeg2000.c
+--- a/ungrib/src/ngl/g2/dec_jpeg2000.c
++++ b/ungrib/src/ngl/g2/dec_jpeg2000.c
+@@ -82,9 +82,9 @@
+ /*   
+  *     Decode JPEG200 codestream into jas_image_t structure.
+  */      
+-    image=jpc_decode(jpcstream,opts);
++    image=jas_image_decode(jpcstream, jas_image_strtofmt("jpc"), opts);
+     if ( image == 0 ) {
+-       printf(" jpc_decode return = %d \n",ier);
++       printf(" jas_image_decode failed\n");
+        return -3;
+     }
