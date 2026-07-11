@@ -1,45 +1,13 @@
 #!/usr/bin/env python3
-"""Read MONAN-JEDI YAML configuration and emit shell exports.
+"""Read MONAN-JEDI YAML configuration and emit shell exports."""
 
-Purpose
--------
-This helper is used by ``scripts/lib/config.sh``. It reads a MONAN-JEDI YAML
-configuration file and prints shell ``export`` statements that can be evaluated
-by Bash.
-
-Configuration model
--------------------
-The YAML file is expected to use a nested structure, for example:
-
-* ``project.*`` for user workspace paths.
-* ``stack.*`` for the shared spack-stack installation.
-* ``build.*`` for the MONAN-JEDI build tree and build options.
-* ``install.*`` for the MONAN-JEDI install/publication tree.
-* ``model.*`` for the model configuration.
-* ``data.*`` for external test-data cache and local-data handling.
-* ``obs2ioda.*`` for the auxiliary obs2ioda build.
-* ``compilers.*`` and ``mpi.*`` for wrapper commands.
-* ``ctest.*`` and ``pbs.*`` for test and batch-system settings.
-
-Only variables consumed by the current workflow are exported. Historical
-``JEDI_BUNDLE_*`` variables are intentionally not emitted because the repository
-root is now the bundle source tree.
-
-Environment precedence
-----------------------
-If an environment variable already exists, it takes precedence over the YAML
-value. This allows users to override selected settings without editing the YAML
-file.
-
-Expected result
----------------
-The program writes valid shell assignments to standard output, one per mapped
-environment variable.
-"""
+from __future__ import annotations
 
 import os
 import shlex
 import sys
+from pathlib import Path
+from typing import Any
 
 try:
     import yaml
@@ -48,44 +16,45 @@ except ImportError:
     sys.exit(1)
 
 
-def get_value(data, path, default=""):
-    """Return a nested YAML value converted to a shell-friendly string."""
-    cur = data
+def read_yaml(path: str) -> dict[str, Any]:
+    with Path(path).open("r", encoding="utf-8") as stream:
+        loaded = yaml.safe_load(stream)
+    if loaded is None:
+        return {}
+    if not isinstance(loaded, dict):
+        raise ValueError("The configuration root must be a YAML mapping")
+    return loaded
 
+
+def get_value(data: dict[str, Any], path: str, default: str = "") -> str:
+    current: Any = data
     for key in path.split("."):
-        if not isinstance(cur, dict) or key not in cur:
+        if not isinstance(current, dict) or key not in current:
             return default
-        cur = cur[key]
+        current = current[key]
 
-    if cur is None:
+    if current is None:
         return default
-
-    if isinstance(cur, bool):
-        return "1" if cur else "0"
-
-    return os.path.expandvars(str(cur))
+    if isinstance(current, bool):
+        return "1" if current else "0"
+    return os.path.expandvars(str(current))
 
 
-def emit(name, value):
-    """Print one safely quoted shell export statement."""
-    env_value = os.environ.get(name, value)
-    sys.stdout.write("export {0}={1}\n".format(name, shlex.quote(env_value)))
+def emit(name: str, value: str) -> None:
+    resolved = os.environ.get(name, value)
+    sys.stdout.write(f"export {name}={shlex.quote(resolved)}\n")
 
 
-def read_yaml(path):
-    """Read a YAML file and return an empty dictionary for empty documents."""
-    with open(path, "r", encoding="utf-8") as f:
-        loaded = yaml.safe_load(f)
-    return loaded or {}
-
-
-def main():
-    """Program entry point."""
+def main() -> int:
     if len(sys.argv) != 2:
         sys.stderr.write("Usage: read_config.py <config.yaml>\n")
         return 2
 
-    data = read_yaml(sys.argv[1])
+    try:
+        data = read_yaml(sys.argv[1])
+    except (OSError, ValueError, yaml.YAMLError) as exc:
+        sys.stderr.write(f"Could not read configuration: {exc}\n")
+        return 1
 
     mapping = {
         "PROJECT_ROOT": "project.root",
@@ -130,6 +99,23 @@ def main():
         "MONAN_JEDI_OBS2IODA_CMAKE_PREFIX_PATH": "obs2ioda.cmake_prefix_path",
         "MONAN_JEDI_OBS2IODA_BUILD_TYPE": "obs2ioda.build_type",
         "MONAN_JEDI_OBS2IODA_BUILD_GOES_ABI_CONVERTER": "obs2ioda.build_goes_abi_converter",
+        "MONAN_JEDI_WPS_ENABLED": "wps.enabled",
+        "MONAN_JEDI_WPS_REPO": "wps.repo",
+        "MONAN_JEDI_WPS_REF": "wps.ref",
+        "MONAN_JEDI_WPS_VERSION": "wps.version",
+        "MONAN_JEDI_WPS_SOURCE_DIR": "wps.source_dir",
+        "MONAN_JEDI_WPS_BUILD_DIR": "wps.build_dir",
+        "MONAN_JEDI_WPS_RELEASES_DIR": "wps.releases_dir",
+        "MONAN_JEDI_WPS_INSTALL_DIR": "wps.install_dir",
+        "MONAN_JEDI_WPS_PATCH_DIR": "wps.patch_dir",
+        "MONAN_JEDI_WPS_JASPER_ROOT": "wps.jasper_root",
+        "MONAN_JEDI_WPS_PNG_ROOT": "wps.png_root",
+        "MONAN_JEDI_WPS_ZLIB_ROOT": "wps.zlib_root",
+        "MONAN_JEDI_WPS_CMAKE_PREFIX_PATH": "wps.cmake_prefix_path",
+        "MONAN_JEDI_WPS_BUILD_TYPE": "wps.build_type",
+        "MONAN_JEDI_WPS_UNGRIB_NAME": "wps.ungrib_name",
+        "MONAN_JEDI_WPS_LINK_GRIB_NAME": "wps.link_grib_name",
+        "MONAN_JEDI_WPS_DEFAULT_VTABLE": "wps.default_vtable",
         "MONAN_JEDI_CTEST_REGEX": "ctest.login_regex",
         "MONAN_JEDI_CTEST_PBS_REGEX": "ctest.pbs_regex",
         "MONAN_JEDI_CTEST_EXCLUDE_REGEX": "ctest.exclude_regex",
@@ -164,6 +150,14 @@ def main():
         "MONAN_JEDI_OBS2IODA_EXECUTABLE_NAME": "obs2ioda_v3",
         "MONAN_JEDI_OBS2IODA_BUILD_TYPE": "Release",
         "MONAN_JEDI_OBS2IODA_BUILD_GOES_ABI_CONVERTER": "OFF",
+        "MONAN_JEDI_WPS_ENABLED": "0",
+        "MONAN_JEDI_WPS_REPO": "https://github.com/wrf-model/WPS.git",
+        "MONAN_JEDI_WPS_REF": "335c76a111f84503e8b963abaf273ea8053645bb",
+        "MONAN_JEDI_WPS_VERSION": "4.6.0",
+        "MONAN_JEDI_WPS_BUILD_TYPE": "Release",
+        "MONAN_JEDI_WPS_UNGRIB_NAME": "ungrib.exe",
+        "MONAN_JEDI_WPS_LINK_GRIB_NAME": "link_grib.csh",
+        "MONAN_JEDI_WPS_DEFAULT_VTABLE": "Vtable.GFS",
         "MONAN_JEDI_CTEST_JOBS": "1",
         "MONAN_JEDI_PBS_QUEUE": "pesqmini",
         "MONAN_JEDI_PBS_NCPUS": "64",
