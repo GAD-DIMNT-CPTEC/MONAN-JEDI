@@ -1,4 +1,4 @@
-name: Shell checks
+name: Workflow checks
 
 on:
   pull_request:
@@ -7,23 +7,32 @@ on:
     branches: [main]
 
 jobs:
-  syntax:
+  syntax-and-config:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install configuration dependency
-        run: python -m pip install PyYAML
-      - name: Check shell syntax
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install PyYAML
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+      - name: Check shell syntax and style
         run: |
           find scripts -type f -name '*.sh' -print0 | xargs -0 -n1 bash -n
-      - name: Check YAML readers
+          shellcheck --severity=error -e SC1090,SC1091 scripts/monan-jedi.sh scripts/monan-jedi-wps.sh scripts/lib/*.sh
+      - name: Check Python
         run: |
-          python scripts/lib/read_config.py config/jaci.yaml >/dev/null
-          python - <<'PY'
-          import yaml
-          with open('config/wps-jaci.yaml.example', encoding='utf-8') as stream:
-              assert isinstance(yaml.safe_load(stream), dict)
-          PY
+          python -m py_compile scripts/lib/read_config.py tests/test_config.py
+          python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Validate WPS patches against pinned source
+        run: |
+          git clone --filter=blob:none https://github.com/wrf-model/WPS.git /tmp/WPS
+          git -C /tmp/WPS checkout --detach 335c76a111f84503e8b963abaf273ea8053645bb
+          for patch in patches/wps/*.patch; do
+            git -C /tmp/WPS apply --check "${GITHUB_WORKSPACE}/${patch}"
+            git -C /tmp/WPS apply "${GITHUB_WORKSPACE}/${patch}"
+          done
