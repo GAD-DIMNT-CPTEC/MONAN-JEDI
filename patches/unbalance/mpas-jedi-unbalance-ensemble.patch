@@ -1,0 +1,37 @@
+diff --git a/src/mains/CMakeLists.txt b/src/mains/CMakeLists.txt
+index b6f164d..0910ae8 100644
+--- a/src/mains/CMakeLists.txt
++++ b/src/mains/CMakeLists.txt
+@@ -57,3 +57,7 @@ ecbuild_add_executable( TARGET  ${PROJECT_NAME}_converttostructuredgrid.x
+ ecbuild_add_executable( TARGET  ${PROJECT_NAME}_process_perts.x
+                         SOURCES mpasProcessPerts.cc
+                         LIBS    ${PROJECT_NAME} saber)
++
++ecbuild_add_executable( TARGET  ${PROJECT_NAME}_unbalance_ensemble.x
++                        SOURCES mpasUnbalanceEnsemble.cc
++                        LIBS    ${PROJECT_NAME} saber)
+diff --git a/src/mains/mpasUnbalanceEnsemble.cc b/src/mains/mpasUnbalanceEnsemble.cc
+new file mode 100644
+index 0000000..63bf2e1
+--- /dev/null
++++ b/src/mains/mpasUnbalanceEnsemble.cc
+@@ -0,0 +1,19 @@
++/*
++ * (C) Crown copyright 2026 Met Office.
++ *
++ * This software is licensed under the terms of the Apache Licence Version 2.0
++ * which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
++ */
++
++#include "oops/runs/Run.h"
++#include "saber/oops/instantiateCovarFactory.h"
++#include "saber/oops/UnbalanceEnsemble.h"
++
++#include "mpasjedi/Traits.h"
++
++int main(int argc, char ** argv) {
++  oops::Run run(argc, argv);
++  saber::instantiateCovarFactory<mpas::Traits>();
++  saber::UnbalanceEnsemble<mpas::Traits> app;
++  return run.execute(app);
++}
