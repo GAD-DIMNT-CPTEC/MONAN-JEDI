@@ -1,150 +1,96 @@
-# =============================================================================
-# MONAN-JEDI site configuration template
-# =============================================================================
-#
-# Copy this file to a new site-specific file, for example:
-#
-#   config/my-site.yaml
-#
-# Then edit only the values that describe your machine, your shared stack and
-# your user-owned build area.
-#
-# This configuration is for compiling and testing the MONAN-JEDI bundle with an
-# existing spack-stack installation. It is not a MONAN operational assimilation
-# workflow configuration.
-#
-# Important concept
-# -----------------
-# Keep these two filesystem areas separate:
-#
-#   1. project.root
-#      User-owned area where build trees and logs are written.
-#      This directory must be writable by the user running the scripts.
-#
-#   2. stack.root or stack.owner + stack.instance
-#      Existing spack-stack installation. This may be maintained by another user
-#      and may be read-only for normal users.
-#
-# Do not assume that the stack is located under project.root.
-# =============================================================================
+# Generic MONAN-JEDI site configuration template.
+# Copy this file, then edit machine, stack and writable workspace values.
 
 site: site-name
 
 project:
-  # User-owned MONAN-JEDI workspace root.
-  # Build trees are created under: ${project.root}/work/${build.id}
-  # Logs are created under:        ${project.root}/logs/${build.id}
   root: /path/to/user/workspace
 
 stack:
-  # Unix account that owns the validated spack-stack tree.
-  # Use ${USER} if each user owns their own stack.
-  # Use another account name if consuming a shared stack.
   owner: ${USER}
-
-  # Stack instance identifier.
-  # This is usually the directory name used when the stack was created.
   instance: stack-instance-name
-
-  # Optional explicit stack work root.
-  # If empty or omitted, scripts derive:
-  #   /p/projetos/monan_das/${stack.owner}/work/${stack.instance}
-  # For non-JACI machines, set this explicitly if the default does not apply.
   work_root:
-
-  # Optional explicit spack-stack root.
-  # If empty or omitted, scripts derive:
-  #   ${stack.work_root}/spack-stack
   root:
-
-  # Name of the generated spack-stack environment.
   env_name: stack-environment-name
-
-  # Optional explicit module root.
-  # If empty or omitted, scripts derive:
-  #   ${stack.root}/envs/${stack.env_name}/modules
   module_root:
-
-  # Site setup script inside the spack-stack tree.
-  # This should be the site setup script, not the root spack-stack setup.sh.
-  # Example for JACI:
-  #   configs/sites/tier2/jaci/setup.sh
   site_setup: configs/sites/<tier>/<site>/setup.sh
-
-  # Generated environment module loaded after module use ${stack.module_root}.
   env_module: module/name
 
 build:
-  # Identifier for this compilation/test attempt.
-  # Change this when you want a new independent build/log tree.
   id: monan-jedi-build-name
-
-  # Number of parallel build jobs passed to make.
+  dir:
   jobs: 8
 
+install:
+  root:
+  bin_dir:
+
 model:
-  # MONAN/MPAS precision mode passed to ecbuild/CMake as MPAS_DOUBLE_PRECISION.
-  #
-  # IMPORTANT:
-  #   Keep this value quoted.
-  #
-  # YAML may interpret unquoted ON/OFF as boolean values. Therefore, always use:
-  #
-  #   double_precision: 'ON'
-  #   double_precision: 'OFF'
-  #
-  # Recommended values:
-  #   'ON'  - validation mode. Use this when running the mpas-jedi CTest suite.
-  #           Upstream CTest reference files are produced with double precision.
-  #   'OFF' - workflow mode. Use this only when the target workflow/tutorial
-  #           requires a single-precision MPAS build.
-  #
-  # Some CTest cases may fail with 'OFF' because single-precision output can
-  # differ from double-precision reference files by more than the test tolerance.
   double_precision: 'ON'
 
+data:
+  root:
+  local_root:
+  download_missing: true
+  crtm_coeffs_url: https://bin.ssec.wisc.edu/pub/s4/CRTM/fix_REL-3.1.2.0.tgz
+  crtm_coeffs_tgz:
+
+obs2ioda:
+  enabled: false
+  repo: https://github.com/NCAR/obs2ioda.git
+  ref: main
+  source_dir:
+  build_dir:
+  install_dir:
+  executable_name: obs2ioda_v3
+  bufr_root:
+  bufr_lib:
+  cmake_prefix_path:
+  build_type: Release
+  build_goes_abi_converter: 'OFF'
+
+wps:
+  enabled: false
+  repo: https://github.com/wrf-model/WPS.git
+  ref: 335c76a111f84503e8b963abaf273ea8053645bb
+  version: 4.6.0
+  source_dir:
+  build_dir:
+  releases_dir:
+  install_dir:
+  patch_dir:
+  jasper_root:
+  png_root:
+  zlib_root:
+  cmake_prefix_path:
+  build_type: Release
+  ungrib_name: ungrib.exe
+  link_grib_name: link_grib.csh
+  default_vtable: Vtable.GFS
+
 compilers:
-  # Compiler commands or absolute paths used by CMake/ecbuild.
-  # On CrayPE systems these may be cc, CC and ftn.
-  # On non-Cray systems these may be gcc, g++ and gfortran.
   cc: cc
-  cxx: CC
-  fc: ftn
-  f77: ftn
-  f90: ftn
+  cxx: c++
+  fc: gfortran
+  f77: gfortran
+  f90: gfortran
 
 mpi:
-  # MPI compiler commands or absolute paths.
-  # On CrayPE, compiler wrappers are usually also MPI wrappers.
-  # On other systems, these may be mpicc, mpicxx and mpifort/mpif90.
-  mpicc: cc
-  mpicxx: CC
-  mpifc: ftn
-  mpif77: ftn
-  mpif90: ftn
+  mpicc: mpicc
+  mpicxx: mpicxx
+  mpifc: mpifort
+  mpif77: mpifort
+  mpif90: mpifort
 
 ctest:
-  # Login-node-safe CTest subset.
   login_regex: "^mpasjedi_coding_norms$"
-
-  # Scheduler/compute-node CTest subset.
-  pbs_regex: "^mpasjedi_geometry$"
-
-  # Optional CTest exclusion regex.
+  pbs_regex: ""
   exclude_regex: ""
-
-  # Number of parallel CTest jobs.
   jobs: 1
-
-  # Keep false unless the selected tests are known to be safe on login nodes.
   allow_login_node_mpi_tests: false
 
 pbs:
-  # Scheduler settings for compute-node tests.
-  # Rename or adapt this section later if the site uses Slurm or another scheduler.
   queue: queue-name
   ncpus: 64
   walltime: "00:30:00"
-
-  # If false, the scheduler script is generated but not submitted.
-  submit_job: true
+  submit_job: false
