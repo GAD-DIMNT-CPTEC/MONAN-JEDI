@@ -106,6 +106,7 @@ mkdir -p "${install_stack}"
 make_dependency_prefix "${install_jasper}" jasper
 export STACK_ROOT="${install_stack}"
 export STACK_WORK_ROOT="${tmp_dir}/unused-work"
-assert_equal "${install_jasper}" "$(monan_jedi_wps_location_from_install_tree jasper)" "stack install tree"
+discovered_install_jasper="$(monan_jedi_wps_location_from_install_tree jasper)"
+assert_equal "$(readlink -f "${install_jasper}")" "$(readlink -f "${discovered_install_jasper}")" "stack install tree"
 
 printf 'WPS dependency resolution tests passed.\n'
