@@ -46,6 +46,7 @@ monan_jedi_reset_modules() {
 
 monan_jedi_load_stack() {
   local setup_script
+  local spack_bin
 
   if [[ ! -d "${STACK_ROOT}" ]]; then
     log_error "STACK_ROOT not found: ${STACK_ROOT}"
@@ -75,6 +76,18 @@ monan_jedi_load_stack() {
   module use "${STACK_MODULE_ROOT}"
   module load "${STACK_ENV_MODULE}"
 
+  # The generated environment module provides compilers and libraries, but it
+  # does not necessarily place the Spack CLI itself in PATH. Auxiliary builds
+  # use `spack location -i` only for dependency discovery, so expose the CLI
+  # shipped with this exact stack installation without sourcing stack setup.sh.
+  spack_bin="${STACK_ROOT}/spack/bin"
+  if [[ -x "${spack_bin}/spack" ]]; then
+    case ":${PATH}:" in
+      *":${spack_bin}:"*) ;;
+      *) export PATH="${spack_bin}:${PATH}" ;;
+    esac
+  fi
+
   export CC="$(resolve_cmd CC "${MONAN_JEDI_CC}")"
   export CXX="$(resolve_cmd CXX "${MONAN_JEDI_CXX}")"
   export FC="$(resolve_cmd FC "${MONAN_JEDI_FC}")"
@@ -93,6 +106,7 @@ monan_jedi_load_stack() {
   log_info "  STACK_ROOT=${STACK_ROOT}"
   log_info "  STACK_SITE_SETUP=${STACK_SITE_SETUP}"
   log_info "  STACK_ENV_MODULE=${STACK_ENV_MODULE}"
+  log_info "  SPACK=$(command -v spack 2>/dev/null || echo unavailable)"
   log_info "  CC=${CC}"
   log_info "  CXX=${CXX}"
   log_info "  FC=${FC}"
@@ -124,6 +138,7 @@ monan_jedi_record_environment_snapshot() {
     echo "MODULEPATH=${MODULEPATH:-}"
     echo
     echo "tool resolution:"
+    command -v spack || true
     command -v ecbuild || true
     command -v cmake || true
     command -v make || true
