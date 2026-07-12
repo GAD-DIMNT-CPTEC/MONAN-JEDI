@@ -123,6 +123,12 @@ These options preserve the expected byte order and record-marker size of the WPS
 
 Compiler warnings about legacy argument type or rank mismatches are currently tolerated through WPS's existing `-fallow-argument-mismatch` option. They should be recorded, but they are not the cause of the `MWSIZE` failure.
 
+### `0005-disable-utilities-for-standalone-build.patch`
+
+The WPS CMake project always registers utility programs such as `rd_intermediate`, `avg_tsfc` and `mod_levs` for installation. When the standalone integration intentionally builds only `ungrib`, `g1print` and `g2print`, an unrestricted `cmake --install` subsequently fails because the utility executables were never produced.
+
+The patch adds a `BUILD_UTILS` option whose default follows `USE_WRF`. Complete WPS builds keep the utilities enabled, while the MONAN-JEDI standalone configuration (`USE_WRF=OFF`) excludes their targets and installation rules.
+
 ## Build
 
 ```bash
