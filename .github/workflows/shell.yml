@@ -23,7 +23,9 @@ jobs:
       - name: Check shell syntax and style
         run: |
           find scripts -type f -name '*.sh' -print0 | xargs -0 -n1 bash -n
-          shellcheck --severity=error -e SC1090,SC1091 scripts/monan-jedi.sh scripts/monan-jedi-wps.sh scripts/lib/*.sh
+          bash -n tests/test_wps_dependency_resolution.sh
+          shellcheck --severity=error -e SC1090,SC1091 scripts/monan-jedi.sh scripts/monan-jedi-wps.sh scripts/lib/*.sh tests/test_wps_dependency_resolution.sh
+          bash tests/test_wps_dependency_resolution.sh
       - name: Check Python
         run: |
           python -m py_compile scripts/lib/read_config.py tests/test_config.py
