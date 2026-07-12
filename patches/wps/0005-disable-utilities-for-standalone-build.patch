@@ -1,0 +1,25 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -46,7 +46,10 @@ include( wrf_case_setup )
+ wrf_get_version( ${PROJECT_SOURCE_DIR}/README )
+ 
+ # Disable WRF-specifics entirely
+ set( USE_WRF      ON CACHE BOOL "USE_WRF"     )
++# Utility programs are part of a complete WPS build by default, but are not
++# required by the standalone UNGRIB configuration used when USE_WRF is OFF.
++set( BUILD_UTILS ${USE_WRF} CACHE BOOL "BUILD_UTILS" )
+ 
+ ################################################################################
+ ##
+@@ -183,7 +186,9 @@ if ( DEFINED WRF_DIR )
+   add_subdirectory( geogrid )
+ endif()
+ 
+-add_subdirectory( util )
++if ( ${BUILD_UTILS} )
++  add_subdirectory( util )
++endif()
+ 
+ 
+ ################################################################################
