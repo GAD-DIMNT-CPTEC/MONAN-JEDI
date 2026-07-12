@@ -90,6 +90,39 @@ string sub-command REPLACE requires at least four arguments
 
 The patch quotes the input variable so that an empty string remains a valid fourth argument. This error is independent of the JasPer decoder API patch.
 
+### `0004-restore-gnu-linux-build-contract.patch`
+
+The native CMake path does not restore the architecture definitions and GNU Fortran flags supplied by the legacy `arch/configure.defaults` profile for Linux x86_64. Without `BIT32`, `ungrib/src/gribcode.F` does not declare `MWSIZE` and compilation fails with:
+
+```text
+Error: Symbol ‘mwsize’ has no IMPLICIT type
+```
+
+`BIT32` describes the default Fortran `INTEGER` size, which is 32 bits for the GNU compiler used through the JACI Cray wrappers; it does not describe the 64-bit operating-system pointer size.
+
+For a GNU Fortran build on Linux, the patch restores these definitions when `WPS_DEFINITIONS` was not supplied explicitly:
+
+```text
+-D_UNDERSCORE -DBYTESWAP -DLINUX -DBIT32 -DNO_SIGNAL
+```
+
+Their relevant roles are:
+
+- `_UNDERSCORE`: matches the GNU Fortran symbol convention used by C helpers such as `cio.c`;
+- `BYTESWAP`: enables the GRIB1 byte-order conversion used on little-endian JACI nodes;
+- `BIT32`: defines `MWSIZE=32` in `module_grib`;
+- `LINUX` and `NO_SIGNAL`: retain the established GNU/Linux architecture behavior.
+
+The patch also restores the GNU Fortran options used by the legacy WPS profile:
+
+```text
+-fconvert=big-endian -frecord-marker=4
+```
+
+These options preserve the expected byte order and record-marker size of the WPS intermediate files. The later error about a missing `module_grib.mod` is only a consequence of the failed `gribcode.F` compilation; it is not a separate missing dependency.
+
+Compiler warnings about legacy argument type or rank mismatches are currently tolerated through WPS's existing `-fallow-argument-mismatch` option. They should be recorded, but they are not the cause of the `MWSIZE` failure.
+
 ## Build
 
 ```bash
