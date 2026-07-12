@@ -1,0 +1,31 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -143,6 +143,18 @@ if ( ${BUILD_EXTERNALS} AND "${WRF_FOUND}" )
+ endif()
+ 
+ # Add config definitions
++if ( CMAKE_SYSTEM_NAME STREQUAL "Linux"
++     AND CMAKE_Fortran_COMPILER_ID STREQUAL "GNU" )
++  if ( NOT DEFINED WPS_DEFINITIONS OR "${WPS_DEFINITIONS}" STREQUAL "" )
++    # Restore the architecture definitions used by the legacy WPS
++    # Linux x86_64/gfortran configuration. BIT32 refers to the default
++    # Fortran INTEGER size, not the operating-system pointer size.
++    set( WPS_DEFINITIONS
++         "-D_UNDERSCORE -DBYTESWAP -DLINUX -DBIT32 -DNO_SIGNAL"
++         )
++  endif()
++endif()
++
+ message( STATUS "Adding configuration specific definitions : ${WPS_DEFINITIONS}" )
+ 
+ string( REPLACE " " ";" WPS_DEFINITIONS_LIST "${WPS_DEFINITIONS}" )
+@@ -168,6 +180,8 @@ add_compile_definitions(
+ # Whole project flags
+ add_compile_options(
+                     $<$<COMPILE_LANG_AND_ID:Fortran,GNU>:-fallow-argument-mismatch>
++                    $<$<COMPILE_LANG_AND_ID:Fortran,GNU>:-fconvert=big-endian>
++                    $<$<COMPILE_LANG_AND_ID:Fortran,GNU>:-frecord-marker=4>
+                     )
+ 
+ 
