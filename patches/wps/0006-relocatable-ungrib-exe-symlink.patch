@@ -1,0 +1,15 @@
+diff --git a/cmake/wrf_case_setup.cmake b/cmake/wrf_case_setup.cmake
+--- a/cmake/wrf_case_setup.cmake
++++ b/cmake/wrf_case_setup.cmake
+@@ -39,8 +39,10 @@ macro( wrf_setup_targets )
+     # Add .exe link as well
+     install( 
+             CODE "
+                   message( STATUS \"Creating symlink for $<TARGET_FILE_NAME:${WRF_SETUP_TARGET}>.exe\" )
+-                  execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink ${WRF_SETUP_DEST_PATH}/$<TARGET_FILE_NAME:${WRF_SETUP_TARGET}> ${WRF_SETUP_DEST_PATH}/$<TARGET_FILE_NAME:${WRF_SETUP_TARGET}>.exe )
++                  # Keep the link target relative so an installation staged under a
++                  # temporary prefix remains valid after atomic promotion.
++                  execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink $<TARGET_FILE_NAME:${WRF_SETUP_TARGET}> ${WRF_SETUP_DEST_PATH}/$<TARGET_FILE_NAME:${WRF_SETUP_TARGET}>.exe )
+                   "
+             COMPONENT setup
+             )
