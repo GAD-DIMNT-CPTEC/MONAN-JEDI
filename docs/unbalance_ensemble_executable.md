@@ -51,9 +51,26 @@ scripts/apply_unbalance_ensemble_patches.sh
 Apply the patches before configuring or reconfiguring the build. Both patches
 modify component `CMakeLists.txt` files, so CMake must be configured again after
 patch application for the new executable target to become available. The
-script is idempotent: it reports a patch as already applied when its reverse
-check succeeds.
+script is idempotent: it checks all expected source and CMake markers before
+reporting a component patch as already applied. If only part of a patch is
+present, the script stops and requests manual intervention.
 
 The script deliberately refuses to apply the patches to different component
 commits. If the bundle revisions are updated, rebase and validate the patches
 explicitly rather than bypassing the revision checks.
+
+## PR #15 functional validation
+
+The PR #15 validation built the `mpasjedi_unbalance_ensemble.x` target and ran
+the executable through PBS with 128 MPI processes. The job completed with
+`Exit_status = 0` and generated:
+
+```text
+PTB_f48mf24_001.nc
+PTB_f48mf24_002.nc
+PTB_f48mf24_003.nc
+PTB_f48mf24_004.nc
+```
+
+The validated example uses `read global sampling: false`, matching the local
+sampling and vertical-balance statistics available to the functional run.

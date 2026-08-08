@@ -4,9 +4,9 @@ index 06a6d66f..649c7c2d 100644
 +++ b/src/saber/oops/CMakeLists.txt
 @@ -14,3 +14,4 @@ Localization.h
  # Applications
++UnbalanceEnsemble.h
  ErrorCovarianceToolbox.h
  ProcessPerts.h
-+UnbalanceEnsemble.h
 diff --git a/src/saber/oops/UnbalanceEnsemble.h b/src/saber/oops/UnbalanceEnsemble.h
 new file mode 100644
 index 00000000..d4cb7c39

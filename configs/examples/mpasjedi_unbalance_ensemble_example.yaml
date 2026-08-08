@@ -45,7 +45,7 @@ inverse blocks:
       files prefix: mpas
     drivers:
       read local sampling: true
-      read global sampling: true
+      read global sampling: false
       read vertical balance: true
     vertical balance:
       vbal:
