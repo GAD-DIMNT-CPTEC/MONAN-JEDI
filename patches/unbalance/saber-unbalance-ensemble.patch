@@ -1,0 +1,172 @@
+diff --git a/src/saber/oops/CMakeLists.txt b/src/saber/oops/CMakeLists.txt
+index 06a6d66f..649c7c2d 100644
+--- a/src/saber/oops/CMakeLists.txt
++++ b/src/saber/oops/CMakeLists.txt
+@@ -14,3 +14,4 @@ Localization.h
+ # Applications
++UnbalanceEnsemble.h
+ ErrorCovarianceToolbox.h
+ ProcessPerts.h
+diff --git a/src/saber/oops/UnbalanceEnsemble.h b/src/saber/oops/UnbalanceEnsemble.h
+new file mode 100644
+index 00000000..d4cb7c39
+--- /dev/null
++++ b/src/saber/oops/UnbalanceEnsemble.h
+@@ -0,0 +1,157 @@
++/*
++ * (C) Crown copyright 2026 Met Office.
++ *
++ * This software is licensed under the terms of the Apache Licence Version 2.0
++ * which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
++ */
++
++#ifndef SABER_OOPS_UNBALANCEENSEMBLE_H_
++#define SABER_OOPS_UNBALANCEENSEMBLE_H_
++
++#include <string>
++#include <vector>
++
++#ifdef _OPENMP
++#include <omp.h>
++#endif
++
++#include "eckit/config/LocalConfiguration.h"
++#include "eckit/exception/Exceptions.h"
++#include "eckit/mpi/Comm.h"
++
++#include "oops/base/FieldSets.h"
++#include "oops/base/Geometry.h"
++#include "oops/base/Increment.h"
++#include "oops/base/instantiateCovarFactory.h"
++#include "oops/base/State4D.h"
++#include "oops/base/Variables.h"
++#include "oops/mpi/mpi.h"
++#include "oops/runs/Application.h"
++#include "oops/util/ConfigFunctions.h"
++#include "oops/util/Logger.h"
++#include "oops/util/parameters/OptionalParameter.h"
++#include "oops/util/parameters/Parameters.h"
++#include "oops/util/parameters/RequiredParameter.h"
++
++#include "saber/blocks/SaberOuterBlockChain.h"
++#include "saber/oops/ErrorCovarianceParameters.h"
++#include "saber/oops/Utilities.h"
++
++namespace saber {
++
++// -----------------------------------------------------------------------------
++
++class UnbalanceEnsembleParameters : public oops::Parameters {
++  OOPS_CONCRETE_PARAMETERS(UnbalanceEnsembleParameters, oops::Parameters)
++
++ public:
++  oops::RequiredParameter<eckit::LocalConfiguration> geometry{"geometry", this};
++  oops::RequiredParameter<eckit::LocalConfiguration> background{"background", this};
++  oops::RequiredParameter<oops::Variables> inputVariables{"input variables", this};
++  oops::RequiredParameter<std::vector<SaberOuterBlockParametersWrapper>> inverseBlocks{
++      "inverse blocks", this};
++  oops::RequiredParameter<eckit::LocalConfiguration> output{"output", this};
++  oops::OptionalParameter<eckit::LocalConfiguration> ensemble{"ensemble", this};
++  oops::OptionalParameter<eckit::LocalConfiguration> ensemblePert{"ensemble pert", this};
++};
++
++// -----------------------------------------------------------------------------
++
++template <typename MODEL>
++class UnbalanceEnsemble : public oops::Application {
++  typedef oops::Geometry<MODEL>        Geometry_;
++  typedef oops::Increment<MODEL>       Increment_;
++  typedef oops::State4D<MODEL>         State4D_;
++
++ public:
++  explicit UnbalanceEnsemble(const eckit::mpi::Comm & comm = eckit::mpi::comm()) :
++    Application(comm) {
++    instantiateCovarFactory<MODEL>();
++  }
++  ~UnbalanceEnsemble() override = default;
++
++  int execute(const eckit::Configuration & fullConfig) const override {
++    const eckit::mpi::Comm * commSpace = &this->getComm();
++    const eckit::mpi::Comm * commTime = &oops::mpi::myself();
++
++    eckit::LocalConfiguration fullConfigUpdated(fullConfig);
++    const std::size_t ntasks = commSpace->size();
++    std::size_t nthreads = 1;
++#ifdef _OPENMP
++#pragma omp parallel
++    {
++      nthreads = omp_get_num_threads();
++    }
++#endif
++    util::seekAndReplace(fullConfigUpdated, "_MPI_", std::to_string(ntasks));
++    util::seekAndReplace(fullConfigUpdated, "_OMP_", std::to_string(nthreads));
++
++    UnbalanceEnsembleParameters params;
++    params.deserialize(fullConfigUpdated);
++
++    oops::Log::trace() << "UnbalanceEnsemble<MODEL>::execute starting" << std::endl;
++
++    const Geometry_ geom(params.geometry, *commSpace, *commTime);
++    const State4D_ background(geom, params.background, *commTime);
++
++    oops::Variables incVars = params.inputVariables;
++    const std::vector<std::size_t> varsSizes = geom.variableSizes(incVars);
++    for (std::size_t jv = 0; jv < varsSizes.size(); ++jv) {
++      incVars[jv].setLevels(varsSizes[jv]);
++    }
++
++    const bool hasEnsemble = params.ensemble.value() != boost::none;
++    const bool hasEnsemblePert = params.ensemblePert.value() != boost::none;
++    if (hasEnsemble == hasEnsemblePert) {
++      throw eckit::UserError(
++          "UnbalanceEnsemble requires exactly one of 'ensemble' or 'ensemble pert'", Here());
++    }
++    if (params.inverseBlocks.value().empty()) {
++      throw eckit::UserError("UnbalanceEnsemble requires at least one 'inverse blocks' entry",
++                             Here());
++    }
++
++    oops::FieldSet4D fsetXb(background);
++    oops::FieldSet4D fsetFg(background);
++
++    oops::Log::info() << "UnbalanceEnsemble: reading input ensemble" << std::endl;
++    oops::FieldSets fsetEns = readEnsemble<MODEL>(geom, incVars, background.times(),
++                                                  background.commTime(), background.commEns(),
++                                                  fullConfigUpdated);
++
++    ErrorCovarianceParametersBase paramsBase;
++    SaberOuterBlockChain inverseBlockChain(geom, incVars, fsetXb, fsetFg,
++                                           paramsBase.toConfiguration(),
++                                           params.inverseBlocks.value());
++
++    oops::Log::info() << "UnbalanceEnsemble: applying SABER left inverse to "
++                      << fsetEns.ens_size() << " ensemble members" << std::endl;
++    for (int jm = 0; jm < fsetEns.ens_size(); ++jm) {
++      oops::Log::info() << "UnbalanceEnsemble: processing member " << jm + 1 << std::endl;
++      oops::FieldSet3D fset(fsetEns[jm]);
++      inverseBlockChain.leftInverseMultiply(fset);
++
++      Increment_ pert(geom, fset.variables(), fset.validTime());
++      pert.zero();
++      pert.fromFieldSet(fset.fieldSet());
++
++      eckit::LocalConfiguration outputConfig = params.output.value();
++      util::setMember(outputConfig, jm + 1);
++      pert.write(outputConfig);
++    }
++
++    oops::Log::trace() << "UnbalanceEnsemble<MODEL>::execute done" << std::endl;
++    return 0;
++  }
++
++ private:
++  std::string appname() const override {
++    return "saber::UnbalanceEnsemble<MODEL>";
++  }
++};
++
++// -----------------------------------------------------------------------------
++
++}  // namespace saber
++
++#endif  // SABER_OOPS_UNBALANCEENSEMBLE_H_
