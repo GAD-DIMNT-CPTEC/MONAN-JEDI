@@ -1,0 +1,12 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -145,7 +145,7 @@ endif()
+ # Add config definitions
+ message( STATUS "Adding configuration specific definitions : ${WPS_DEFINITIONS}" )
+ 
+-string( REPLACE " " ";" WPS_DEFINITIONS_LIST ${WPS_DEFINITIONS} )
++string( REPLACE " " ";" WPS_DEFINITIONS_LIST "${WPS_DEFINITIONS}" )
+ 
+ # Make a copy, filter for anything not -D
+ set( WPS_UNDEFINITIONS_LIST ${WPS_DEFINITIONS_LIST} )

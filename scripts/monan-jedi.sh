@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# =============================================================================
-# MONAN-JEDI workflow orchestrator
-# =============================================================================
+# MONAN-JEDI workflow orchestrator.
 
 set -euo pipefail
 umask 002
@@ -19,7 +17,7 @@ source "${script_dir}/lib/obs2ioda.sh"
 source "${script_dir}/lib/wps.sh"
 
 usage() {
-  cat <<EOF
+  cat <<'EOF_USAGE'
 Usage:
   bash scripts/monan-jedi.sh <command> [--config config/jaci.yaml]
 
@@ -28,17 +26,14 @@ Commands:
   configure     Configure the MONAN-JEDI bundle with ecbuild
   build         Build the configured bundle
   install       Install the configured bundle into install.root
-  test          Run login-node-safe CTest subset
+  test          Run the login-node-safe CTest subset
   test-pbs      Submit CTest to PBS
-  obs2ioda      Build and publish NCAR/obs2ioda with the MONAN-JEDI stack
-  wps           Build and publish WPS/UNGRIB with the MONAN-JEDI stack
-  logs          Collect logs
-  all           Run load, configure, build, install, enabled tools, test, logs
-
-WPS requires an explicit numeric wps.configure_option from the JACI GRIB2
-configure menu. It is built outside the main bundle and published under the
-same install root used by the MONAN-JEDI executables.
-EOF
+  obs2ioda      Build and publish NCAR/obs2ioda
+  wps           Build, validate and publish WPS/UNGRIB
+  test-wps      Validate the published WPS/UNGRIB installation
+  logs          Collect workflow logs
+  all           Run the bundle and all enabled auxiliary tools
+EOF_USAGE
 }
 
 command_name="${1:-}"
@@ -64,6 +59,7 @@ case "${command_name}" in
   test-pbs) monan_jedi_test_pbs ;;
   obs2ioda) monan_jedi_build_obs2ioda ;;
   wps) monan_jedi_build_wps ;;
+  test-wps) monan_jedi_test_wps ;;
   logs) monan_jedi_collect_logs ;;
   all)
     monan_jedi_load_stack
@@ -71,8 +67,7 @@ case "${command_name}" in
     monan_jedi_configure_bundle
     monan_jedi_build_bundle
     monan_jedi_install_bundle
-    monan_jedi_build_obs2ioda
-    monan_jedi_load_wps_config
+    if monan_jedi_obs2ioda_enabled; then monan_jedi_build_obs2ioda; fi
     if monan_jedi_wps_enabled; then monan_jedi_build_wps; fi
     monan_jedi_test_login
     monan_jedi_collect_logs
