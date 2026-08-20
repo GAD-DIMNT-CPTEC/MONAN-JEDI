@@ -14,12 +14,15 @@
 #   ${MONAN_JEDI_LOG_ROOT}/11_jedi_all_tests.pbs
 #   ${MONAN_JEDI_LOG_ROOT}/11_ctest_all_pbs.out
 #   ${MONAN_JEDI_LOG_ROOT}/11_ctest_all_pbs.log
+#   ${MONAN_JEDI_LOG_ROOT}/11_ctest_all_pbs.result
+#   ${MONAN_JEDI_LOG_ROOT}/11_ctest_all_pbs_submission.txt
 #   ${MONAN_JEDI_LOG_ROOT}/11_ctest_all_pbs_jobid.txt, when submitted
 #
 # Expected result:
 #   The PBS job runs ctest without a broad -R selection. If
 #   MONAN_JEDI_CTEST_EXCLUDE_REGEX is set, the listed known-failing tests are
-#   excluded with ctest -E.
+#   excluded with ctest -E. At completion, the job writes a machine-readable
+#   result file that can be evaluated with the test-pbs-result command.
 
 monan_jedi_test_pbs() {
   require_cmd qsub
@@ -45,8 +48,9 @@ monan_jedi_test_pbs() {
   esac
 
   local script_dir repo_dir test_stamp
-  local pbs_script pbs_log ctest_log
+  local pbs_script pbs_log ctest_log result_file
   local latest_pbs_script latest_pbs_log latest_pbs_err latest_ctest_log
+  local latest_result_file submission_file jobid_file
 
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
   repo_dir="$(pwd)"
@@ -68,14 +72,18 @@ monan_jedi_test_pbs() {
   pbs_script="${MONAN_JEDI_LOG_ROOT}/jedi_all_tests_${test_stamp}.pbs"
   pbs_log="${MONAN_JEDI_LOG_ROOT}/jedi_all_tests_${test_stamp}.pbs.log"
   ctest_log="${MONAN_JEDI_LOG_ROOT}/jedi_all_tests_${test_stamp}.ctest.log"
+  result_file="${MONAN_JEDI_LOG_ROOT}/jedi_all_tests_${test_stamp}.result"
   latest_pbs_script="${MONAN_JEDI_LOG_ROOT}/11_jedi_all_tests.pbs"
   latest_pbs_log="${MONAN_JEDI_LOG_ROOT}/11_ctest_all_pbs.out"
   latest_pbs_err="${MONAN_JEDI_LOG_ROOT}/11_ctest_all_pbs.err"
   latest_ctest_log="${MONAN_JEDI_LOG_ROOT}/11_ctest_all_pbs.log"
+  latest_result_file="${MONAN_JEDI_LOG_ROOT}/11_ctest_all_pbs.result"
+  submission_file="${MONAN_JEDI_LOG_ROOT}/11_ctest_all_pbs_submission.txt"
+  jobid_file="${MONAN_JEDI_LOG_ROOT}/11_ctest_all_pbs_jobid.txt"
 
   # Generate the PBS job script with the current configuration exported
   # explicitly. This makes the job reproducible from the submitted script alone.
-  cat > "${pbs_script}" <<EOF
+  cat > "${pbs_script}" <<EOF_PBS
 #!/bin/bash
 #PBS -N jedi_all_ctest
 #PBS -q ${MONAN_JEDI_PBS_QUEUE}
@@ -110,8 +118,11 @@ export MONAN_JEDI_INSTALL_ROOT=${MONAN_JEDI_INSTALL_ROOT}
 export MONAN_JEDI_INSTALL_BIN_DIR=${MONAN_JEDI_INSTALL_BIN_DIR}
 export MONAN_JEDI_CTEST_EXCLUDE_REGEX='${MONAN_JEDI_CTEST_EXCLUDE_REGEX}'
 export MONAN_JEDI_CTEST_JOBS=${MONAN_JEDI_CTEST_JOBS}
+export TEST_STAMP='${test_stamp}'
 export CTEST_LOG='${ctest_log}'
 export LATEST_CTEST_LOG='${latest_ctest_log}'
+export RESULT_FILE='${result_file}'
+export LATEST_RESULT_FILE='${latest_result_file}'
 
 source ${script_dir}/lib/common.sh
 source ${script_dir}/lib/config.sh
@@ -141,9 +152,56 @@ fi
   echo "=== Complete CTest execution ==="
 } | tee "${MONAN_JEDI_LOG_ROOT}/11_ctest_all_pbs_environment.log"
 
+# CTest returns non-zero when tests fail. Capture that status instead of letting
+# set -e/pipefail terminate the PBS script before the log/result files are
+# finalized.
+set +e
 ctest "\${ctest_args[@]}" 2>&1 | tee "\${CTEST_LOG}"
+pipeline_status=("\${PIPESTATUS[@]}")
+set -e
+ctest_rc="\${pipeline_status[0]}"
+tee_rc="\${pipeline_status[1]}"
+
 cp -f "\${CTEST_LOG}" "\${LATEST_CTEST_LOG}"
-EOF
+
+summary_line="\$(grep -E '[0-9]+% tests passed, [0-9]+ tests failed out of [0-9]+' "\${CTEST_LOG}" | tail -n 1 || true)"
+total_tests=""
+passed_tests=""
+failed_tests=""
+result="INCOMPLETE"
+result_exit=2
+
+if [[ "\${summary_line}" =~ ([0-9]+)%[[:space:]]+tests[[:space:]]+passed,[[:space:]]+([0-9]+)[[:space:]]+tests[[:space:]]+failed[[:space:]]+out[[:space:]]+of[[:space:]]+([0-9]+) ]]; then
+  failed_tests="\${BASH_REMATCH[2]}"
+  total_tests="\${BASH_REMATCH[3]}"
+  passed_tests=\$((total_tests - failed_tests))
+
+  if [[ "\${ctest_rc}" -eq 0 && "\${tee_rc}" -eq 0 && "\${failed_tests}" -eq 0 ]]; then
+    result="PASS"
+    result_exit=0
+  else
+    result="FAIL"
+    result_exit="\${ctest_rc}"
+    [[ "\${result_exit}" -eq 0 ]] && result_exit=1
+  fi
+fi
+
+result_tmp="\${RESULT_FILE}.tmp.\$\$"
+cat > "\${result_tmp}" <<EOF_RESULT
+TEST_STAMP=\${TEST_STAMP}
+JOB_ID=\${PBS_JOBID:-}
+RESULT=\${result}
+CTEST_EXIT_CODE=\${ctest_rc}
+TOTAL_TESTS=\${total_tests}
+PASSED_TESTS=\${passed_tests}
+FAILED_TESTS=\${failed_tests}
+CTEST_LOG=\${CTEST_LOG}
+EOF_RESULT
+mv -f "\${result_tmp}" "\${RESULT_FILE}"
+cp -f "\${RESULT_FILE}" "\${LATEST_RESULT_FILE}"
+
+exit "\${result_exit}"
+EOF_PBS
 
   chmod +x "${pbs_script}"
 
@@ -155,6 +213,7 @@ EOF
   log_info "Complete JEDI CTest PBS job prepared"
   log_info "  PBS script=${pbs_script}"
   log_info "  CTest log=${ctest_log}"
+  log_info "  Result file=${result_file}"
   log_info "  queue=${MONAN_JEDI_PBS_QUEUE}"
   log_info "  ncpus=${MONAN_JEDI_PBS_NCPUS}"
   log_info "  walltime=${MONAN_JEDI_PBS_WALLTIME}"
@@ -164,7 +223,20 @@ EOF
   # Submit automatically by default, but allow review-only mode through the YAML
   # configuration or environment.
   if [[ "${MONAN_JEDI_SUBMIT_JOB}" == "1" ]]; then
-    qsub "${pbs_script}" | tee "${MONAN_JEDI_LOG_ROOT}/11_ctest_all_pbs_jobid.txt"
+    local job_id
+    job_id="$(qsub "${pbs_script}")"
+    printf '%s\n' "${job_id}" | tee "${jobid_file}"
+
+    cat > "${submission_file}" <<EOF_SUBMISSION
+TEST_STAMP=${test_stamp}
+JOB_ID=${job_id}
+RESULT_FILE=${result_file}
+CTEST_LOG=${ctest_log}
+PBS_LOG=${pbs_log}
+EOF_SUBMISSION
+
+    log_info "After the PBS job completes, validate the result with:"
+    log_info "  bash scripts/monan-jedi.sh test-pbs-result --config ${MONAN_JEDI_CONFIG}"
   else
     log_info "Not submitting automatically. Review and submit with: qsub ${pbs_script}"
   fi

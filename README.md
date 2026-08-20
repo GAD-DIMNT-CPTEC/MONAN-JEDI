@@ -52,17 +52,18 @@ bash scripts/monan-jedi.sh <command> --config config/jaci.yaml
 Available commands:
 
 ```text
-load        Load and validate the spack-stack environment
-configure   Configure the MONAN-JEDI bundle with ecbuild
-build       Build the configured bundle
-install     Install the configured bundle
-test        Run the login-node-safe CTest subset
-test-pbs    Submit CTest to PBS
-obs2ioda    Build and publish NCAR/obs2ioda
-wps         Build, validate and publish WPS/UNGRIB
-test-wps    Validate the published WPS installation
-logs        Collect workflow logs
-all         Run the bundle and all enabled auxiliary tools
+load             Load and validate the spack-stack environment
+configure        Configure the MONAN-JEDI bundle with ecbuild
+build            Build the configured bundle
+install          Install the configured bundle
+test             Run the login-node-safe CTest subset
+test-pbs         Submit CTest to PBS
+test-pbs-result  Validate the most recent PBS CTest result
+obs2ioda         Build and publish NCAR/obs2ioda
+wps              Build, validate and publish WPS/UNGRIB
+test-wps         Validate the published WPS installation
+logs             Collect workflow logs
+all              Run the bundle and all enabled auxiliary tools
 ```
 
 Normal full sequence:
@@ -80,6 +81,54 @@ bash scripts/monan-jedi.sh test-wps --config config/jaci.yaml
 ```
 
 The `all` command builds auxiliary tools only when their respective `enabled` setting is true.
+
+### Full CTest validation with PBS
+
+The `test` and `test-pbs` commands have different purposes.
+
+The command:
+
+```bash
+bash scripts/monan-jedi.sh test --config config/jaci.yaml
+```
+
+runs only the login-node-safe CTest subset. With the default JACI configuration,
+this currently selects `mpasjedi_coding_norms`. A successful `test` result does
+not mean that the complete JEDI/MPAS-JEDI test suite has passed.
+
+Submit the complete configured validation to a compute node with:
+
+```bash
+bash scripts/monan-jedi.sh test-pbs --config config/jaci.yaml
+```
+
+`test-pbs` is asynchronous: a successful `qsub` means that PBS accepted the job,
+not that the CTest suite passed. The submission prints the timestamped CTest log
+and result-file paths and records the PBS job ID under the run log directory.
+
+After the PBS job has completed, validate the result with:
+
+```bash
+bash scripts/monan-jedi.sh test-pbs-result --config config/jaci.yaml
+```
+
+The validator reports one of three states:
+
+- `PASS`: CTest completed and no configured test failed.
+- `FAIL`: CTest completed and one or more configured tests failed, or CTest returned a failure status.
+- `INCOMPLETE`: there is no complete final CTest result for the current submission.
+
+The command returns exit status `0` for `PASS`, `1` for `FAIL`, and `2` for `INCOMPLETE`.
+
+Current PBS jobs write a machine-readable `.result` file containing the PBS job ID,
+CTest exit code, total/passed/failed counts and CTest log path. For backward
+compatibility, `test-pbs-result` can also validate older `test-pbs` executions
+from the newest timestamped `jedi_all_tests_*.ctest.log` when no current submission
+metadata exists.
+
+The full PBS validation respects `ctest.exclude_regex` from the YAML configuration.
+Therefore, `PASS` means that all configured tests except those explicitly excluded
+by that setting passed.
 
 ## WPS/UNGRIB integration
 
@@ -136,6 +185,8 @@ MONAN-JEDI/
 │   ├── monan-jedi.sh
 │   └── lib/
 │       ├── obs2ioda.sh
+│       ├── pbs.sh
+│       ├── pbs_result.sh
 │       ├── read_config.py
 │       ├── wps.sh
 │       └── wps_dependencies.sh
