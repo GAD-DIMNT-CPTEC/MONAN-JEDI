@@ -36,13 +36,13 @@ printf '%s\n' '#!/bin/bash' '#PBS -q aux' > "${aux_script}"
 monan_jedi_validate_pbs_placement_policy "${compute_script}" pesqmini
 monan_jedi_validate_pbs_placement_policy "${aux_script}" aux
 
-if monan_jedi_validate_pbs_placement_policy "${aux_script}" pesqmini 2>/dev/null; then
+if (monan_jedi_validate_pbs_placement_policy "${aux_script}" pesqmini) 2>/dev/null; then
   echo "ERROR: compute queue validation accepted a missing exclusive directive" >&2
   exit 1
 fi
 
 printf '%s\n' '#PBS -l place=excl' >> "${aux_script}"
-if monan_jedi_validate_pbs_placement_policy "${aux_script}" aux 2>/dev/null; then
+if (monan_jedi_validate_pbs_placement_policy "${aux_script}" aux) 2>/dev/null; then
   echo "ERROR: aux queue validation accepted an exclusive directive" >&2
   exit 1
 fi
