@@ -1,5 +1,63 @@
 #!/usr/bin/env python3
-"""Read MONAN-JEDI YAML configuration and emit shell exports."""
+"""Translate MONAN-JEDI YAML configuration into shell exports.
+
+Purpose
+-------
+This helper is the YAML boundary used by ``scripts/lib/config.sh``. It reads one
+site/build configuration file and writes shell ``export`` statements to standard
+output. The caller evaluates those statements and then derives paths whose
+defaults depend on more than one setting.
+
+Configuration model
+-------------------
+The accepted YAML document must be a mapping. Settings are grouped by purpose:
+
+* ``project.*``: writable user/project workspace.
+* ``stack.*``: existing spack-stack installation and environment module.
+* ``build.*`` and ``install.*``: build identity, parallelism and publication.
+* ``model.*``: MPAS build options.
+* ``data.*``: external-data cache and offline mirror.
+* ``obs2ioda.*`` and ``wps.*``: auxiliary component builds.
+* ``compilers.*`` and ``mpi.*``: compiler and MPI wrapper commands.
+* ``ctest.*`` and ``pbs.*``: test selection and JACI batch resources.
+
+The top-level ``site`` value is descriptive metadata and is intentionally not
+exported. Complete user-facing descriptions belong in
+``docs/YAML_CONFIGURATION.md`` and the commented files under ``config/``.
+
+Value conversion
+----------------
+Nested keys are addressed with dotted paths. Missing keys and explicit YAML
+``null`` values use the mapped default. YAML booleans become ``1`` or ``0`` for
+the shell consumers, strings receive environment-variable expansion, and every
+emitted value is shell-quoted.
+
+Environment precedence
+----------------------
+An already exported variable takes precedence over both YAML and built-in
+defaults, including when its value is an empty string. This supports controlled
+one-off overrides without editing the persistent YAML configuration.
+
+Division of responsibility
+--------------------------
+This module maps individual YAML values and provides context-free defaults.
+``config.sh`` owns derived values such as the work/log roots and paths that
+depend on ``project.root``, ``build.id`` or ``install.root``. Keeping derivation
+there avoids duplicating shell workflow policy in this parser.
+
+Compatibility
+-------------
+Keep this file executable with Python 3.6: JACI compute nodes may expose that
+interpreter before the spack-stack module is loaded. Avoid postponed-annotation
+future imports and built-in generic syntax; use types from ``typing`` instead.
+
+Output and errors
+-----------------
+On success, standard output contains only valid, safely quoted ``export``
+statements, one per mapped environment variable. Diagnostics go to standard
+error and a non-zero status prevents ``config.sh`` from evaluating partial
+configuration output.
+"""
 
 import os
 import shlex
@@ -15,6 +73,12 @@ except ImportError:
 
 
 def read_yaml(path: str) -> Dict[str, Any]:
+    """Load and validate a YAML configuration document.
+
+    Empty documents are treated as empty mappings so all values may fall back to
+    defaults. Any non-mapping root is rejected because dotted-key lookup assumes
+    named configuration sections.
+    """
     with Path(path).open("r", encoding="utf-8") as stream:
         loaded = yaml.safe_load(stream)
     if loaded is None:
@@ -25,6 +89,12 @@ def read_yaml(path: str) -> Dict[str, Any]:
 
 
 def get_value(data: Dict[str, Any], path: str, default: str = "") -> str:
+    """Return one dotted-path YAML value as a shell-friendly string.
+
+    Missing keys and explicit null values return ``default``. Booleans use the
+    numeric convention consumed by the shell helpers; all other values are
+    stringified after expanding references such as ``${USER}``.
+    """
     current: Any = data
     for key in path.split("."):
         if not isinstance(current, dict) or key not in current:
@@ -39,11 +109,13 @@ def get_value(data: Dict[str, Any], path: str, default: str = "") -> str:
 
 
 def emit(name: str, value: str) -> None:
+    """Write one safely quoted export, honoring an existing environment value."""
     resolved = os.environ.get(name, value)
     sys.stdout.write(f"export {name}={shlex.quote(resolved)}\n")
 
 
 def main() -> int:
+    """Read the requested YAML file and emit the complete export contract."""
     if len(sys.argv) != 2:
         sys.stderr.write("Usage: read_config.py <config.yaml>\n")
         return 2
@@ -54,6 +126,9 @@ def main() -> int:
         sys.stderr.write(f"Could not read configuration: {exc}\n")
         return 1
 
+    # Canonical YAML-to-environment contract. Keep this synchronized with
+    # config/template.yaml, config/jaci.yaml and docs/YAML_CONFIGURATION.md.
+    # Derived-only variables intentionally remain in scripts/lib/config.sh.
     mapping = {
         "PROJECT_ROOT": "project.root",
         "STACK_OWNER": "stack.owner",
@@ -125,6 +200,8 @@ def main() -> int:
         "MONAN_JEDI_SUBMIT_JOB": "pbs.submit_job",
     }
 
+    # Defaults here are independent scalar values. Defaults composed from other
+    # settings belong in config.sh, after these exports have been evaluated.
     defaults = {
         "STACK_OWNER": os.environ.get("USER", "unknown"),
         "STACK_SITE_SETUP": "configs/sites/tier2/jaci/setup.sh",
@@ -163,6 +240,8 @@ def main() -> int:
         "MONAN_JEDI_SUBMIT_JOB": "1",
     }
 
+    # Preserve mapping order to keep generated output deterministic and easy to
+    # inspect in diagnostics.
     for env_name, yaml_path in mapping.items():
         emit(env_name, get_value(data, yaml_path, defaults.get(env_name, "")))
 
