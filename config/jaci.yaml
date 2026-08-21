@@ -406,6 +406,8 @@ ctest:
 
 pbs:
   # PBS queue used by the test-pbs command.
+  # JACI requires "#PBS -l place=excl" for every compute-node queue. The
+  # generator adds it automatically; queue aux is the only shared exception.
   queue: pesqmini
 
   # CPUs requested on one node through select=1:ncpus=<value>.
