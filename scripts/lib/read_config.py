@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 """Read MONAN-JEDI YAML configuration and emit shell exports."""
 
-from __future__ import annotations
-
 import os
 import shlex
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict
 
 try:
     import yaml
@@ -16,7 +14,7 @@ except ImportError:
     sys.exit(1)
 
 
-def read_yaml(path: str) -> dict[str, Any]:
+def read_yaml(path: str) -> Dict[str, Any]:
     with Path(path).open("r", encoding="utf-8") as stream:
         loaded = yaml.safe_load(stream)
     if loaded is None:
@@ -26,7 +24,7 @@ def read_yaml(path: str) -> dict[str, Any]:
     return loaded
 
 
-def get_value(data: dict[str, Any], path: str, default: str = "") -> str:
+def get_value(data: Dict[str, Any], path: str, default: str = "") -> str:
     current: Any = data
     for key in path.split("."):
         if not isinstance(current, dict) or key not in current:
