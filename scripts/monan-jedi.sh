@@ -12,6 +12,7 @@ source "${script_dir}/lib/configure.sh"
 source "${script_dir}/lib/build.sh"
 source "${script_dir}/lib/test.sh"
 source "${script_dir}/lib/pbs.sh"
+source "${script_dir}/lib/pbs_result.sh"
 source "${script_dir}/lib/logs.sh"
 source "${script_dir}/lib/obs2ioda.sh"
 source "${script_dir}/lib/wps.sh"
@@ -22,17 +23,18 @@ Usage:
   bash scripts/monan-jedi.sh <command> [--config config/jaci.yaml]
 
 Commands:
-  load          Load and validate the spack-stack environment
-  configure     Configure the MONAN-JEDI bundle with ecbuild
-  build         Build the configured bundle
-  install       Install the configured bundle into install.root
-  test          Run the login-node-safe CTest subset
-  test-pbs      Submit CTest to PBS
-  obs2ioda      Build and publish NCAR/obs2ioda
-  wps           Build, validate and publish WPS/UNGRIB
-  test-wps      Validate the published WPS/UNGRIB installation
-  logs          Collect workflow logs
-  all           Run the bundle and all enabled auxiliary tools
+  load             Load and validate the spack-stack environment
+  configure        Configure the MONAN-JEDI bundle with ecbuild
+  build            Build the configured bundle
+  install          Install the configured bundle into install.root
+  test             Run the login-node-safe CTest subset
+  test-pbs         Submit CTest to PBS
+  test-pbs-result  Validate the most recent PBS CTest result
+  obs2ioda         Build and publish NCAR/obs2ioda
+  wps              Build, validate and publish WPS/UNGRIB
+  test-wps         Validate the published WPS/UNGRIB installation
+  logs             Collect workflow logs
+  all              Run the bundle and all enabled auxiliary tools
 EOF_USAGE
 }
 
@@ -57,6 +59,7 @@ case "${command_name}" in
   install) monan_jedi_install_bundle ;;
   test) monan_jedi_test_login ;;
   test-pbs) monan_jedi_test_pbs ;;
+  test-pbs-result) monan_jedi_test_pbs_result ;;
   obs2ioda) monan_jedi_build_obs2ioda ;;
   wps) monan_jedi_build_wps ;;
   test-wps) monan_jedi_test_wps ;;
