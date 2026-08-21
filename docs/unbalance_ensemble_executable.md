@@ -61,24 +61,25 @@ A wrong component revision or a partially applied patch is treated as a hard
 configuration error.
 
 Both `mpasjedi_process_perts.x` and `mpasjedi_unbalance_ensemble.x` are created
-with the same MPAS-JEDI `ecbuild_add_executable` mechanism. MONAN-JEDI configures:
+with the same MPAS-JEDI `ecbuild_add_executable` mechanism. MPAS-JEDI places
+the compiled runtime artifacts in the bundle build tree:
 
 ```text
-CMAKE_INSTALL_BINDIR=bin
-CMAKE_RUNTIME_OUTPUT_DIRECTORY=${install.bin_dir}
+${build.dir}/bin/mpasjedi_process_perts.x
+${build.dir}/bin/mpasjedi_unbalance_ensemble.x
 ```
 
-and the documented default for `install.bin_dir` is `${install.root}/bin`.
-Therefore the unbalance executable uses the same user-facing executable directory
-as the other MPAS-JEDI programs:
+The subsequent `make install` publishes both executables to the common
+user-facing directory. With the documented defaults, the final contract is:
 
 ```text
 ${install.root}/bin/mpasjedi_process_perts.x
 ${install.root}/bin/mpasjedi_unbalance_ensemble.x
 ```
 
-The build and install steps validate both paths and fail if the unbalance
-executable was not produced. A successful bundle build can no longer silently
+The build step validates the artifacts under `${build.dir}/bin`; the install
+step independently validates the published executables under
+`${install.root}/bin`. A successful full bundle build can no longer silently
 complete without this required executable.
 
 ## Manual patch helper
