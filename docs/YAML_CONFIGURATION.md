@@ -4,6 +4,33 @@ The YAML file is the user-facing interface for the build workflow. Routine use s
 
 The default JACI configuration is `config/jaci.yaml`; `config/template.yaml` is the starting point for another site.
 
+## Configuration loader contract
+
+`scripts/lib/read_config.py` is the boundary between the user-facing YAML file
+and the shell workflow. It emits safely quoted `export NAME=value` commands;
+`scripts/lib/config.sh` evaluates those commands and then derives paths that
+depend on multiple settings.
+
+Each mapped value follows this precedence:
+
+1. an existing environment variable, including an explicitly empty value;
+2. the corresponding YAML value;
+3. the built-in scalar default;
+4. an empty string when no value or default exists.
+
+YAML booleans are exported as `1` or `0`. References such as `${USER}` in
+YAML scalar values are expanded from the loader process environment. Strings,
+numbers and booleans are supported; lists and mappings are rejected because they
+cannot be represented unambiguously by the shell-variable contract.
+
+The generated values are quoted with Python's `shlex.quote`, so spaces and shell
+metacharacters remain data when `config.sh` evaluates the output. Diagnostics
+are written to standard error, and loader failures are not evaluated as partial
+configuration.
+
+The loader must remain compatible with Python 3.6 because a JACI PBS job can
+execute it on a compute node before the spack-stack environment has been loaded.
+
 ## Path derivation
 
 When optional paths are empty, the workflow derives them from `project.root`, `build.id` and `install.root`.
