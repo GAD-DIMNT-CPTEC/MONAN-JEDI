@@ -23,8 +23,12 @@ require_text "${configure_script}" 'target_help="$(cmake --build'
 require_text "${configure_script}" 'CMAKE_RUNTIME_OUTPUT_DIRECTORY=${MONAN_JEDI_INSTALL_BIN_DIR}'
 require_text "${build_script}" 'mpasjedi_process_perts.x'
 require_text "${build_script}" 'mpasjedi_unbalance_ensemble.x'
+require_text "${build_script}" 'MONAN_JEDI_BUILD_DIR}/bin'
 require_text "${build_script}" 'MONAN_JEDI_INSTALL_BIN_DIR'
+require_text "${build_script}" '"build"'
+require_text "${build_script}" '"install"'
 require_text "${doc_file}" 'applies the required patches automatically'
+require_text "${doc_file}" '${build.dir}/bin/mpasjedi_unbalance_ensemble.x'
 require_text "${doc_file}" '${install.root}/bin/mpasjedi_unbalance_ensemble.x'
 
 # Regression test for the pipefail/SIGPIPE false negative observed on JACI.
