@@ -15,8 +15,8 @@ The YAML root must be a mapping. Supported sections are ``project``, ``stack``,
 ``compilers``, ``mpi``, ``ctest`` and ``pbs``. The top-level ``site`` key is
 descriptive metadata and is intentionally not exported.
 
-Resolution precedence
----------------------
+Environment precedence
+----------------------
 For each supported variable, values are resolved in this order:
 
 1. Existing environment variable, including an explicitly empty value.
