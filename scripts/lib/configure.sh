@@ -137,12 +137,41 @@ monan_jedi_apply_unbalance_patches() {
   ) 2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/04_unbalance_patches.log"
 }
 
+monan_jedi_validate_unbalance_patch_markers() {
+  local saber_dir="${MONAN_JEDI_SOURCE_DIR}/saber"
+  local mpas_jedi_dir="${MONAN_JEDI_SOURCE_DIR}/mpas-jedi"
+
+  if [[ ! -f "${saber_dir}/src/saber/oops/UnbalanceEnsemble.h" ]] ||
+     ! grep -Fq "UnbalanceEnsemble.h" "${saber_dir}/src/saber/oops/CMakeLists.txt"; then
+    log_error "SABER unbalance patch markers are missing after the final configure pass."
+    exit 1
+  fi
+
+  if [[ ! -f "${mpas_jedi_dir}/src/mains/mpasUnbalanceEnsemble.cc" ]] ||
+     ! grep -Fq "unbalance_ensemble" "${mpas_jedi_dir}/src/mains/CMakeLists.txt"; then
+    log_error "MPAS-JEDI unbalance patch markers are missing after the final configure pass."
+    exit 1
+  fi
+
+  log_info "Validated unbalance patch markers after final configure"
+}
+
 monan_jedi_validate_unbalance_target() {
   local target="mpasjedi_unbalance_ensemble.x"
+  local target_help
 
-  if ! cmake --build "${MONAN_JEDI_BUILD_DIR}" --target help 2>/dev/null | grep -Fq "${target}"; then
+  # Keep target discovery and target matching as separate commands. With
+  # pipefail enabled, piping a large CMake help listing into grep -q can report
+  # failure even when the target is present: grep exits after the match and the
+  # producer can then terminate with SIGPIPE.
+  if ! target_help="$(cmake --build "${MONAN_JEDI_BUILD_DIR}" --target help 2>&1)"; then
+    log_error "CMake failed while listing registered build targets."
+    log_error "${target_help}"
+    exit 1
+  fi
+
+  if ! grep -Fq -- "${target}" <<<"${target_help}"; then
     log_error "Required MPAS-JEDI target was not registered by CMake: ${target}"
-    log_error "The unbalance patches must be applied before the final configure pass."
     exit 1
   fi
 
@@ -272,5 +301,6 @@ EOF_PROJECT
   ecbuild "${ecbuild_args[@]}" \
     2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/04_ecbuild.log"
 
+  monan_jedi_validate_unbalance_patch_markers
   monan_jedi_validate_unbalance_target
 }
