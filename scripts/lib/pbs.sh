@@ -159,13 +159,46 @@ export CTEST_LOG='${ctest_log}'
 export LATEST_CTEST_LOG='${latest_ctest_log}'
 export RESULT_FILE='${result_file}'
 export LATEST_RESULT_FILE='${latest_result_file}'
+export PBS_LOG='${pbs_log}'
+
+# Always publish a machine-readable result, including failures that happen
+# during configuration or stack bootstrap before CTest starts.
+job_phase="bootstrap"
+finalize_pbs_result() {
+  local job_rc="\$?"
+  local result_tmp
+
+  trap - EXIT
+  if [[ ! -s "\${RESULT_FILE}" ]]; then
+    result_tmp="\${RESULT_FILE}.tmp.\$\$"
+    cat > "\${result_tmp}" <<EOF_EARLY_RESULT
+TEST_STAMP=\${TEST_STAMP}
+JOB_ID=\${PBS_JOBID:-}
+RESULT=INCOMPLETE
+CTEST_EXIT_CODE=\${job_rc}
+TOTAL_TESTS=
+PASSED_TESTS=
+FAILED_TESTS=
+ERROR_PHASE=\${job_phase}
+CTEST_LOG=\${CTEST_LOG}
+PBS_LOG=\${PBS_LOG}
+EOF_EARLY_RESULT
+    mv -f "\${result_tmp}" "\${RESULT_FILE}"
+    cp -f "\${RESULT_FILE}" "\${LATEST_RESULT_FILE}"
+  fi
+
+  exit "\${job_rc}"
+}
+trap finalize_pbs_result EXIT
 
 source ${script_dir}/lib/common.sh
 source ${script_dir}/lib/config.sh
 source ${script_dir}/lib/stack.sh
 load_monan_jedi_config
+job_phase="stack-load"
 monan_jedi_load_stack
 
+job_phase="ctest-environment"
 cd "\${MONAN_JEDI_BUILD_DIR}"
 
 ctest_args=(--output-on-failure -j "\${MONAN_JEDI_CTEST_JOBS}")
@@ -188,6 +221,7 @@ fi
   echo "=== Complete CTest execution ==="
 } | tee "${MONAN_JEDI_LOG_ROOT}/11_ctest_all_pbs_environment.log"
 
+job_phase="ctest-execution"
 # CTest returns non-zero when tests fail. Capture that status instead of letting
 # set -e/pipefail terminate the PBS script before the log/result files are
 # finalized.
@@ -231,7 +265,9 @@ CTEST_EXIT_CODE=\${ctest_rc}
 TOTAL_TESTS=\${total_tests}
 PASSED_TESTS=\${passed_tests}
 FAILED_TESTS=\${failed_tests}
+ERROR_PHASE=
 CTEST_LOG=\${CTEST_LOG}
+PBS_LOG=\${PBS_LOG}
 EOF_RESULT
 mv -f "\${result_tmp}" "\${RESULT_FILE}"
 cp -f "\${RESULT_FILE}" "\${LATEST_RESULT_FILE}"

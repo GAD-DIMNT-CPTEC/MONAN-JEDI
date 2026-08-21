@@ -47,4 +47,47 @@ if (monan_jedi_validate_pbs_placement_policy "${aux_script}" aux) 2>/dev/null; t
   exit 1
 fi
 
-echo "PBS placement policy checks passed."
+# Bootstrap regression checks: compute nodes may still expose Python 3.6.
+read_config="${repo_root}/scripts/lib/read_config.py"
+config_lib="${repo_root}/scripts/lib/config.sh"
+pbs_lib="${repo_root}/scripts/lib/pbs.sh"
+
+if grep -Fq 'from __future__ import annotations' "${read_config}"; then
+  echo "ERROR: read_config.py requires Python 3.7 annotations support" >&2
+  exit 1
+fi
+grep -Fq 'from typing import Any, Dict' "${read_config}"
+grep -Fq 'if ! config_exports="$(python3' "${config_lib}"
+grep -Fq 'trap finalize_pbs_result EXIT' "${pbs_lib}"
+grep -Fq 'ERROR_PHASE=' "${pbs_lib}"
+grep -Fq 'PBS_LOG=' "${pbs_lib}"
+
+python3 "${read_config}" "${repo_root}/config/jaci.yaml" > "${test_dir}/exports.sh"
+bash -n "${test_dir}/exports.sh"
+
+fake_bin="${test_dir}/bin"
+mkdir -p "${fake_bin}"
+cat > "${fake_bin}/python3" <<'EOF_FAKE_PYTHON'
+#!/usr/bin/env bash
+echo "simulated configuration reader failure" >&2
+exit 42
+EOF_FAKE_PYTHON
+chmod +x "${fake_bin}/python3"
+
+if (
+  PATH="${fake_bin}:${PATH}"
+  MONAN_JEDI_CONFIG="${repo_root}/config/jaci.yaml"
+  source "${repo_root}/scripts/lib/common.sh"
+  source "${config_lib}"
+  load_monan_jedi_config
+) >"${test_dir}/loader.out" 2>"${test_dir}/loader.err"; then
+  echo "ERROR: configuration loader ignored reader failure" >&2
+  exit 1
+fi
+grep -Fq 'Failed to load configuration' "${test_dir}/loader.err"
+if grep -Fq 'unbound variable' "${test_dir}/loader.err"; then
+  echo "ERROR: configuration loader continued after reader failure" >&2
+  exit 1
+fi
+
+echo "PBS placement and bootstrap contract checks passed."

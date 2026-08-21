@@ -3,7 +3,7 @@
 
 load_monan_jedi_config() {
   local default_config="config/jaci.yaml"
-  local repo_root
+  local repo_root config_exports
 
   repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
   export MONAN_JEDI_CONFIG="${MONAN_JEDI_CONFIG:-${default_config}}"
@@ -14,8 +14,17 @@ load_monan_jedi_config() {
   fi
 
   require_cmd python3
-  # shellcheck disable=SC1090
-  eval "$(python3 "$(dirname "${BASH_SOURCE[0]}")/read_config.py" "${MONAN_JEDI_CONFIG}")"
+  if ! config_exports="$(python3 "$(dirname "${BASH_SOURCE[0]}")/read_config.py" "${MONAN_JEDI_CONFIG}")"; then
+    log_error "Failed to load configuration: ${MONAN_JEDI_CONFIG}"
+    exit 1
+  fi
+
+  # The reader emits only shell-quoted export statements. Do not evaluate
+  # partial or empty output when the reader fails.
+  if ! eval "${config_exports}"; then
+    log_error "Failed to apply configuration exports: ${MONAN_JEDI_CONFIG}"
+    exit 1
+  fi
 
   export PROJECT_ROOT="${PROJECT_ROOT:-/p/projetos/monan_das/${USER}}"
   export STACK_OWNER="${STACK_OWNER:-${USER}}"
