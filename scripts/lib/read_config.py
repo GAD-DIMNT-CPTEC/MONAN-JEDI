@@ -48,9 +48,8 @@ there avoids duplicating shell workflow policy in this parser.
 Compatibility
 -------------
 Keep this file executable with Python 3.6: JACI compute nodes may expose that
-interpreter before the spack-stack module is loaded. In particular, do not use
-``from __future__ import annotations`` or built-in generic syntax such as
-``dict[str, object]``.
+interpreter before the spack-stack module is loaded. Avoid postponed-annotation
+future imports and built-in generic syntax; use types from ``typing`` instead.
 
 Output and errors
 -----------------
