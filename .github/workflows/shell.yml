@@ -24,12 +24,22 @@ jobs:
         run: |
           find scripts -type f -name '*.sh' -print0 | xargs -0 -n1 bash -n
           bash -n tests/test_wps_dependency_resolution.sh
-          shellcheck --severity=error -e SC1090,SC1091 scripts/monan-jedi.sh scripts/monan-jedi-wps.sh scripts/lib/*.sh tests/test_wps_dependency_resolution.sh
+          bash -n tests/test_unbalance_build_contract.sh
+          shellcheck --severity=error -e SC1090,SC1091 scripts/monan-jedi.sh scripts/monan-jedi-wps.sh scripts/lib/*.sh tests/test_wps_dependency_resolution.sh tests/test_unbalance_build_contract.sh
           bash tests/test_wps_dependency_resolution.sh
+          bash tests/test_unbalance_build_contract.sh
       - name: Check Python
         run: |
           python -m py_compile scripts/lib/read_config.py tests/test_config.py
           python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Validate unbalance patches against pinned sources
+        run: |
+          git clone --filter=blob:none https://github.com/jcsda/saber.git saber
+          git -C saber checkout --detach d05c06fcc7da97389a19594a2e5424e709648330
+          git clone --filter=blob:none https://github.com/jcsda/mpas-jedi.git mpas-jedi
+          git -C mpas-jedi checkout --detach 19eb7fb3273c7b3094825201af184834c15afdd0
+          bash scripts/apply_unbalance_ensemble_patches.sh
+          bash scripts/apply_unbalance_ensemble_patches.sh
       - name: Validate WPS patches against pinned source
         run: |
           git clone --filter=blob:none https://github.com/wrf-model/WPS.git /tmp/WPS
