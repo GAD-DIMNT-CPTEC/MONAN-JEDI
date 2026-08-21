@@ -39,25 +39,60 @@ saber:     d05c06fcc7da97389a19594a2e5424e709648330
 mpas-jedi: 19eb7fb3273c7b3094825201af184834c15afdd0
 ```
 
-## Application workflow
+## Build integration
 
-First materialize `saber/` and `mpas-jedi/` at the revisions above. Then, from
-any directory inside the MONAN-JEDI Git worktree, run:
+The normal MONAN-JEDI configure workflow now applies the required patches automatically.
+Users do not need to run the patch helper manually before a standard build.
+
+On a clean checkout, `ecbuild_bundle` first has to materialize the pinned
+`saber/` and `mpas-jedi/` source trees. `scripts/lib/configure.sh` therefore uses
+this sequence:
+
+1. run one ecbuild materialization/configure pass only when those component
+   worktrees are not present;
+2. run `scripts/apply_unbalance_ensemble_patches.sh` against the pinned source
+   revisions;
+3. run the final ecbuild configure pass with the patched CMake files;
+4. verify that CMake registered the target `mpasjedi_unbalance_ensemble.x`.
+
+When the component worktrees already exist, the materialization pass is skipped.
+The patch helper is idempotent, so an already patched source tree is accepted.
+A wrong component revision or a partially applied patch is treated as a hard
+configuration error.
+
+Both `mpasjedi_process_perts.x` and `mpasjedi_unbalance_ensemble.x` are created
+with the same MPAS-JEDI `ecbuild_add_executable` mechanism. MONAN-JEDI configures:
+
+```text
+CMAKE_INSTALL_BINDIR=bin
+CMAKE_RUNTIME_OUTPUT_DIRECTORY=${install.bin_dir}
+```
+
+and the documented default for `install.bin_dir` is `${install.root}/bin`.
+Therefore the unbalance executable uses the same user-facing executable directory
+as the other MPAS-JEDI programs:
+
+```text
+${install.root}/bin/mpasjedi_process_perts.x
+${install.root}/bin/mpasjedi_unbalance_ensemble.x
+```
+
+The build and install steps validate both paths and fail if the unbalance
+executable was not produced. A successful bundle build can no longer silently
+complete without this required executable.
+
+## Manual patch helper
+
+The helper remains available for diagnostics or development:
 
 ```bash
+cd /path/to/MONAN-JEDI
 scripts/apply_unbalance_ensemble_patches.sh
 ```
 
-Apply the patches before configuring or reconfiguring the build. Both patches
-modify component `CMakeLists.txt` files, so CMake must be configured again after
-patch application for the new executable target to become available. The
-script is idempotent: it checks all expected source and CMake markers before
-reporting a component patch as already applied. If only part of a patch is
-present, the script stops and requests manual intervention.
-
-The script deliberately refuses to apply the patches to different component
-commits. If the bundle revisions are updated, rebase and validate the patches
-explicitly rather than bypassing the revision checks.
+Both component worktrees must already exist at the pinned revisions. Normal
+users should prefer `bash scripts/monan-jedi.sh configure` or
+`bash scripts/monan-jedi.sh all`, which perform the integration automatically.
 
 ## PR #15 functional validation
 
@@ -72,5 +107,6 @@ PTB_f48mf24_003.nc
 PTB_f48mf24_004.nc
 ```
 
-The validated example uses `read global sampling: false`, matching the local
-sampling and vertical-balance statistics available to the functional run.
+The generated files were valid MPAS NetCDF files. The validated example uses
+`read global sampling: false`, matching the local sampling and vertical-balance
+statistics available to the functional run.
