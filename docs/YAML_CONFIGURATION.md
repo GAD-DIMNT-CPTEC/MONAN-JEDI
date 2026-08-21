@@ -193,3 +193,15 @@ pbs:
 ```
 
 Controls generated PBS jobs for compute-node validation.
+
+On JACI, every generated job for a queue other than `aux` automatically
+contains:
+
+```text
+#PBS -l place=excl
+```
+
+This is a mandatory site policy for queues that use compute nodes. The `aux`
+queue is the documented exception and remains shared; the generator omits the
+directive for both `aux` and server-qualified names such as `aux@pbs-ha`.
+The generated PBS script is checked against this policy before any `qsub`.

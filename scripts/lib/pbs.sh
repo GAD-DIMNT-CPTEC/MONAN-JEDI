@@ -24,6 +24,39 @@
 #   excluded with ctest -E. At completion, the job writes a machine-readable
 #   result file that can be evaluated with the test-pbs-result command.
 
+monan_jedi_pbs_placement_directive() {
+  local queue="$1"
+  local queue_name="${queue%%@*}"
+
+  # JACI policy: jobs on compute-node queues must have exclusive node
+  # placement. The aux queue is the only documented sharing exception.
+  if [[ "${queue_name}" == "aux" ]]; then
+    return 0
+  fi
+
+  printf '%s\n' '#PBS -l place=excl'
+}
+
+monan_jedi_validate_pbs_placement_policy() {
+  local pbs_script="$1"
+  local queue="$2"
+  local queue_name="${queue%%@*}"
+  local directive='#PBS -l place=excl'
+
+  if [[ "${queue_name}" == "aux" ]]; then
+    if grep -Fxq -- "${directive}" "${pbs_script}"; then
+      log_error "PBS aux job must not request exclusive placement: ${pbs_script}"
+      exit 1
+    fi
+    return 0
+  fi
+
+  if ! grep -Fxq -- "${directive}" "${pbs_script}"; then
+    log_error "PBS compute-node job is missing required exclusive placement: ${pbs_script}"
+    exit 1
+  fi
+}
+
 monan_jedi_test_pbs() {
   require_cmd qsub
 
@@ -51,6 +84,7 @@ monan_jedi_test_pbs() {
   local pbs_script pbs_log ctest_log result_file
   local latest_pbs_script latest_pbs_log latest_pbs_err latest_ctest_log
   local latest_result_file submission_file jobid_file
+  local pbs_placement_directive
 
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
   repo_dir="$(pwd)"
@@ -64,6 +98,7 @@ monan_jedi_test_pbs() {
   export MONAN_JEDI_CTEST_JOBS="${MONAN_JEDI_CTEST_JOBS:-1}"
   export MONAN_JEDI_CTEST_EXCLUDE_REGEX="${MONAN_JEDI_CTEST_EXCLUDE_REGEX:-^(ioda_bufr_python_encoder|ioda_bufr_python_parallel|mpasjedi_lgetkf_height_vloc)$}"
   export MONAN_JEDI_SUBMIT_JOB="${MONAN_JEDI_SUBMIT_JOB:-1}"
+  pbs_placement_directive="$(monan_jedi_pbs_placement_directive "${MONAN_JEDI_PBS_QUEUE}")"
 
   mkdir -p "${MONAN_JEDI_LOG_ROOT}"
 
@@ -88,6 +123,7 @@ monan_jedi_test_pbs() {
 #PBS -N jedi_all_ctest
 #PBS -q ${MONAN_JEDI_PBS_QUEUE}
 #PBS -l select=1:ncpus=${MONAN_JEDI_PBS_NCPUS}
+${pbs_placement_directive}
 #PBS -l walltime=${MONAN_JEDI_PBS_WALLTIME}
 #PBS -j oe
 #PBS -o ${pbs_log}
@@ -203,6 +239,7 @@ cp -f "\${RESULT_FILE}" "\${LATEST_RESULT_FILE}"
 exit "\${result_exit}"
 EOF_PBS
 
+  monan_jedi_validate_pbs_placement_policy "${pbs_script}" "${MONAN_JEDI_PBS_QUEUE}"
   chmod +x "${pbs_script}"
 
   # Update stable latest-file references for users and post-processing scripts.
@@ -215,6 +252,11 @@ EOF_PBS
   log_info "  CTest log=${ctest_log}"
   log_info "  Result file=${result_file}"
   log_info "  queue=${MONAN_JEDI_PBS_QUEUE}"
+  if [[ -n "${pbs_placement_directive}" ]]; then
+    log_info "  placement=exclusive"
+  else
+    log_info "  placement=shared (aux queue exception)"
+  fi
   log_info "  ncpus=${MONAN_JEDI_PBS_NCPUS}"
   log_info "  walltime=${MONAN_JEDI_PBS_WALLTIME}"
   log_info "  jobs=${MONAN_JEDI_CTEST_JOBS}"
