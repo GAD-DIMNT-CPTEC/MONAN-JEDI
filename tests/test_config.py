@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import ast
 import os
 import shlex
 import subprocess
@@ -37,6 +38,22 @@ def read_exports(path: Path) -> dict[str, str]:
 
 
 class ConfigurationTests(unittest.TestCase):
+    def test_reader_documents_its_internal_contract(self) -> None:
+        source = READER.read_text(encoding="utf-8")
+        module_doc = ast.get_docstring(ast.parse(source))
+        self.assertIsNotNone(module_doc)
+
+        for section in (
+            "Purpose",
+            "Configuration model",
+            "Value conversion",
+            "Environment precedence",
+            "Division of responsibility",
+            "Compatibility",
+            "Output and errors",
+        ):
+            self.assertIn(section, module_doc)
+
     def test_yaml_documents_are_mappings(self) -> None:
         for path in (JACI, TEMPLATE):
             with path.open(encoding="utf-8") as stream:
