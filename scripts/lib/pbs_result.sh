@@ -65,11 +65,53 @@ _monan_jedi_read_key_value_file() {
 
   while IFS='=' read -r key value; do
     case "${key}" in
-      TEST_STAMP|JOB_ID|RESULT_FILE|CTEST_LOG|PBS_LOG|RESULT|CTEST_EXIT_CODE|TOTAL_TESTS|PASSED_TESTS|FAILED_TESTS)
+      TEST_STAMP|JOB_ID|RESULT_FILE|CTEST_LOG|PBS_LOG|RESULT|CTEST_EXIT_CODE|JOB_EXIT_CODE|TERMINATION_REASON|ERROR_PHASE|TOTAL_TESTS|PASSED_TESTS|FAILED_TESTS)
         printf -v "${prefix}_${key}" '%s' "${value}"
         ;;
     esac
   done < "${input_file}"
+}
+
+_monan_jedi_query_pbs_status() {
+  local job_id="$1"
+  local qstat_output
+
+  PBS_QUERY_STATE=""
+  PBS_QUERY_EXIT_STATUS=""
+  PBS_QUERY_COMMENT=""
+  PBS_QUERY_WALLTIME=""
+
+  command -v qstat >/dev/null 2>&1 || return 1
+  qstat_output="$(qstat -xf "${job_id}" 2>/dev/null)" || return 1
+
+  PBS_QUERY_STATE="$(awk -F= '
+    /^[[:space:]]*job_state[[:space:]]*=/ {
+      value=$2; gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+      print value; exit
+    }
+  ' <<< "${qstat_output}")"
+  PBS_QUERY_EXIT_STATUS="$(awk -F= '
+    /^[[:space:]]*Exit_status[[:space:]]*=/ {
+      value=$2; gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+      print value; exit
+    }
+  ' <<< "${qstat_output}")"
+  PBS_QUERY_COMMENT="$(awk -F= '
+    /^[[:space:]]*comment[[:space:]]*=/ {
+      sub(/^[^=]*=[[:space:]]*/, "")
+      print; exit
+    }
+  ' <<< "${qstat_output}")"
+  PBS_QUERY_WALLTIME="$(awk -F= '
+    /^[[:space:]]*resources_used.walltime[[:space:]]*=/ {
+      value=$2; gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+      print value; exit
+    }
+  ' <<< "${qstat_output}")"
+
+  export PBS_QUERY_STATE PBS_QUERY_EXIT_STATUS
+  export PBS_QUERY_COMMENT PBS_QUERY_WALLTIME
+  return 0
 }
 
 monan_jedi_test_pbs_result() {
@@ -82,6 +124,14 @@ monan_jedi_test_pbs_result() {
   local test_stamp=""
   local result=""
   local ctest_exit_code=""
+  local job_exit_code=""
+  local termination_reason=""
+  local error_phase=""
+  local pbs_log=""
+  local pbs_state=""
+  local pbs_exit_status=""
+  local pbs_comment=""
+  local pbs_walltime=""
   local total_tests=""
   local passed_tests=""
   local failed_tests=""
@@ -100,11 +150,9 @@ monan_jedi_test_pbs_result() {
     ctest_log="${SUBMISSION_CTEST_LOG:-}"
 
     if [[ -z "${result_file}" || ! -s "${result_file}" ]]; then
-      log_info "  job_id=${job_id:-unknown}"
-      log_info "  test_stamp=${test_stamp:-unknown}"
-      [[ -n "${ctest_log}" ]] && log_info "  CTest log=${ctest_log}"
-      printf '[INCOMPLETE] PBS CTest validation has no final result yet.\n'
-      return 2
+      # Keep going: qstat can distinguish a running job from a terminal failure.
+      result_file=""
+      result="INCOMPLETE"
     fi
   elif [[ -s "${stable_result_file}" ]]; then
     # Compatibility with an existing stable result when submission metadata is
@@ -134,6 +182,10 @@ monan_jedi_test_pbs_result() {
     _monan_jedi_read_key_value_file "${result_file}" PBS_RESULT
     result="${PBS_RESULT_RESULT:-}"
     ctest_exit_code="${PBS_RESULT_CTEST_EXIT_CODE:-}"
+    job_exit_code="${PBS_RESULT_JOB_EXIT_CODE:-}"
+    termination_reason="${PBS_RESULT_TERMINATION_REASON:-}"
+    error_phase="${PBS_RESULT_ERROR_PHASE:-}"
+    pbs_log="${PBS_RESULT_PBS_LOG:-}"
     total_tests="${PBS_RESULT_TOTAL_TESTS:-}"
     passed_tests="${PBS_RESULT_PASSED_TESTS:-}"
     failed_tests="${PBS_RESULT_FAILED_TESTS:-}"
@@ -162,18 +214,47 @@ monan_jedi_test_pbs_result() {
     result="INCOMPLETE"
   fi
 
+  # A scheduler kill prevents CTest from writing its final summary. Query PBS
+  # so a terminal timeout or failure is not mislabeled as merely incomplete.
+  if [[ "${result}" == "INCOMPLETE" || -z "${result}" ]]; then
+    if [[ -n "${job_id}" ]] && _monan_jedi_query_pbs_status "${job_id}"; then
+      pbs_state="${PBS_QUERY_STATE}"
+      pbs_exit_status="${PBS_QUERY_EXIT_STATUS}"
+      pbs_comment="${PBS_QUERY_COMMENT}"
+      pbs_walltime="${PBS_QUERY_WALLTIME}"
+
+      if [[ "${pbs_exit_status}" == "-29" || "${pbs_comment,,}" == *exceeded*walltime* || "${pbs_comment,,}" == *walltime*exceeded* ]]; then
+        result="TIMEOUT"
+      elif [[ "${pbs_state}" == "F" && -n "${pbs_exit_status}" && "${pbs_exit_status}" != "0" ]]; then
+        result="FAIL"
+      fi
+    fi
+  fi
+
   log_info "  job_id=${job_id:-unknown}"
   [[ -n "${test_stamp}" ]] && log_info "  test_stamp=${test_stamp}"
   log_info "  total=${total_tests:-unknown}"
   log_info "  passed=${passed_tests:-unknown}"
   log_info "  failed=${failed_tests:-unknown}"
   [[ -n "${ctest_exit_code}" ]] && log_info "  CTest exit code=${ctest_exit_code}"
+  [[ -n "${job_exit_code}" ]] && log_info "  job exit code=${job_exit_code}"
+  [[ -n "${error_phase}" ]] && log_info "  error phase=${error_phase}"
+  [[ -n "${termination_reason}" ]] && log_info "  termination reason=${termination_reason}"
+  [[ -n "${pbs_state}" ]] && log_info "  PBS state=${pbs_state}"
+  [[ -n "${pbs_exit_status}" ]] && log_info "  PBS Exit_status=${pbs_exit_status}"
+  [[ -n "${pbs_walltime}" ]] && log_info "  PBS walltime used=${pbs_walltime}"
+  [[ -n "${pbs_comment}" ]] && log_info "  PBS comment=${pbs_comment}"
   log_info "  CTest log=${ctest_log:-unknown}"
+  [[ -n "${pbs_log}" ]] && log_info "  PBS log=${pbs_log}"
 
   case "${result}" in
     PASS)
       printf '[PASS] Complete PBS CTest validation passed.\n'
       return 0
+      ;;
+    TIMEOUT)
+      printf '[TIMEOUT] PBS terminated the CTest job after its walltime limit.\n'
+      return 1
       ;;
     FAIL)
       printf '[FAIL] Complete PBS CTest validation failed.\n'

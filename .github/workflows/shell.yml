@@ -26,10 +26,12 @@ jobs:
           bash -n tests/test_wps_dependency_resolution.sh
           bash -n tests/test_unbalance_build_contract.sh
           bash -n tests/test_pbs_placement_policy.sh
-          shellcheck --severity=error -e SC1090,SC1091 scripts/monan-jedi.sh scripts/monan-jedi-wps.sh scripts/lib/*.sh tests/test_wps_dependency_resolution.sh tests/test_unbalance_build_contract.sh tests/test_pbs_placement_policy.sh
+          bash -n tests/test_pbs_result.sh
+          shellcheck --severity=error -e SC1090,SC1091 scripts/monan-jedi.sh scripts/monan-jedi-wps.sh scripts/lib/*.sh tests/test_wps_dependency_resolution.sh tests/test_unbalance_build_contract.sh tests/test_pbs_placement_policy.sh tests/test_pbs_result.sh
           bash tests/test_wps_dependency_resolution.sh
           bash tests/test_unbalance_build_contract.sh
           bash tests/test_pbs_placement_policy.sh
+          bash tests/test_pbs_result.sh
       - name: Check Python
         run: |
           python -m py_compile scripts/lib/read_config.py tests/test_config.py
