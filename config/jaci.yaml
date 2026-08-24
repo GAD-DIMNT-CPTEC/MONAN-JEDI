@@ -413,8 +413,9 @@ pbs:
   # CPUs requested on one node through select=1:ncpus=<value>.
   ncpus: 64
 
-  # PBS wall-clock limit in HH:MM:SS format.
-  walltime: "00:30:00"
+  # PBS wall-clock limit in HH:MM:SS format. The complete serial CTest
+  # inventory contains more than 2200 tests and exceeded the former 30-minute limit.
+  walltime: "03:00:00"
 
   # true: generate and immediately submit the PBS script with qsub.
   # false: generate the script and logs only for manual review/submission.
