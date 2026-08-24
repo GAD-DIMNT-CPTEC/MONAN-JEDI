@@ -167,9 +167,9 @@ job_phase="bootstrap"
 termination_reason=""
 
 handle_termination_signal() {
-  termination_reason="$1"
+  termination_reason="\$1"
   job_phase="${job_phase}:terminated"
-  exit "$2"
+  exit "\$2"
 }
 
 finalize_pbs_result() {
