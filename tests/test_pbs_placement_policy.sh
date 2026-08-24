@@ -61,8 +61,28 @@ grep -Fq 'if ! config_exports="$(python3' "${config_lib}"
 grep -Fq 'trap finalize_pbs_result EXIT' "${pbs_lib}"
 grep -Fq 'ERROR_PHASE=' "${pbs_lib}"
 grep -Fq 'PBS_LOG=' "${pbs_lib}"
-# Positional parameters belong to the generated PBS signal handler. They must
-# remain escaped in this outer heredoc or set -u aborts test-pbs generation.
+# Variables evaluated only by the generated PBS job must remain escaped in the
+# outer heredoc. Audit the complete generated body so a future unescaped
+# runtime variable fails CI before test-pbs reaches JACI.
+generated_pbs_body="$(
+  sed -n '/cat > .*<<EOF_PBS/,/^EOF_PBS$/p' "${pbs_lib}"
+)"
+# Only job-local variables are listed here. Configuration variables exported
+# by the generator intentionally have both expanded and escaped occurrences.
+runtime_variables=(
+  job_phase termination_reason job_rc result_tmp ctest_rc
+  total_tests passed_tests failed_tests result result_exit
+  ctest_args PIPESTATUS pipeline_status tee_rc summary_line BASH_REMATCH
+)
+for runtime_variable in "${runtime_variables[@]}"; do
+  if grep -Eq '(^|[^\\])\$\{'"${runtime_variable}"'\}' <<< "${generated_pbs_body}"; then
+    echo "ERROR: generated PBS runtime variable is expanded by the outer heredoc: ${runtime_variable}" >&2
+    exit 1
+  fi
+done
+
+# Positional parameters in the generated signal handler require the same
+# protection but do not use braced variable syntax.
 grep -Fq 'termination_reason="\$1"' "${pbs_lib}"
 grep -Fq 'exit "\$2"' "${pbs_lib}"
 

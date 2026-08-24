@@ -168,7 +168,7 @@ termination_reason=""
 
 handle_termination_signal() {
   termination_reason="\$1"
-  job_phase="${job_phase}:terminated"
+  job_phase="\${job_phase}:terminated"
   exit "\$2"
 }
 
