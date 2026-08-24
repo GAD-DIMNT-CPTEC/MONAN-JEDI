@@ -75,7 +75,7 @@ runtime_variables=(
   ctest_args PIPESTATUS pipeline_status tee_rc summary_line BASH_REMATCH
 )
 for runtime_variable in "${runtime_variables[@]}"; do
-  if grep -Eq '(^|[^\\])\$\{'"\${runtime_variable}"'\}' <<< "${generated_pbs_body}"; then
+  if grep -Eq '(^|[^\\])\$\{'"${runtime_variable}"'\}' <<< "${generated_pbs_body}"; then
     echo "ERROR: generated PBS runtime variable is expanded by the outer heredoc: ${runtime_variable}" >&2
     exit 1
   fi
