@@ -396,7 +396,7 @@ pbs:
 
   # PBS wall-clock limit in HH:MM:SS format. Size this for the complete
   # configured CTest inventory, not only for a smoke-test subset.
-  walltime: "03:00:00"
+  walltime: "02:00:00"
 
   # true: generate and immediately submit with qsub.
   # false: generate the PBS script only for manual review/submission.
