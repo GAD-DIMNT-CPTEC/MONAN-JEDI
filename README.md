@@ -84,6 +84,9 @@ The `all` command builds auxiliary tools only when their respective `enabled` se
 
 ### Full CTest validation with PBS
 
+See [JACI PBS queue limits](docs/jaci-pbs-queues.md) for current documented
+queue limits, exclusive-placement policy and live scheduler query commands.
+
 The `test` and `test-pbs` commands have different purposes.
 
 The command:
