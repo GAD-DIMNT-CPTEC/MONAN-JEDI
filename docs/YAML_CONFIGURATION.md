@@ -213,16 +213,17 @@ Controls login-node-safe and PBS test selection. Keep MPI tests off login nodes 
 
 ```yaml
 pbs:
-  queue: pesqmini
+  queue: pesqmidi
   ncpus: 64
-  walltime: "03:00:00"
+  walltime: "02:00:00"
   submit_job: true
 ```
 
-Controls generated PBS jobs for compute-node validation. The default three-hour
-limit is sized for the complete serial JACI inventory (more than 2200 tests);
-a 30-minute limit is insufficient and causes PBS to terminate the job before
-CTest writes its final summary.
+Controls generated PBS jobs for compute-node validation. The complete serial
+JACI inventory contains more than 2200 tests and does not fit in the 30-minute
+`pesqmini` limit. The default therefore uses the two-hour `pesqmidi` maximum.
+See [JACI PBS queue limits](jaci-pbs-queues.md) for the observed queue table,
+selection constraints and commands that query the live scheduler.
 
 On JACI, every generated job for a queue other than `aux` automatically
 contains:
