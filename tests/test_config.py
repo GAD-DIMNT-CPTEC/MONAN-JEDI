@@ -157,6 +157,8 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(values["MONAN_JEDI_WPS_VERSION"], "4.6.0")
         self.assertEqual(values["MONAN_JEDI_WPS_DEFAULT_VTABLE"], "Vtable.GFS")
         self.assertNotIn("MONAN_JEDI_WPS_CONFIGURE_OPTION", values)
+        self.assertEqual(values["MONAN_JEDI_PBS_QUEUE"], "pesqmidi")
+        self.assertEqual(values["MONAN_JEDI_PBS_WALLTIME"], "02:00:00")
 
     def test_template_disables_optional_auxiliary_tools(self) -> None:
         values = read_exports(TEMPLATE)

@@ -226,9 +226,9 @@ DEFAULTS = {
     "MONAN_JEDI_CTEST_JOBS": "1",
 
     # PBS
-    "MONAN_JEDI_PBS_QUEUE": "pesqmini",
+    "MONAN_JEDI_PBS_QUEUE": "pesqmidi",
     "MONAN_JEDI_PBS_NCPUS": "64",
-    "MONAN_JEDI_PBS_WALLTIME": "03:00:00",
+    "MONAN_JEDI_PBS_WALLTIME": "02:00:00",
     "MONAN_JEDI_SUBMIT_JOB": "1",
 }
 
