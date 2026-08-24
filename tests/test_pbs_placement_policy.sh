@@ -61,6 +61,10 @@ grep -Fq 'if ! config_exports="$(python3' "${config_lib}"
 grep -Fq 'trap finalize_pbs_result EXIT' "${pbs_lib}"
 grep -Fq 'ERROR_PHASE=' "${pbs_lib}"
 grep -Fq 'PBS_LOG=' "${pbs_lib}"
+# Positional parameters belong to the generated PBS signal handler. They must
+# remain escaped in this outer heredoc or set -u aborts test-pbs generation.
+grep -Fq 'termination_reason="\$1"' "${pbs_lib}"
+grep -Fq 'exit "\$2"' "${pbs_lib}"
 
 python3 "${read_config}" "${repo_root}/config/jaci.yaml" > "${test_dir}/exports.sh"
 bash -n "${test_dir}/exports.sh"
