@@ -67,11 +67,11 @@ grep -Fq 'PBS_LOG=' "${pbs_lib}"
 generated_pbs_body="$(
   sed -n '/cat > .*<<EOF_PBS/,/^EOF_PBS$/p' "${pbs_lib}"
 )"
+# Only job-local variables are listed here. Configuration variables exported
+# by the generator intentionally have both expanded and escaped occurrences.
 runtime_variables=(
-  job_phase termination_reason job_rc result_tmp TEST_STAMP PBS_JOBID
-  ctest_rc total_tests passed_tests failed_tests result result_exit
-  CTEST_LOG PBS_LOG RESULT_FILE LATEST_RESULT_FILE
-  MONAN_JEDI_CTEST_JOBS MONAN_JEDI_CTEST_EXCLUDE_REGEX
+  job_phase termination_reason job_rc result_tmp ctest_rc
+  total_tests passed_tests failed_tests result result_exit
   ctest_args PIPESTATUS pipeline_status tee_rc summary_line BASH_REMATCH
 )
 for runtime_variable in "${runtime_variables[@]}"; do
