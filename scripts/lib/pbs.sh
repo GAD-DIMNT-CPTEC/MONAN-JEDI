@@ -164,6 +164,14 @@ export PBS_LOG='${pbs_log}'
 # Always publish a machine-readable result, including failures that happen
 # during configuration or stack bootstrap before CTest starts.
 job_phase="bootstrap"
+termination_reason=""
+
+handle_termination_signal() {
+  termination_reason="$1"
+  job_phase="${job_phase}:terminated"
+  exit "$2"
+}
+
 finalize_pbs_result() {
   local job_rc="\$?"
   local result_tmp
@@ -175,7 +183,9 @@ finalize_pbs_result() {
 TEST_STAMP=\${TEST_STAMP}
 JOB_ID=\${PBS_JOBID:-}
 RESULT=INCOMPLETE
-CTEST_EXIT_CODE=\${job_rc}
+CTEST_EXIT_CODE=\${ctest_rc:-}
+JOB_EXIT_CODE=\${job_rc}
+TERMINATION_REASON=\${termination_reason}
 TOTAL_TESTS=
 PASSED_TESTS=
 FAILED_TESTS=
@@ -190,6 +200,9 @@ EOF_EARLY_RESULT
   exit "\${job_rc}"
 }
 trap finalize_pbs_result EXIT
+trap 'handle_termination_signal TERM 143' TERM
+trap 'handle_termination_signal HUP 129' HUP
+trap 'handle_termination_signal INT 130' INT
 
 source ${script_dir}/lib/common.sh
 source ${script_dir}/lib/config.sh
@@ -262,6 +275,8 @@ TEST_STAMP=\${TEST_STAMP}
 JOB_ID=\${PBS_JOBID:-}
 RESULT=\${result}
 CTEST_EXIT_CODE=\${ctest_rc}
+JOB_EXIT_CODE=\${result_exit}
+TERMINATION_REASON=
 TOTAL_TESTS=\${total_tests}
 PASSED_TESTS=\${passed_tests}
 FAILED_TESTS=\${failed_tests}
