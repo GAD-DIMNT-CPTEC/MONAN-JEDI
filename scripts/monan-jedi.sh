@@ -72,11 +72,19 @@ case "${command_name}" in
   test) monan_jedi_test_login ;;
   test-pbs)
     # Preflight must use the same validated environment as configure/build.
-    # In particular, prefer the Git/Git-LFS supplied by the pinned spack-stack
-    # instead of whatever happens to be active in the caller's shell.
-    monan_jedi_load_stack
-    monan_jedi_report_git_lfs_status
-    monan_jedi_test_pbs
+    # Preserve the checkout directory because monan_jedi_load_stack enters the
+    # stack root while initializing modules, whereas PBS generation must record
+    # the MONAN-JEDI repository as its working directory.
+    (
+      test_pbs_repo_dir="$(pwd)"
+      monan_jedi_load_stack
+      cd "${test_pbs_repo_dir}" || {
+        log_error "Failed to return to MONAN-JEDI repository: ${test_pbs_repo_dir}"
+        exit 1
+      }
+      monan_jedi_report_git_lfs_status
+      monan_jedi_test_pbs
+    )
     ;;
   test-pbs-result) monan_jedi_test_pbs_result ;;
   obs2ioda) monan_jedi_build_obs2ioda ;;
