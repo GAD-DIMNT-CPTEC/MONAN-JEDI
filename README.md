@@ -124,6 +124,44 @@ The primary entry point is:
 bash scripts/monan-jedi.sh <command> --config config/jaci.yaml
 ```
 
+### Individual commands bootstrap their own environment
+
+Commands that depend on the MONAN-JEDI software stack do **not** assume that a
+previous command was run in the same login session. This matters when, for
+example, a bundle is configured/built one day and `test` or `test-pbs` is run
+directly after a later login.
+
+Before using stack software, the workflow checks that the configured environment
+is complete and consistent. The check includes:
+
+- the exact `STACK_ENV_MODULE` selected by the YAML configuration;
+- `CMAKE_PREFIX_PATH` and `jedi_cmake_ROOT` from the JEDI environment;
+- stack-provided `ecbuild`, `cmake`, `ctest`, `git` and `python` resolution;
+- configured compiler and MPI-wrapper bindings (`CC`, `CXX`, `FC`, `MPICC`,
+  `MPICXX`, `MPIFC`, and related aliases).
+
+If all of these are already valid, the command reuses the environment. If the
+environment is missing, partial, stale or shadowed by another tool environment,
+MONAN-JEDI automatically reloads the configured spack-stack before continuing.
+The stack loader also restores the original working directory after bootstrap,
+so an environment check cannot silently change where the requested command runs.
+
+Therefore these are supported independent invocations, including from different
+login sessions:
+
+```bash
+bash scripts/monan-jedi.sh configure --config config/jaci.yaml
+# logout / new login / another day
+bash scripts/monan-jedi.sh build --config config/jaci.yaml
+# logout / new login / another day
+bash scripts/monan-jedi.sh test --config config/jaci.yaml
+# or
+bash scripts/monan-jedi.sh test-pbs --config config/jaci.yaml
+```
+
+The user does not need to run `load` manually before each command. `load` remains
+available as an explicit environment diagnostic and snapshot command.
+
 Available commands:
 
 ```text
@@ -285,6 +323,7 @@ The top-level `CMakeLists.txt` pins the JEDI and MPAS components to full commit 
 ## Design principles
 
 - YAML is the user interface; routine use must not require editing shell scripts.
+- Every stack-dependent command is self-bootstrapping and safe to invoke in a fresh login session.
 - Build, source, install and stack trees remain independent.
 - Auxiliary tools share the stack and install prefix but not the main bundle build tree.
 - Published runtime paths are stable and are updated only after validation.
