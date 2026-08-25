@@ -290,6 +290,17 @@ ${wps.install_dir}/build-manifest.json
 
 See [docs/wps-build-jaci.md](docs/wps-build-jaci.md) for details.
 
+## MONAN--JEDI compatibility contract
+
+Changes to MONAN/MPAS interfaces consumed by data assimilation must follow the
+[MONAN--JEDI compatibility contract](docs/MONAN_JEDI_COMPATIBILITY_CONTRACT.md).
+It identifies protected model-state, time, geometry, Registry/pool, diagnostic,
+file and covariance interfaces; classifies changes by compatibility impact; and
+defines the minimum end-to-end validation required before integration.
+
+A successful standalone forecast does not by itself demonstrate MONAN-JEDI
+compatibility.
+
 ## Repository layout
 
 ```text
