@@ -176,8 +176,49 @@ monan_jedi_sync_lfs_repository() {
   monan_jedi_validate_lfs_repository "${repository_dir}" "${repository_name}"
 }
 
+monan_jedi_validate_build_data_link() {
+  local build_link="$1"
+  local source_target="$2"
+  local label="$3"
+  local resolved_build=""
+  local resolved_source=""
+
+  if [[ ! -e "${build_link}" ]]; then
+    log_error "CTest test-data link is missing from the build tree: ${build_link}"
+    log_error "Rerun configure to recreate the ${label} test-data links."
+    return 1
+  fi
+
+  if [[ ! -L "${build_link}" ]]; then
+    log_error "CTest test-data path is not the expected symbolic link: ${build_link}"
+    log_error "Rerun configure to recreate the ${label} test-data links."
+    return 1
+  fi
+
+  resolved_build="$(readlink -f "${build_link}" 2>/dev/null || true)"
+  resolved_source="$(readlink -f "${source_target}" 2>/dev/null || true)"
+
+  if [[ -z "${resolved_build}" || -z "${resolved_source}" || "${resolved_build}" != "${resolved_source}" ]]; then
+    log_error "CTest ${label} data link does not resolve to the pinned source data."
+    log_error "  build_link=${build_link}"
+    log_error "  resolved_build=${resolved_build:-unresolved}"
+    log_error "  expected_source=${resolved_source:-${source_target}}"
+    log_error "Rerun configure to recreate the build-tree data links."
+    return 1
+  fi
+
+  log_info "Validated ${label} CTest data link"
+  log_info "  build=${build_link}"
+  log_info "  source=${resolved_source}"
+}
+
 monan_jedi_validate_bundle_test_data() {
   local repository_name=""
+  local ioda_data_link=""
+  local ufo_data_link=""
+  local mpas_384_data_link=""
+  local mpas_480_data_link=""
+  local ioda_sentinel=""
 
   if ! monan_jedi_git_lfs_available; then
     log_error "Git LFS is required for the JEDI test-data repositories, but 'git lfs' is unavailable."
@@ -191,24 +232,45 @@ monan_jedi_validate_bundle_test_data() {
       "${repository_name}" || return 1
   done
 
-  # Validate representative files through the exact build-tree paths used by
-  # CTest. This catches broken or stale Data links even when source data is valid.
-  local sentinel=""
-  for sentinel in \
-    "${MONAN_JEDI_BUILD_DIR}/ioda/Data/testinput_tier_1/sondes_obs_2018041500_m.nc4" \
-    "${MONAN_JEDI_BUILD_DIR}/ufo/Data/testinput_tier_1" \
-    "${MONAN_JEDI_BUILD_DIR}/mpas-jedi/Data/testinput_tier_1"
-  do
-    if [[ ! -e "${sentinel}" ]]; then
-      log_error "CTest test-data path is missing from the build tree: ${sentinel}"
-      log_error "Rerun configure after materializing all Git LFS repositories."
-      return 1
-    fi
-  done
+  # Follow the exact CMake layouts used by the pinned projects. IODA and UFO
+  # create their Data links from test/CMakeLists.txt, so the build-tree paths are
+  # below ioda/test and ufo/test. MPAS-JEDI likewise creates Data below
+  # mpas-jedi/test and links the 384km/480km background directories there.
+  ioda_data_link="${MONAN_JEDI_BUILD_DIR}/ioda/test/Data/testinput_tier_1"
+  ufo_data_link="${MONAN_JEDI_BUILD_DIR}/ufo/test/Data/ufo/testinput_tier_1"
+  mpas_384_data_link="${MONAN_JEDI_BUILD_DIR}/mpas-jedi/test/Data/384km/bg"
+  mpas_480_data_link="${MONAN_JEDI_BUILD_DIR}/mpas-jedi/test/Data/480km/bg"
 
-  if monan_jedi_file_is_lfs_pointer \
-    "${MONAN_JEDI_BUILD_DIR}/ioda/Data/testinput_tier_1/sondes_obs_2018041500_m.nc4"; then
-    log_error "CTest resolves an unmaterialized Git LFS pointer through the build tree."
+  monan_jedi_validate_build_data_link \
+    "${ioda_data_link}" \
+    "${MONAN_JEDI_SOURCE_DIR}/ioda-data/testinput_tier_1" \
+    "IODA" || return 1
+
+  monan_jedi_validate_build_data_link \
+    "${ufo_data_link}" \
+    "${MONAN_JEDI_SOURCE_DIR}/ufo-data/testinput_tier_1" \
+    "UFO" || return 1
+
+  monan_jedi_validate_build_data_link \
+    "${mpas_384_data_link}" \
+    "${MONAN_JEDI_SOURCE_DIR}/mpas-jedi-data/testinput_tier_1/384km/bg" \
+    "MPAS-JEDI 384km" || return 1
+
+  monan_jedi_validate_build_data_link \
+    "${mpas_480_data_link}" \
+    "${MONAN_JEDI_SOURCE_DIR}/mpas-jedi-data/testinput_tier_1/480km/bg" \
+    "MPAS-JEDI 480km" || return 1
+
+  # Keep a representative binary-file check through the exact path used by
+  # IODA CTest. This catches a pointer that somehow survived source validation.
+  ioda_sentinel="${ioda_data_link}/sondes_obs_2018041500_m.nc4"
+  if [[ ! -s "${ioda_sentinel}" ]]; then
+    log_error "Representative IODA CTest data file is missing or empty: ${ioda_sentinel}"
+    return 1
+  fi
+
+  if monan_jedi_file_is_lfs_pointer "${ioda_sentinel}"; then
+    log_error "CTest resolves an unmaterialized Git LFS pointer through the IODA build-tree link."
     monan_jedi_print_git_lfs_recovery
     return 1
   fi

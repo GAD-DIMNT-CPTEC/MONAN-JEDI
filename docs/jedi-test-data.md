@@ -14,13 +14,17 @@ components:
 
 These are separate repositories declared and pinned in the top-level
 `CMakeLists.txt`. They are not stored below `ioda/`, `ufo/` or
-`mpas-jedi/`. During configuration, ecbuild creates build-tree `Data` paths
-that point to the corresponding data repositories. For example, an IODA test
-running from the build tree resolves:
+`mpas-jedi/`. During configuration, the component `test/CMakeLists.txt` files
+create build-tree `Data` links that point to the corresponding data
+repositories. For example, an IODA test running from the build tree resolves:
 
 ```text
-${MONAN_JEDI_BUILD_DIR}/ioda/Data/testinput_tier_1/sondes_obs_2018041500_m.nc4
+${MONAN_JEDI_BUILD_DIR}/ioda/test/Data/testinput_tier_1/sondes_obs_2018041500_m.nc4
 ```
+
+The corresponding UFO and MPAS-JEDI data roots are created below
+`${MONAN_JEDI_BUILD_DIR}/ufo/test/Data` and
+`${MONAN_JEDI_BUILD_DIR}/mpas-jedi/test/Data`.
 
 ## Why an ordinary clone can be silently unusable
 
@@ -178,16 +182,18 @@ for repo in ioda-data ufo-data mpas-jedi-data; do
 done
 ```
 
-Then rerun `test-pbs`. Its preflight validates every Git LFS tracked path and
-representative build-tree `Data` paths before calling `qsub`:
+Then rerun `test-pbs`. The command now loads the validated MONAN-JEDI stack
+before its preflight, then validates every Git LFS tracked path and the exact
+build-tree `Data` links before calling `qsub`:
 
 ```bash
 bash scripts/monan-jedi.sh test-pbs --config config/jaci.yaml
 ```
 
-If the existing build-tree links are missing or stale, rerun `configure` and
-then rebuild. Do not increase PBS walltime merely to hide Git LFS or input-data
-failures.
+The preflight checks that the IODA, UFO and MPAS-JEDI links resolve to the pinned
+source-data directories. If the existing build-tree links are missing or stale,
+rerun `configure` and then rebuild. Do not increase PBS walltime merely to hide
+Git LFS or input-data failures.
 
 ## Manual diagnostics
 
@@ -211,15 +217,24 @@ To check whether a project-local fallback also exists:
 ls -l /p/projetos/monan_das/${USER}/envs/git-lfs/bin/git-lfs
 ```
 
-Inspect the actual locations used by CTest:
+Inspect the actual IODA location used by CTest:
 
 ```bash
-file work/monan-jedi/build/ioda/Data/testinput_tier_1/sondes_obs_2018041500_m.nc4
-head -n 3 work/monan-jedi/build/ioda/Data/testinput_tier_1/sondes_obs_2018041500_m.nc4
+file work/monan-jedi/build/ioda/test/Data/testinput_tier_1/sondes_obs_2018041500_m.nc4
+head -n 3 work/monan-jedi/build/ioda/test/Data/testinput_tier_1/sondes_obs_2018041500_m.nc4
 ```
 
 A materialized NetCDF-4 file normally reports HDF5/NetCDF binary data. It must
 not begin with the Git LFS pointer signature.
+
+To inspect the build-tree links themselves:
+
+```bash
+readlink -f work/monan-jedi/build/ioda/test/Data/testinput_tier_1
+readlink -f work/monan-jedi/build/ufo/test/Data/ufo/testinput_tier_1
+readlink -f work/monan-jedi/build/mpas-jedi/test/Data/384km/bg
+readlink -f work/monan-jedi/build/mpas-jedi/test/Data/480km/bg
+```
 
 To inspect repository state:
 
@@ -239,7 +254,7 @@ The MONAN-JEDI contract is now:
 4. `configure` requires a working Git LFS client;
 5. all pinned test-data repositories are explicitly pulled and checked out;
 6. every tracked path is checked for missing, empty or pointer-only content;
-7. `test-pbs` repeats the non-mutating validation before allocating a node;
+7. `test-pbs` loads the validated stack and checks the exact CTest build-tree links before allocating a node;
 8. a failure prints actionable fallback and recovery commands and prevents `qsub`.
 
 A successful compilation alone does not certify that CTest data are usable.
