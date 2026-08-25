@@ -144,6 +144,9 @@ monan_jedi_record_environment_snapshot() {
     command -v make || true
     command -v ctest || true
     command -v python || true
+    command -v git || true
+    command -v git-lfs || true
+    git lfs version 2>/dev/null || true
     echo
     echo "compiler variables:"
     echo "CC=${CC:-}"
