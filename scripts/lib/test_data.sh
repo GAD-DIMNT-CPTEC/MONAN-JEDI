@@ -6,39 +6,72 @@
 # A normal Git clone succeeds without the Git LFS client, leaving small pointer
 # files that CMake accepts but NetCDF/HDF5 tests cannot read.
 
+monan_jedi_git_lfs_root() {
+  local default_project_root="/p/projetos/monan_das/${USER:-unknown}"
+  printf '%s\n' "${MONAN_JEDI_GIT_LFS_ROOT:-${PROJECT_ROOT:-${default_project_root}}/envs/git-lfs}"
+}
+
+monan_jedi_report_git_lfs_found() {
+  local git_lfs_root="$1"
+  local executable=""
+  local version=""
+
+  [[ "${MONAN_JEDI_GIT_LFS_REPORTED:-0}" == "1" ]] && return 0
+
+  executable="$(command -v git-lfs 2>/dev/null || true)"
+  version="$(git lfs version 2>/dev/null || true)"
+
+  log_info "Git LFS is available"
+  [[ -n "${version}" ]] && log_info "  version=${version}"
+  [[ -n "${executable}" ]] && log_info "  executable=${executable}"
+  log_info "  persistent_project_env=${git_lfs_root}"
+  export MONAN_JEDI_GIT_LFS_REPORTED=1
+}
+
 monan_jedi_git_lfs_available() {
-  local project_git_lfs_bin="${PROJECT_ROOT:-}/envs/git-lfs/bin"
+  local git_lfs_root=""
+  local project_git_lfs_bin=""
 
   command -v git >/dev/null 2>&1 || return 1
 
+  git_lfs_root="$(monan_jedi_git_lfs_root)"
+  project_git_lfs_bin="${git_lfs_root}/bin"
+
   if git lfs version >/dev/null 2>&1; then
+    monan_jedi_report_git_lfs_found "${git_lfs_root}"
     return 0
   fi
 
-  # JACI's base Conda environment is shared and read-only. Automatically reuse
-  # the documented project-local environment without requiring users to edit
-  # PATH in every new login session.
+  # JACI's base Conda environment is shared and read-only. Reuse the persistent
+  # project-local Git LFS environment instead of relying on Conda activation or
+  # shell state from a previous login session.
   if [[ -x "${project_git_lfs_bin}/git-lfs" ]]; then
     export PATH="${project_git_lfs_bin}:${PATH}"
-    git lfs version >/dev/null 2>&1
-    return $?
+    if git lfs version >/dev/null 2>&1; then
+      monan_jedi_report_git_lfs_found "${git_lfs_root}"
+      return 0
+    fi
   fi
 
   return 1
 }
 
 monan_jedi_print_git_lfs_recovery() {
-  local default_project_root="/p/projetos/monan_das/${USER:-unknown}"
-  local git_lfs_env="${PROJECT_ROOT:-${default_project_root}}/envs/git-lfs"
+  local git_lfs_env=""
+  git_lfs_env="$(monan_jedi_git_lfs_root)"
 
-  log_error "Install Git LFS on the login node, then materialize the bundle data."
-  log_error "JACI's shared base environment (/p/app/anaconda) is not writable."
-  log_error "Create a project-local environment instead:"
+  log_error "Git LFS is not available to MONAN-JEDI."
+  log_error "Persistent JACI location: ${git_lfs_env}"
+  log_error "If ${git_lfs_env}/bin/git-lfs already exists, do not reinstall it; MONAN-JEDI normally discovers it automatically."
+  log_error "For a first-time installation on a JACI login node, run:"
+  log_error "  module load anaconda"
+  log_error "  start_conda"
   log_error "  conda create -y -p \"${git_lfs_env}\" -c conda-forge git-lfs"
-  log_error "The workflow discovers ${git_lfs_env}/bin/git-lfs automatically."
-  log_error "Then run: export PATH=\"${git_lfs_env}/bin:\${PATH}\""
-  log_error "And initialize it with: git lfs install"
-  log_error "For an existing source tree, run:"
+  log_error "  export PATH=\"${git_lfs_env}/bin:\${PATH}\""
+  log_error "  git lfs install"
+  log_error "  git lfs version"
+  log_error "The (base) Conda environment is shared and is not the persistent installation target."
+  log_error "For an existing MONAN-JEDI source tree, then run:"
   log_error "  for repo in ioda-data ufo-data mpas-jedi-data; do git -C \"\${repo}\" lfs pull && git -C \"\${repo}\" lfs checkout; done"
 }
 
@@ -135,13 +168,18 @@ monan_jedi_validate_bundle_test_data() {
   fi
 
   for repository_name in ioda-data ufo-data mpas-jedi-data; do
-    monan_jedi_validate_lfs_repository       "${MONAN_JEDI_SOURCE_DIR}/${repository_name}"       "${repository_name}" || return 1
+    monan_jedi_validate_lfs_repository \
+      "${MONAN_JEDI_SOURCE_DIR}/${repository_name}" \
+      "${repository_name}" || return 1
   done
 
   # Validate representative files through the exact build-tree paths used by
   # CTest. This catches broken or stale Data links even when source data is valid.
   local sentinel=""
-  for sentinel in     "${MONAN_JEDI_BUILD_DIR}/ioda/Data/testinput_tier_1/sondes_obs_2018041500_m.nc4"     "${MONAN_JEDI_BUILD_DIR}/ufo/Data/testinput_tier_1"     "${MONAN_JEDI_BUILD_DIR}/mpas-jedi/Data/testinput_tier_1"
+  for sentinel in \
+    "${MONAN_JEDI_BUILD_DIR}/ioda/Data/testinput_tier_1/sondes_obs_2018041500_m.nc4" \
+    "${MONAN_JEDI_BUILD_DIR}/ufo/Data/testinput_tier_1" \
+    "${MONAN_JEDI_BUILD_DIR}/mpas-jedi/Data/testinput_tier_1"
   do
     if [[ ! -e "${sentinel}" ]]; then
       log_error "CTest test-data path is missing from the build tree: ${sentinel}"
@@ -150,7 +188,8 @@ monan_jedi_validate_bundle_test_data() {
     fi
   done
 
-  if monan_jedi_file_is_lfs_pointer     "${MONAN_JEDI_BUILD_DIR}/ioda/Data/testinput_tier_1/sondes_obs_2018041500_m.nc4"; then
+  if monan_jedi_file_is_lfs_pointer \
+    "${MONAN_JEDI_BUILD_DIR}/ioda/Data/testinput_tier_1/sondes_obs_2018041500_m.nc4"; then
     log_error "CTest resolves an unmaterialized Git LFS pointer through the build tree."
     monan_jedi_print_git_lfs_recovery
     return 1
@@ -169,6 +208,8 @@ monan_jedi_prepare_bundle_test_data() {
   fi
 
   for repository_name in ioda-data ufo-data mpas-jedi-data; do
-    monan_jedi_sync_lfs_repository       "${MONAN_JEDI_SOURCE_DIR}/${repository_name}"       "${repository_name}" || return 1
+    monan_jedi_sync_lfs_repository \
+      "${MONAN_JEDI_SOURCE_DIR}/${repository_name}" \
+      "${repository_name}" || return 1
   done
 }

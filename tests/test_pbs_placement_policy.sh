@@ -19,15 +19,24 @@ assert_equal() {
   local description="$3"
 
   if [[ "${actual}" != "${expected}" ]]; then
-    printf 'ERROR: %s: expected <%s>, got <%s>\n'       "${description}" "${expected}" "${actual}" >&2
+    printf 'ERROR: %s: expected <%s>, got <%s>\n' \
+      "${description}" "${expected}" "${actual}" >&2
     exit 1
   fi
 }
 
-assert_equal '#PBS -l place=excl'   "$(monan_jedi_pbs_placement_directive pesqmini)"   "compute queue placement"
-assert_equal '#PBS -l place=excl'   "$(monan_jedi_pbs_placement_directive desenvolvimento@pbs-ha)"   "server-qualified compute queue placement"
-assert_equal ''   "$(monan_jedi_pbs_placement_directive aux)"   "aux queue exception"
-assert_equal ''   "$(monan_jedi_pbs_placement_directive aux@pbs-ha)"   "server-qualified aux queue exception"
+assert_equal '#PBS -l place=excl' \
+  "$(monan_jedi_pbs_placement_directive pesqmini)" \
+  "compute queue placement"
+assert_equal '#PBS -l place=excl' \
+  "$(monan_jedi_pbs_placement_directive desenvolvimento@pbs-ha)" \
+  "server-qualified compute queue placement"
+assert_equal '' \
+  "$(monan_jedi_pbs_placement_directive aux)" \
+  "aux queue exception"
+assert_equal '' \
+  "$(monan_jedi_pbs_placement_directive aux@pbs-ha)" \
+  "server-qualified aux queue exception"
 
 test_dir="$(mktemp -d)"
 trap 'rm -rf "${test_dir}"' EXIT
@@ -52,6 +61,19 @@ if monan_jedi_file_is_lfs_pointer "${real_data}"; then
   exit 1
 fi
 
+assert_equal \
+  '/p/projetos/monan_das/test-user/envs/git-lfs' \
+  "$(USER=test-user PROJECT_ROOT= MONAN_JEDI_GIT_LFS_ROOT= monan_jedi_git_lfs_root)" \
+  "default persistent Git LFS location"
+assert_equal \
+  '/custom/project/envs/git-lfs' \
+  "$(PROJECT_ROOT=/custom/project MONAN_JEDI_GIT_LFS_ROOT= monan_jedi_git_lfs_root)" \
+  "project-derived persistent Git LFS location"
+assert_equal \
+  '/custom/git-lfs' \
+  "$(PROJECT_ROOT=/custom/project MONAN_JEDI_GIT_LFS_ROOT=/custom/git-lfs monan_jedi_git_lfs_root)" \
+  "explicit persistent Git LFS location"
+
 printf '%s\n' '#!/bin/bash' '#PBS -q pesqmini' '#PBS -l place=excl' > "${compute_script}"
 printf '%s\n' '#!/bin/bash' '#PBS -q aux' > "${aux_script}"
 
@@ -75,6 +97,8 @@ config_lib="${repo_root}/scripts/lib/config.sh"
 pbs_lib="${repo_root}/scripts/lib/pbs.sh"
 test_data_lib="${repo_root}/scripts/lib/test_data.sh"
 configure_lib="${repo_root}/scripts/lib/configure.sh"
+readme="${repo_root}/README.md"
+test_data_doc="${repo_root}/docs/jedi-test-data.md"
 
 if grep -Fq 'from __future__ import annotations' "${read_config}"; then
   echo "ERROR: read_config.py requires Python 3.7 annotations support" >&2
@@ -88,8 +112,15 @@ grep -Fq 'PBS_LOG=' "${pbs_lib}"
 grep -Fq 'monan_jedi_validate_bundle_test_data' "${pbs_lib}"
 grep -Fq 'monan_jedi_prepare_bundle_test_data' "${configure_lib}"
 grep -Fq 'version https://git-lfs.github.com/spec/v1' "${test_data_lib}"
-grep -Fq 'envs/git-lfs/bin' "${test_data_lib}"
+grep -Fq 'envs/git-lfs' "${test_data_lib}"
+grep -Fq 'persistent_project_env=' "${test_data_lib}"
+grep -Fq 'module load anaconda' "${test_data_lib}"
+grep -Fq 'start_conda' "${test_data_lib}"
 grep -Fq '/p/app/anaconda' "${test_data_lib}"
+grep -Fq 'module load anaconda' "${readme}"
+grep -Fq 'start_conda' "${readme}"
+grep -Fq 'do not need to repeat the Conda setup' "${test_data_doc}"
+
 # Variables evaluated only by the generated PBS job must remain escaped in the
 # outer heredoc. Audit the complete generated body so a future unescaped
 # runtime variable fails CI before test-pbs reaches JACI.
