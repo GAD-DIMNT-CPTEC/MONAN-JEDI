@@ -64,15 +64,15 @@ fi
 assert_equal \
   '/p/projetos/monan_das/test-user/envs/git-lfs' \
   "$(USER=test-user PROJECT_ROOT= MONAN_JEDI_GIT_LFS_ROOT= monan_jedi_git_lfs_root)" \
-  "default persistent Git LFS location"
+  "default project Git LFS fallback location"
 assert_equal \
   '/custom/project/envs/git-lfs' \
   "$(PROJECT_ROOT=/custom/project MONAN_JEDI_GIT_LFS_ROOT= monan_jedi_git_lfs_root)" \
-  "project-derived persistent Git LFS location"
+  "project-derived Git LFS fallback location"
 assert_equal \
   '/custom/git-lfs' \
   "$(PROJECT_ROOT=/custom/project MONAN_JEDI_GIT_LFS_ROOT=/custom/git-lfs monan_jedi_git_lfs_root)" \
-  "explicit persistent Git LFS location"
+  "explicit Git LFS fallback location"
 
 printf '%s\n' '#!/bin/bash' '#PBS -q pesqmini' '#PBS -l place=excl' > "${compute_script}"
 printf '%s\n' '#!/bin/bash' '#PBS -q aux' > "${aux_script}"
@@ -94,6 +94,7 @@ fi
 # Bootstrap regression checks: compute nodes may still expose Python 3.6.
 read_config="${repo_root}/scripts/lib/read_config.py"
 config_lib="${repo_root}/scripts/lib/config.sh"
+stack_lib="${repo_root}/scripts/lib/stack.sh"
 pbs_lib="${repo_root}/scripts/lib/pbs.sh"
 test_data_lib="${repo_root}/scripts/lib/test_data.sh"
 configure_lib="${repo_root}/scripts/lib/configure.sh"
@@ -113,13 +114,18 @@ grep -Fq 'monan_jedi_validate_bundle_test_data' "${pbs_lib}"
 grep -Fq 'monan_jedi_prepare_bundle_test_data' "${configure_lib}"
 grep -Fq 'version https://git-lfs.github.com/spec/v1' "${test_data_lib}"
 grep -Fq 'envs/git-lfs' "${test_data_lib}"
-grep -Fq 'persistent_project_env=' "${test_data_lib}"
+grep -Fq 'provider=${provider}' "${test_data_lib}"
+grep -Fq 'loaded stack/environment' "${test_data_lib}"
+grep -Fq 'project-local fallback' "${test_data_lib}"
+grep -Fq 'project_fallback_env=' "${test_data_lib}"
 grep -Fq 'module load anaconda' "${test_data_lib}"
 grep -Fq 'start_conda' "${test_data_lib}"
-grep -Fq '/p/app/anaconda' "${test_data_lib}"
-grep -Fq 'module load anaconda' "${readme}"
-grep -Fq 'start_conda' "${readme}"
-grep -Fq 'do not need to repeat the Conda setup' "${test_data_doc}"
+grep -Fq 'command -v git-lfs' "${stack_lib}"
+grep -Fq 'git lfs version' "${stack_lib}"
+grep -Fq 'spack-stack already provides Git LFS' "${readme}"
+grep -Fq 'provider=loaded stack/environment' "${readme}"
+grep -Fq 'No Conda installation is required' "${test_data_doc}"
+grep -Fq 'project-local persistent installation is used only as fallback' "${test_data_doc}"
 
 # Variables evaluated only by the generated PBS job must remain escaped in the
 # outer heredoc. Audit the complete generated body so a future unescaped

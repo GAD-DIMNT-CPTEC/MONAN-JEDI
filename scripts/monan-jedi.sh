@@ -44,8 +44,8 @@ monan_jedi_report_git_lfs_status() {
     return 0
   fi
 
-  log_warn "Git LFS is not currently available."
-  log_warn "  expected_persistent_env=$(monan_jedi_git_lfs_root)"
+  log_warn "Git LFS is not currently available after loading the MONAN-JEDI stack."
+  log_warn "  project_fallback_env=$(monan_jedi_git_lfs_root)"
   log_warn "The load command can continue, but configure/all will require Git LFS."
 }
 

@@ -12,7 +12,8 @@ monan_jedi_git_lfs_root() {
 }
 
 monan_jedi_report_git_lfs_found() {
-  local git_lfs_root="$1"
+  local provider="$1"
+  local git_lfs_root="$2"
   local executable=""
   local version=""
 
@@ -24,31 +25,46 @@ monan_jedi_report_git_lfs_found() {
   log_info "Git LFS is available"
   [[ -n "${version}" ]] && log_info "  version=${version}"
   [[ -n "${executable}" ]] && log_info "  executable=${executable}"
-  log_info "  persistent_project_env=${git_lfs_root}"
+  log_info "  provider=${provider}"
+  if [[ "${provider}" == "project-local fallback" ]]; then
+    log_info "  project_fallback_env=${git_lfs_root}"
+  fi
   export MONAN_JEDI_GIT_LFS_REPORTED=1
 }
 
 monan_jedi_git_lfs_available() {
   local git_lfs_root=""
   local project_git_lfs_bin=""
+  local executable=""
 
   command -v git >/dev/null 2>&1 || return 1
 
   git_lfs_root="$(monan_jedi_git_lfs_root)"
   project_git_lfs_bin="${git_lfs_root}/bin"
 
+  # Preferred path: the validated MONAN-JEDI spack-stack environment already
+  # provides Git LFS. This is the normal JACI baseline and requires no separate
+  # Conda installation by the user.
   if git lfs version >/dev/null 2>&1; then
-    monan_jedi_report_git_lfs_found "${git_lfs_root}"
+    executable="$(command -v git-lfs 2>/dev/null || true)"
+    case "${executable}" in
+      "${project_git_lfs_bin}"/*)
+        monan_jedi_report_git_lfs_found "project-local fallback" "${git_lfs_root}"
+        ;;
+      *)
+        monan_jedi_report_git_lfs_found "loaded stack/environment" "${git_lfs_root}"
+        ;;
+    esac
     return 0
   fi
 
-  # JACI's base Conda environment is shared and read-only. Reuse the persistent
-  # project-local Git LFS environment instead of relying on Conda activation or
+  # Fallback for a custom/older stack that does not provide Git LFS. Reuse a
+  # user-owned project-local installation without requiring Conda activation or
   # shell state from a previous login session.
   if [[ -x "${project_git_lfs_bin}/git-lfs" ]]; then
     export PATH="${project_git_lfs_bin}:${PATH}"
     if git lfs version >/dev/null 2>&1; then
-      monan_jedi_report_git_lfs_found "${git_lfs_root}"
+      monan_jedi_report_git_lfs_found "project-local fallback" "${git_lfs_root}"
       return 0
     fi
   fi
@@ -60,17 +76,19 @@ monan_jedi_print_git_lfs_recovery() {
   local git_lfs_env=""
   git_lfs_env="$(monan_jedi_git_lfs_root)"
 
-  log_error "Git LFS is not available to MONAN-JEDI."
-  log_error "Persistent JACI location: ${git_lfs_env}"
-  log_error "If ${git_lfs_env}/bin/git-lfs already exists, do not reinstall it; MONAN-JEDI normally discovers it automatically."
-  log_error "For a first-time installation on a JACI login node, run:"
+  log_error "Git LFS is not available after loading the MONAN-JEDI stack."
+  log_error "The current JACI baseline normally provides Git LFS through the validated spack-stack environment."
+  log_error "Check the stack first with: bash scripts/monan-jedi.sh load --config \"${MONAN_JEDI_CONFIG:-config/jaci.yaml}\""
+  log_error "If a custom/older stack does not provide Git LFS, the supported user fallback is: ${git_lfs_env}"
+  log_error "If ${git_lfs_env}/bin/git-lfs already exists, do not reinstall it; MONAN-JEDI discovers it automatically."
+  log_error "For a first-time fallback installation on a JACI login node, run:"
   log_error "  module load anaconda"
   log_error "  start_conda"
   log_error "  conda create -y -p \"${git_lfs_env}\" -c conda-forge git-lfs"
   log_error "  export PATH=\"${git_lfs_env}/bin:\${PATH}\""
   log_error "  git lfs install"
   log_error "  git lfs version"
-  log_error "The (base) Conda environment is shared and is not the persistent installation target."
+  log_error "The (base) Conda environment is shared and is not the installation target."
   log_error "For an existing MONAN-JEDI source tree, then run:"
   log_error "  for repo in ioda-data ufo-data mpas-jedi-data; do git -C \"\${repo}\" lfs pull && git -C \"\${repo}\" lfs checkout; done"
 }
