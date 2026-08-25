@@ -116,7 +116,11 @@ data:
   crtm_coeffs_tgz:
 ```
 
-Controls local and cached external data used while configuring and testing the bundle.
+Controls local and cached external archives used while configuring and testing the
+bundle. These settings currently cover the CRTM coefficient archive; they do
+not replace the Git LFS repositories used by IODA, UFO and MPAS-JEDI CTest.
+Those repositories are pinned in the bundle, require the separate Git LFS
+client and are validated automatically. See [JEDI test data and Git LFS](jedi-test-data.md).
 
 ## `obs2ioda`
 
