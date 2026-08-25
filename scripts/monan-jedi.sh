@@ -70,7 +70,14 @@ case "${command_name}" in
   build) monan_jedi_build_bundle ;;
   install) monan_jedi_install_bundle ;;
   test) monan_jedi_test_login ;;
-  test-pbs) monan_jedi_test_pbs ;;
+  test-pbs)
+    # Preflight must use the same validated environment as configure/build.
+    # In particular, prefer the Git/Git-LFS supplied by the pinned spack-stack
+    # instead of whatever happens to be active in the caller's shell.
+    monan_jedi_load_stack
+    monan_jedi_report_git_lfs_status
+    monan_jedi_test_pbs
+    ;;
   test-pbs-result) monan_jedi_test_pbs_result ;;
   obs2ioda) monan_jedi_build_obs2ioda ;;
   wps) monan_jedi_build_wps ;;
