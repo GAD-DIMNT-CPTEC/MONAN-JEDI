@@ -61,6 +61,21 @@ if monan_jedi_file_is_lfs_pointer "${real_data}"; then
   exit 1
 fi
 
+# Build-tree link validation must accept the exact pinned source target and
+# reject a stale link that resolves elsewhere.
+source_data="${test_dir}/source-data"
+wrong_data="${test_dir}/wrong-data"
+build_data="${test_dir}/build-data"
+mkdir -p "${source_data}" "${wrong_data}"
+ln -s "${source_data}" "${build_data}"
+monan_jedi_validate_build_data_link "${build_data}" "${source_data}" "test fixture"
+rm -f "${build_data}"
+ln -s "${wrong_data}" "${build_data}"
+if (monan_jedi_validate_build_data_link "${build_data}" "${source_data}" "test fixture") 2>/dev/null; then
+  echo "ERROR: stale CTest data link was accepted" >&2
+  exit 1
+fi
+
 assert_equal \
   '/p/projetos/monan_das/test-user/envs/git-lfs' \
   "$(USER=test-user PROJECT_ROOT= MONAN_JEDI_GIT_LFS_ROOT= monan_jedi_git_lfs_root)" \
@@ -98,6 +113,7 @@ stack_lib="${repo_root}/scripts/lib/stack.sh"
 pbs_lib="${repo_root}/scripts/lib/pbs.sh"
 test_data_lib="${repo_root}/scripts/lib/test_data.sh"
 configure_lib="${repo_root}/scripts/lib/configure.sh"
+orchestrator="${repo_root}/scripts/monan-jedi.sh"
 readme="${repo_root}/README.md"
 test_data_doc="${repo_root}/docs/jedi-test-data.md"
 
@@ -120,8 +136,18 @@ grep -Fq 'project-local fallback' "${test_data_lib}"
 grep -Fq 'project_fallback_env=' "${test_data_lib}"
 grep -Fq 'module load anaconda' "${test_data_lib}"
 grep -Fq 'start_conda' "${test_data_lib}"
+grep -Fq '/ioda/test/Data/testinput_tier_1' "${test_data_lib}"
+grep -Fq '/ufo/test/Data/ufo/testinput_tier_1' "${test_data_lib}"
+grep -Fq '/mpas-jedi/test/Data/384km/bg' "${test_data_lib}"
+grep -Fq '/mpas-jedi/test/Data/480km/bg' "${test_data_lib}"
+if grep -Fq '/ioda/Data/testinput_tier_1' "${test_data_lib}"; then
+  echo "ERROR: obsolete IODA build-tree test-data path returned" >&2
+  exit 1
+fi
 grep -Fq 'command -v git-lfs' "${stack_lib}"
 grep -Fq 'git lfs version' "${stack_lib}"
+grep -Fq 'test-pbs)' "${orchestrator}"
+grep -Fq 'monan_jedi_load_stack' "${orchestrator}"
 grep -Fq 'spack-stack already provides Git LFS' "${readme}"
 grep -Fq 'provider=loaded stack/environment' "${readme}"
 grep -Fq 'No Conda installation is required' "${test_data_doc}"
