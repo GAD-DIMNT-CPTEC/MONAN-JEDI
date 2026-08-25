@@ -88,6 +88,8 @@ grep -Fq 'PBS_LOG=' "${pbs_lib}"
 grep -Fq 'monan_jedi_validate_bundle_test_data' "${pbs_lib}"
 grep -Fq 'monan_jedi_prepare_bundle_test_data' "${configure_lib}"
 grep -Fq 'version https://git-lfs.github.com/spec/v1' "${test_data_lib}"
+grep -Fq 'envs/git-lfs/bin' "${test_data_lib}"
+grep -Fq '/p/app/anaconda' "${test_data_lib}"
 # Variables evaluated only by the generated PBS job must remain escaped in the
 # outer heredoc. Audit the complete generated body so a future unescaped
 # runtime variable fails CI before test-pbs reaches JACI.
