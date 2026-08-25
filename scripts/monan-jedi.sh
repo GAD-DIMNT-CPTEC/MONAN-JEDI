@@ -39,6 +39,16 @@ Commands:
 EOF_USAGE
 }
 
+monan_jedi_report_git_lfs_status() {
+  if monan_jedi_git_lfs_available; then
+    return 0
+  fi
+
+  log_warn "Git LFS is not currently available."
+  log_warn "  expected_persistent_env=$(monan_jedi_git_lfs_root)"
+  log_warn "The load command can continue, but configure/all will require Git LFS."
+}
+
 command_name="${1:-}"
 shift || true
 while [[ $# -gt 0 ]]; do
@@ -53,6 +63,7 @@ load_monan_jedi_config
 case "${command_name}" in
   load)
     monan_jedi_load_stack
+    monan_jedi_report_git_lfs_status
     monan_jedi_record_environment_snapshot "${MONAN_JEDI_LOG_ROOT}/01_stack_environment.log"
     ;;
   configure) monan_jedi_configure_bundle ;;
@@ -67,6 +78,7 @@ case "${command_name}" in
   logs) monan_jedi_collect_logs ;;
   all)
     monan_jedi_load_stack
+    monan_jedi_report_git_lfs_status
     monan_jedi_record_environment_snapshot "${MONAN_JEDI_LOG_ROOT}/01_stack_environment.log"
     monan_jedi_configure_bundle
     monan_jedi_build_bundle
