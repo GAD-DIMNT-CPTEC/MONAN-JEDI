@@ -53,18 +53,26 @@ the two-hour PBS limit terminated it.
 
 ## Required preparation
 
-Git LFS must be available on the login node before `configure`. One user-space
-installation option is:
+Git LFS must be available on the login node before `configure`. JACI's
+Conda `base` is shared at `/p/app/anaconda` and is not writable by normal
+users. Do not attempt to install packages into that environment. Create a
+project-local environment instead:
 
 ```bash
-conda install -c conda-forge git-lfs
+export GIT_LFS_ENV="/p/projetos/monan_das/${USER}/envs/git-lfs"
+
+conda create -y -p "${GIT_LFS_ENV}" -c conda-forge git-lfs
+export PATH="${GIT_LFS_ENV}/bin:${PATH}"
+
 git lfs install
 git lfs version
 ```
 
-A site module or administrator-provided installation may be used instead. The
-requirement is that `git lfs version` succeeds in the environment that invokes
-MONAN-JEDI.
+MONAN-JEDI automatically searches
+`${PROJECT_ROOT}/envs/git-lfs/bin/git-lfs` when `git lfs` is not already
+available through `PATH`. A site module or administrator-provided installation
+may be used instead. The requirement is that `git lfs version` succeeds before
+the data repositories are prepared.
 
 For a new or clean build, use the normal workflow:
 
@@ -80,9 +88,13 @@ three data repositories and rejects missing, empty or pointer-only files.
 ## Recovering an existing source and build tree
 
 After installing Git LFS, materialize the existing checkouts from the
-MONAN-JEDI repository root:
+MONAN-JEDI repository root. If this is a new login shell, restore the
+project-local Git LFS directory to `PATH` first:
 
 ```bash
+export GIT_LFS_ENV="/p/projetos/monan_das/${USER}/envs/git-lfs"
+export PATH="${GIT_LFS_ENV}/bin:${PATH}"
+
 git lfs install
 
 for repo in ioda-data ufo-data mpas-jedi-data; do

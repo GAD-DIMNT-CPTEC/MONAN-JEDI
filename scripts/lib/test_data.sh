@@ -7,13 +7,37 @@
 # files that CMake accepts but NetCDF/HDF5 tests cannot read.
 
 monan_jedi_git_lfs_available() {
-  command -v git >/dev/null 2>&1 && git lfs version >/dev/null 2>&1
+  local project_git_lfs_bin="${PROJECT_ROOT:-}/envs/git-lfs/bin"
+
+  command -v git >/dev/null 2>&1 || return 1
+
+  if git lfs version >/dev/null 2>&1; then
+    return 0
+  fi
+
+  # JACI's base Conda environment is shared and read-only. Automatically reuse
+  # the documented project-local environment without requiring users to edit
+  # PATH in every new login session.
+  if [[ -x "${project_git_lfs_bin}/git-lfs" ]]; then
+    export PATH="${project_git_lfs_bin}:${PATH}"
+    git lfs version >/dev/null 2>&1
+    return $?
+  fi
+
+  return 1
 }
 
 monan_jedi_print_git_lfs_recovery() {
+  local default_project_root="/p/projetos/monan_das/${USER:-unknown}"
+  local git_lfs_env="${PROJECT_ROOT:-${default_project_root}}/envs/git-lfs"
+
   log_error "Install Git LFS on the login node, then materialize the bundle data."
-  log_error "One user-space option is: conda install -c conda-forge git-lfs"
-  log_error "Then run: git lfs install"
+  log_error "JACI's shared base environment (/p/app/anaconda) is not writable."
+  log_error "Create a project-local environment instead:"
+  log_error "  conda create -y -p \"${git_lfs_env}\" -c conda-forge git-lfs"
+  log_error "The workflow discovers ${git_lfs_env}/bin/git-lfs automatically."
+  log_error "Then run: export PATH=\"${git_lfs_env}/bin:\${PATH}\""
+  log_error "And initialize it with: git lfs install"
   log_error "For an existing source tree, run:"
   log_error "  for repo in ioda-data ufo-data mpas-jedi-data; do git -C \"\${repo}\" lfs pull && git -C \"\${repo}\" lfs checkout; done"
 }
