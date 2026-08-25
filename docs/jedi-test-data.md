@@ -51,28 +51,80 @@ IODA MPI tests each consumed about 1500 seconds. The serial CTest run spent abou
 1 hour 40 minutes in those four timeouts and reached only test 747 of 2294 before
 the two-hour PBS limit terminated it.
 
-## Required preparation
+## Persistent Git LFS installation on JACI
 
-Git LFS must be available on the login node before `configure`. JACI's
-Conda `base` is shared at `/p/app/anaconda` and is not writable by normal
-users. Do not attempt to install packages into that environment. Create a
-project-local environment instead:
+JACI starts normal users without a writable Conda environment. To use Conda on
+a login node, first load the site module and initialize Conda:
 
 ```bash
+module load anaconda
+start_conda
+```
+
+The prompt normally changes to `(base)`. That `base` environment lives under
+`/p/app/anaconda`, is shared by the site and is not the place where MONAN-JEDI
+stores Git LFS. Do not try to make the dependency permanent by installing it
+into `(base)`.
+
+MONAN-JEDI uses a persistent user-owned location derived from `project.root`:
+
+```text
+${project.root}/envs/git-lfs
+```
+
+With the default JACI configuration this resolves to:
+
+```text
+/p/projetos/monan_das/${USER}/envs/git-lfs
+```
+
+This directory is the durable record that Git LFS has already been installed for
+the user. It remains there after logout, after `conda deactivate`, and after a
+new login session. The user does not need to remember whether installation was
+performed previously; MONAN-JEDI checks this location automatically.
+
+### First-time installation
+
+Only when `${project.root}/envs/git-lfs/bin/git-lfs` does not already exist, run:
+
+```bash
+module load anaconda
+start_conda
+
 export GIT_LFS_ENV="/p/projetos/monan_das/${USER}/envs/git-lfs"
-
 conda create -y -p "${GIT_LFS_ENV}" -c conda-forge git-lfs
-export PATH="${GIT_LFS_ENV}/bin:${PATH}"
 
+export PATH="${GIT_LFS_ENV}/bin:${PATH}"
 git lfs install
 git lfs version
 ```
 
-MONAN-JEDI automatically searches
-`${PROJECT_ROOT}/envs/git-lfs/bin/git-lfs` when `git lfs` is not already
-available through `PATH`. A site module or administrator-provided installation
-may be used instead. The requirement is that `git lfs version` succeeds before
-the data repositories are prepared.
+The `conda create -p` command creates an independent environment in the writable
+project tree. It does not modify JACI's shared `(base)` environment.
+
+### Later sessions
+
+After the first installation, users do **not** need to repeat the Conda setup in
+order to run MONAN-JEDI. The workflow checks normal `PATH` first and, if `git
+lfs` is not there, automatically checks:
+
+```text
+${project.root}/envs/git-lfs/bin/git-lfs
+```
+
+When found, the workflow adds that directory to its own `PATH` and reports the
+version, executable and persistent project location, for example:
+
+```text
+[INFO] Git LFS is available
+[INFO]   version=git-lfs/3.5.1 (...)
+[INFO]   executable=/p/projetos/monan_das/user/envs/git-lfs/bin/git-lfs
+[INFO]   persistent_project_env=/p/projetos/monan_das/user/envs/git-lfs
+```
+
+Therefore, an existing persistent environment is reused rather than recreated.
+
+## Required preparation of the bundle data
 
 For a new or clean build, use the normal workflow:
 
@@ -82,19 +134,25 @@ bash scripts/monan-jedi.sh build --config config/jaci.yaml
 bash scripts/monan-jedi.sh install --config config/jaci.yaml
 ```
 
-The configure step now runs `git lfs pull` and `git lfs checkout` in all
-three data repositories and rejects missing, empty or pointer-only files.
+The configure step runs `git lfs pull` and `git lfs checkout` in all three data
+repositories and rejects missing, empty or pointer-only files.
 
 ## Recovering an existing source and build tree
 
-After installing Git LFS, materialize the existing checkouts from the
-MONAN-JEDI repository root. If this is a new login shell, restore the
-project-local Git LFS directory to `PATH` first:
+If Git LFS is already installed in the persistent project location, there is no
+need to reinstall it. Restore it to the current interactive shell only when you
+want to run Git LFS commands manually:
 
 ```bash
 export GIT_LFS_ENV="/p/projetos/monan_das/${USER}/envs/git-lfs"
 export PATH="${GIT_LFS_ENV}/bin:${PATH}"
 
+git lfs version
+```
+
+Then materialize the existing checkouts from the MONAN-JEDI repository root:
+
+```bash
 git lfs install
 
 for repo in ioda-data ufo-data mpas-jedi-data; do
@@ -115,6 +173,13 @@ then rebuild. Do not increase PBS walltime merely to hide Git LFS or input-data
 failures.
 
 ## Manual diagnostics
+
+To check whether the persistent Git LFS environment already exists:
+
+```bash
+ls -l /p/projetos/monan_das/${USER}/envs/git-lfs/bin/git-lfs
+/p/projetos/monan_das/${USER}/envs/git-lfs/bin/git-lfs version
+```
 
 Inspect the actual locations used by CTest:
 
@@ -138,10 +203,12 @@ git -C mpas-jedi-data lfs status
 
 The MONAN-JEDI contract is now:
 
-1. `configure` requires the Git LFS client;
-2. all pinned test-data repositories are explicitly pulled and checked out;
-3. every tracked path is checked for missing, empty or pointer-only content;
-4. `test-pbs` repeats the non-mutating validation before allocating a node;
-5. a failure prints recovery commands and prevents `qsub`.
+1. Git LFS is installed once in a persistent user-owned project location;
+2. later sessions automatically discover and reuse that installation;
+3. `configure` requires the Git LFS client;
+4. all pinned test-data repositories are explicitly pulled and checked out;
+5. every tracked path is checked for missing, empty or pointer-only content;
+6. `test-pbs` repeats the non-mutating validation before allocating a node;
+7. a failure prints the persistent location and executable recovery commands and prevents `qsub`.
 
 A successful compilation alone does not certify that CTest data are usable.
