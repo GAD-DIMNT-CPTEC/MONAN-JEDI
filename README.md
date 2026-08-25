@@ -20,6 +20,36 @@ cray-mpich/8.1.31
 jedi-mpas-env/1.0.0
 ```
 
+### Git LFS is required
+
+Install Git LFS **before** running `configure` or `all`. The JEDI test-data
+repositories store their NetCDF/HDF5 inputs in Git LFS. Without the separate
+client, Git can leave small pointer-text files in place of the scientific data;
+the build may compile, but CTest will fail or wait until its timeout.
+
+First check:
+
+```bash
+git lfs version
+```
+
+On JACI, if that command reports that `lfs` is not a Git command, one
+user-space installation option is:
+
+```bash
+conda install -c conda-forge git-lfs
+git lfs install
+git lfs version
+```
+
+Do not continue until the final command prints a Git LFS version. The
+`configure` workflow downloads and validates the pinned `ioda-data`,
+`ufo-data` and `mpas-jedi-data` objects and now stops immediately if Git LFS
+or any required binary data are unavailable.
+
+For recovery of an existing checkout and detailed diagnostics, see
+[JEDI test data and Git LFS](docs/jedi-test-data.md).
+
 ## Configuration
 
 User-editable settings are centralized in YAML files under `config/`.
