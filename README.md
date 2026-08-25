@@ -33,14 +33,23 @@ First check:
 git lfs version
 ```
 
-On JACI, if that command reports that `lfs` is not a Git command, one
-user-space installation option is:
+On JACI, the active `base` environment is the shared, read-only
+`/p/app/anaconda`. **Do not run `conda install` in that environment.** Create
+a small environment below your writable project area instead:
 
 ```bash
-conda install -c conda-forge git-lfs
+export GIT_LFS_ENV="/p/projetos/monan_das/${USER}/envs/git-lfs"
+
+conda create -y -p "${GIT_LFS_ENV}" -c conda-forge git-lfs
+export PATH="${GIT_LFS_ENV}/bin:${PATH}"
+
 git lfs install
 git lfs version
 ```
+
+MONAN-JEDI automatically discovers
+`${project.root}/envs/git-lfs/bin/git-lfs` in later login sessions, even when
+that directory has not been added manually to `PATH`.
 
 Do not continue until the final command prints a Git LFS version. The
 `configure` workflow downloads and validates the pinned `ioda-data`,
