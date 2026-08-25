@@ -187,6 +187,12 @@ monan_jedi_configure_bundle() {
   require_cmd git
   require_cmd python
 
+  if ! monan_jedi_git_lfs_available; then
+    log_error "Git LFS is required before ecbuild materializes JEDI test-data repositories."
+    monan_jedi_print_git_lfs_recovery
+    exit 1
+  fi
+
   if [[ ! -f "${MONAN_JEDI_SOURCE_DIR}/CMakeLists.txt" ]]; then
     log_error "MONAN-JEDI source CMakeLists.txt not found: ${MONAN_JEDI_SOURCE_DIR}/CMakeLists.txt"
     exit 1
@@ -300,6 +306,11 @@ EOF_PROJECT
   log_info "Running final MONAN-JEDI configure with unbalance patches applied"
   ecbuild "${ecbuild_args[@]}" \
     2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/04_ecbuild.log"
+
+  # ecbuild_bundle clones data repositories successfully even when Git LFS
+  # objects remain as pointer text. Materialize and validate them explicitly
+  # before this configuration can be considered usable for CTest.
+  monan_jedi_prepare_bundle_test_data || exit 1
 
   monan_jedi_validate_unbalance_patch_markers
   monan_jedi_validate_unbalance_target

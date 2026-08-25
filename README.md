@@ -86,6 +86,8 @@ The `all` command builds auxiliary tools only when their respective `enabled` se
 
 See [JACI PBS queue limits](docs/jaci-pbs-queues.md) for current documented
 queue limits, exclusive-placement policy and live scheduler query commands.
+See [JEDI test data and Git LFS](docs/jedi-test-data.md) for the required binary
+test-data repositories, preparation, validation and recovery procedure.
 
 The `test` and `test-pbs` commands have different purposes.
 
@@ -98,6 +100,11 @@ bash scripts/monan-jedi.sh test --config config/jaci.yaml
 runs only the login-node-safe CTest subset. With the default JACI configuration,
 this currently selects `mpasjedi_coding_norms`. A successful `test` result does
 not mean that the complete JEDI/MPAS-JEDI test suite has passed.
+
+Before submission, `test-pbs` validates that the pinned `ioda-data`,
+`ufo-data` and `mpas-jedi-data` Git LFS objects are materialized and reachable
+through the build tree. It aborts before `qsub` if pointer text, missing files or
+stale `Data` paths are detected.
 
 Submit the complete configured validation to a compute node with:
 

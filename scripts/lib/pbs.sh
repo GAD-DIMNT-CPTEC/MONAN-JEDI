@@ -70,6 +70,13 @@ monan_jedi_test_pbs() {
     exit 1
   fi
 
+  # Refuse submission before allocating a compute node when ecbuild cloned only
+  # Git LFS pointer text or when build-tree Data links are absent/stale.
+  if ! monan_jedi_validate_bundle_test_data; then
+    log_error "PBS CTest submission aborted because required test data is not usable."
+    exit 1
+  fi
+
   # The PBS job must be able to cd back into the repository from the compute
   # node. Restrict execution to shared filesystems used on JACI.
   case "${PWD}" in

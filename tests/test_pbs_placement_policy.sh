@@ -2,10 +2,15 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "${repo_root}/scripts/lib/test_data.sh"
 source "${repo_root}/scripts/lib/pbs.sh"
 
 log_error() {
   printf 'ERROR: %s\n' "$*" >&2
+}
+
+log_info() {
+  :
 }
 
 assert_equal() {
@@ -30,6 +35,23 @@ trap 'rm -rf "${test_dir}"' EXIT
 compute_script="${test_dir}/compute.pbs"
 aux_script="${test_dir}/aux.pbs"
 
+lfs_pointer="${test_dir}/pointer.nc4"
+real_data="${test_dir}/real.nc4"
+printf '%s\n' \
+  'version https://git-lfs.github.com/spec/v1' \
+  'oid sha256:0123456789abcdef' \
+  'size 304016' > "${lfs_pointer}"
+printf '\211HDF\r\n\032\n' > "${real_data}"
+
+if ! monan_jedi_file_is_lfs_pointer "${lfs_pointer}"; then
+  echo "ERROR: Git LFS pointer signature was not detected" >&2
+  exit 1
+fi
+if monan_jedi_file_is_lfs_pointer "${real_data}"; then
+  echo "ERROR: materialized HDF5 data was classified as a Git LFS pointer" >&2
+  exit 1
+fi
+
 printf '%s\n' '#!/bin/bash' '#PBS -q pesqmini' '#PBS -l place=excl' > "${compute_script}"
 printf '%s\n' '#!/bin/bash' '#PBS -q aux' > "${aux_script}"
 
@@ -51,6 +73,8 @@ fi
 read_config="${repo_root}/scripts/lib/read_config.py"
 config_lib="${repo_root}/scripts/lib/config.sh"
 pbs_lib="${repo_root}/scripts/lib/pbs.sh"
+test_data_lib="${repo_root}/scripts/lib/test_data.sh"
+configure_lib="${repo_root}/scripts/lib/configure.sh"
 
 if grep -Fq 'from __future__ import annotations' "${read_config}"; then
   echo "ERROR: read_config.py requires Python 3.7 annotations support" >&2
@@ -61,6 +85,9 @@ grep -Fq 'if ! config_exports="$(python3' "${config_lib}"
 grep -Fq 'trap finalize_pbs_result EXIT' "${pbs_lib}"
 grep -Fq 'ERROR_PHASE=' "${pbs_lib}"
 grep -Fq 'PBS_LOG=' "${pbs_lib}"
+grep -Fq 'monan_jedi_validate_bundle_test_data' "${pbs_lib}"
+grep -Fq 'monan_jedi_prepare_bundle_test_data' "${configure_lib}"
+grep -Fq 'version https://git-lfs.github.com/spec/v1' "${test_data_lib}"
 # Variables evaluated only by the generated PBS job must remain escaped in the
 # outer heredoc. Audit the complete generated body so a future unescaped
 # runtime variable fails CI before test-pbs reaches JACI.
