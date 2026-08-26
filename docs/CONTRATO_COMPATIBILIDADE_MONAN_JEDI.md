@@ -17,6 +17,24 @@ também exige que o JEDI consiga representar a malha do modelo, ler e escrever
 estados completos, avançar o modelo de forma temporalmente consistente, utilizar
 as observações e permitir que o MONAN seja reiniciado a partir da análise.
 
+A compatibilidade somente DEVE ser declarada após a execução de um ciclo
+integrado que atravesse as interfaces reais entre os componentes:
+
+```text
+previsão MONAN/MPAS
+        ↓
+assimilação MONAN-JEDI
+        ↓
+análise
+        ↓
+nova previsão MONAN
+        ↓
+entrada válida para o ciclo seguinte
+```
+
+Testes isolados do modelo, do adaptador ou de partes do JEDI são importantes
+para localizar erros, mas não substituem essa verificação do sistema completo.
+
 ## 2. Escopo e linguagem normativa
 
 O contrato se aplica a mudanças no MONAN/MPAS, no MPAS-JEDI, no conjunto de
@@ -329,20 +347,33 @@ Para uma proposta de mudança no MONAN que atinja uma interface protegida:
 3. registrar as versões exatas do MONAN e do MPAS-JEDI utilizadas nos testes;
 4. atualizar, quando necessário, o adaptador, a configuração e a documentação de
    forma coordenada;
-5. executar os testes mínimos de integração descritos na Seção 14;
+5. executar os testes de interface e a validação do ciclo completo descritos na
+   Seção 14;
 6. registrar os resultados e os possíveis impactos na matriz B e nos operadores
    de observação;
-7. não declarar compatibilidade com base apenas em uma previsão isolada.
+7. não declarar compatibilidade com base apenas em uma previsão isolada ou em
+   testes separados dos componentes;
+8. preservar as evidências da execução integrada, incluindo versões, configurações,
+   logs e produtos transferidos entre MONAN e JEDI.
 
 Mecanismos temporários de compatibilidade PODEM ser utilizados durante uma
 migração coordenada. O período de transição e os critérios para sua remoção DEVEM
 ser documentados.
 
-## 14. Validação mínima de integração
+## 14. Validação de integração e do ciclo completo
 
-RECOMENDA-SE que a validação seja automatizada em integração contínua ou em um
-fluxo reproduzível no ambiente de computação de alto desempenho. No mínimo, ela
-DEVE:
+A verificação de compatibilidade possui dois níveis complementares. Os testes
+reduzidos de interface ajudam a detectar rapidamente problemas específicos. A
+validação de ponta a ponta comprova que os componentes continuam funcionando
+juntos. Os testes reduzidos NÃO DEVEM ser usados como substitutos da execução do
+sistema completo.
+
+RECOMENDA-SE que ambos os níveis sejam automatizados em integração contínua ou
+em um fluxo reproduzível no ambiente de computação de alto desempenho.
+
+### 14.1 Testes reduzidos de interface
+
+Os testes de interface DEVEM, no mínimo:
 
 1. carregar um estado completo do MONAN/MPAS;
 2. construir a representação da geometria no MPAS-JEDI;
@@ -350,10 +381,56 @@ DEVE:
 4. comprovar que o avanço lógico corresponde à integração física do modelo;
 5. executar um teste reduzido de `HofX` ou equivalente;
 6. executar um teste variacional reduzido;
-7. escrever a análise como um estado completo do modelo;
+7. escrever uma análise de teste como um estado completo do modelo;
 8. confirmar a presença das variáveis necessárias, valores numéricos finitos e
    `xtime` válido;
-9. inicializar o MONAN a partir da análise e avançá-lo com sucesso.
+9. comprovar que o MONAN consegue inicializar a partir da análise produzida.
+
+### 14.2 Validação obrigatória do sistema completo
+
+Antes de uma versão do MONAN ser declarada compatível com o MONAN-JEDI, DEVE ser
+executado pelo menos um ciclo integrado de ponta a ponta. O caso PODE ser
+reduzido para controlar o custo computacional, mas DEVE utilizar os componentes,
+arquivos e transferências reais do sistema, sem substituir as interfaces
+protegidas por dados simulados ou etapas manuais que ocultem incompatibilidades.
+
+A validação integrada DEVE:
+
+1. executar uma previsão do MONAN/MPAS que produza o estado de referência
+   utilizado pela assimilação;
+2. preparar e validar os arquivos necessários à assimilação, incluindo estado do
+   modelo, observações, geometria, arquivos estáticos e matriz B;
+3. executar o MONAN-JEDI completo com a configuração de assimilação escolhida;
+4. confirmar que as observações foram lidas e utilizadas e que o processo de
+   minimização ou análise terminou corretamente;
+5. produzir a análise como um estado completo, temporalmente consistente e
+   reinicializável do MONAN;
+6. verificar nos estados de entrada e saída as variáveis obrigatórias, horários,
+   dimensões, valores não finitos e demais critérios numéricos definidos pelo
+   experimento;
+7. inicializar o MONAN a partir da análise, sem reconstrução manual de campos que
+   deveria ser realizada pelo fluxo;
+8. executar a nova previsão até o horário do ciclo seguinte;
+9. comprovar que a previsão resultante pode ser utilizada diretamente como
+   entrada de uma nova assimilação;
+10. quando o fluxo se destinar a ciclos sucessivos, executar também a assimilação
+    do horário seguinte, comprovando a continuidade do encadeamento;
+11. registrar as versões exatas dos componentes, configurações, logs, arquivos de
+    entrada e saída e resultados da validação.
+
+O critério esperado é, portanto:
+
+```text
+MONAN/MPAS isolado executa
+        +
+MONAN-JEDI isolado executa
+        ≠
+compatibilidade comprovada
+
+compatibilidade comprovada
+        =
+ciclo integrado executado e validado
+```
 
 Mudanças que afetem a geometria, o significado do estado ou a compatibilidade da
 covariância exigem validação científica adicional apropriada à interface
@@ -370,7 +447,9 @@ seguinte lista de verificação em sua descrição:
 [ ] Documentei mudanças na integração temporal, nos relógios, no ciclo ou no reinício.
 [ ] Documentei mudanças na geometria, na representação do vento ou nos diagnósticos.
 [ ] Avaliei a compatibilidade dos operadores de observação e da matriz B, quando aplicável.
-[ ] Executei ou solicitei a validação mínima de integração do MONAN-JEDI.
+[ ] Executei ou solicitei os testes reduzidos de interface do MONAN-JEDI.
+[ ] Executei ou solicitei a validação do ciclo completo MONAN/MPAS → MONAN-JEDI → MONAN.
+[ ] Confirmei que a saída do ciclo pode alimentar diretamente o ciclo seguinte.
 [ ] Registrei as versões exatas do MONAN e do MPAS-JEDI utilizadas na validação.
 ```
 
