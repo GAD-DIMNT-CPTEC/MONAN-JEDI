@@ -293,7 +293,11 @@ See [docs/wps-build-jaci.md](docs/wps-build-jaci.md) for details.
 ## MONAN--JEDI compatibility contract
 
 Changes to MONAN/MPAS interfaces consumed by data assimilation must follow the
-[MONAN--JEDI compatibility contract](docs/MONAN_JEDI_COMPATIBILITY_CONTRACT.md).
+[MONAN--JEDI compatibility contract](docs/CONTRATO_COMPATIBILIDADE_MONAN_JEDI.md).
+The contract is maintained in Portuguese as the primary version during joint
+review by the Computational Science and Data Assimilation groups. An English
+translation will be prepared after the Portuguese document is consolidated.
+
 It identifies protected model-state, time, geometry, Registry/pool, diagnostic,
 file and covariance interfaces; classifies changes by compatibility impact; and
 defines the minimum end-to-end validation required before integration.
