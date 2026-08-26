@@ -1,0 +1,651 @@
+MONAN-JEDI
+
+A partir de:
+/lustre/projetos/monan_das/rodrigo.braz/src/spack-stack
+
+git clone https://github.com/GAD-DIMNT-CPTEC/MONAN-JEDI.git
+
+cd /lustre/projetos/monan_das/rodrigo.braz/src/spack-stack/MONAN-JEDI
+
+vi CMakeLists.txt
+
+#  ecbuild_bundle( PROJECT mpas           GIT "https://github.com/MPAS-Dev/MPAS-Model.git" TAG 0e5a47a0e1bcccd6e3d99909b76e740a643c4db6 )
+
+Adicionar na mesma posição:
+ecbuild_bundle( PROJECT mpas           GIT "https://github.com/monanadmin/MONAN-Model.git" TAG cf4ac91658d5114d38a2ee4ab3be07f6a45c8f23 )
+
+
+bash scripts/monan-jedi.sh load --config config/jaci.yaml bash scripts/monan-jedi.sh configure --config config/jaci.yaml bash scripts/monan-jedi.sh build --config config/jaci.yaml 
+[ 40%] Building Fortran object oops/qg/model/CMakeFiles/qg.dir/qg_error_covariance_interface.F90.o
+[ 40%] Linking CXX shared library ../../../lib/libqg.so
+[ 40%] Built target qg
+/lustre/projetos/monan_das/rodrigo.braz/src/spack-stack/MONAN-JEDI/vader/src/mo/eval_sat_vapour_pressure.cc: In function ‘void mo::{anonymous}::eval_sat_vapour_pressure_variant(std::string, atlas::FieldSet&)’:
+/lustre/projetos/monan_das/rodrigo.braz/src/spack-stack/MONAN-JEDI/vader/src/mo/eval_sat_vapour_pressure.cc:75:55: warning: ‘ival’ may be used uninitialized [-Wmaybe-uninitialized]
+   75 |   const auto& lookup = lookups::allSvpLookupTable[ival];
+      |                                                       ^
+/lustre/projetos/monan_das/rodrigo.braz/src/spack-stack/MONAN-JEDI/vader/src/mo/eval_sat_vapour_pressure.cc:63:7: note: ‘ival’ was declared here
+   63 |   int ival;
+      |       ^~~~
+[ 41%] Linking CXX shared library ../../lib/libvader.so
+[ 41%] Built target vader
+make: *** [Makefile:166: all] Error 2
+
+
+Correção:
+
+vi /lustre/projetos/monan_das/rodrigo.braz/src/spack-stack/MONAN-JEDI/vader/src/mo/eval_sat_vapour_pressure.cc
+  int ival;
+Alterar para:
+  int ival = 0;
+
+
+Executar novamente:
+
+bash scripts/monan-jedi.sh build --config config/jaci.yaml 
+
+[ 41%] Built target oops_l95_departuresensemble
+/lustre/projetos/monan_das/rodrigo.braz/src/spack-stack/MONAN-JEDI/mpas/src/core_atmosphere/diagnostics/mpas_isobaric_diagnostics.F:16:9:
+
+   16 |     use VerticalInterpolation
+      |         1
+Fatal Error: Cannot open module file ‘verticalinterpolation.mod’ for reading at (1): No such file or directory
+compilation terminated.
+[ 41%] Built target oops_l95_geometry_iterator
+[ 41%] Built target oops_l95_geovals
+make[2]: *** [mpas/src/core_atmosphere/CMakeFiles/core_atmosphere.dir/build.make:3458: mpas/src/core_atmosphere/CMakeFiles/core_atmosphere.dir/diagnostics/mpas_isobaric_diagnostics.F.o] Error 1
+make[2]: *** Waiting for unfinished jobs....
+[ 41%] Built target oops_l95_state
+[ 41%] Built target oops_l95_modelauxcontrol
+[ 41%] Built target oops_l95_getvalues
+[ 41%] Built target oops_l95_pseudomodel
+[ 41%] Built target oops_l95_model
+[ 41%] Built target oops_l95_pseudomodel_state4d
+[ 41%] Built target oops_l95_identitymodel
+[ 41%] Built target oops_l95_increment
+[ 41%] Built target oops_l95_modelauxincrement
+[ 41%] Built target oops_l95_modelauxcovariance
+[ 41%] Built target oops_l95_obsspace
+[ 41%] Built target oops_l95_obs_iterator
+[ 41%] Built target oops_l95_errorcovariance
+/lustre/projetos/monan_das/rodrigo.braz/src/spack-stack/MONAN-JEDI/mpas/src/core_atmosphere/physics/physics_mmm/sf_mynn.F90:4:6:
+
+    4 |  use module_sprayHFs, only: sprayHFs
+      |      1
+Fatal Error: Cannot open module file ‘module_sprayhfs.mod’ for reading at (1): No such file or directory
+compilation terminated.
+make[2]: *** [mpas/src/core_atmosphere/CMakeFiles/core_atmosphere.dir/build.make:2691: mpas/src/core_atmosphere/CMakeFiles/core_atmosphere.dir/physics/physics_mmm/sf_mynn.F90.o] Error 1
+
+
+Na etapa do configure, você deverá encontrar um erro relacionado ao VerticalInterpolation, se solucionado erro no module_sprayHFs e quando solucionado no module_cu_gf_monan -> No MONAN foram adicionadas algumas funcionalidades e modulos a mais que o MPAS não tem.   ## Solução para os modules adicionais do MONAN  Editar: vi /lustre/projetos/monan_das/rodrigo.braz/src/spack-stack/MONAN-JEDI/mpas/src/core_atmosphere/CMakeLists.txt  Adicionar  "mpas_vertical_interpolation.F" em:  # diagnostics/ set(ATMOSPHERE_CORE_DIAGNOSTIC_SOURCES     mpas_atm_diagnostic_template.F     mpas_atm_diagnostics_manager.F     mpas_atm_diagnostics_utils.F     mpas_cloud_diagnostics.F     mpas_convective_diagnostics.F     mpas_isobaric_diagnostics.F     mpas_pv_diagnostics.F     mpas_soundings.F     mpas_vertical_interpolation.F )   Adicionar  "module_sprayHFs.F90" em:  set(ATMOSPHERE_CORE_PHYSICS_MMM_SOURCES     bl_gwdo.F90     bl_ysu.F90     cu_ntiedtke.F90     module_libmassv.F90     mp_wsm6.F90     mp_wsm6_effectRad.F90     bl_mynn.F90     bl_mynn_subroutines.F90     mp_radar.F90     mynn_shared.F90     sf_mynn.F90     sf_sfclayrev.F90     module_sprayHFs.F90 )  Adicionar  "set inteiro do physics_monan" em:  # physics/physics_monan/ set(ATMOSPHERE_CORE_PHYSICS_MONAN_SOURCES     modConstants.F     modGate.F     modHenrysLawCts.F     modVector.F     module_bl_mixingscalars.F     module_cu_gf.monan.F     module_mp_cldfra_cb.F ) list(TRANSFORM ATMOSPHERE_CORE_PHYSICS_MONAN_SOURCES PREPEND physics/physics_monan/)  (...) 
+Adicionar ${ATMOSPHERE_CORE_PHYSICS_MONAN_SOURCES} em add_library   add_library(core_atmosphere ${ATMOSPHERE_CORE_SOURCES}              ${ATMOSPHERE_CORE_PHYSICS_NOAMP_SRC_SOURCES}              ${ATMOSPHERE_CORE_PHYSICS_SOURCES}              ${ATMOSPHERE_CORE_PHYSICS_MMM_SOURCES}              ${ATMOSPHERE_CORE_PHYSICS_MONAN_SOURCES} (...) 
+Rodar novamente:
+
+bash scripts/monan-jedi.sh build --config config/jaci.yaml 
+[100%] Linking CXX executable ../../bin/test_EnsembleObsFilters.x
+[100%] Built target test_EnsembleObsFilters.x
+[100%] Linking CXX executable mpasjedi_getvalues
+[100%] Built target mpasjedi_getvalues
+[100%] Linking CXX executable mpasjedi_errorcovariance
+[100%] Linking CXX executable mpasjedi_obslocalization
+[100%] Linking CXX executable mpasjedi_obslocalizations
+[100%] Built target mpasjedi_errorcovariance
+[100%] Built target mpasjedi_obslocalization
+[100%] Linking CXX executable mpasjedi_obslocalization_vertical
+[100%] Built target mpasjedi_obslocalizations
+[100%] Built target mpasjedi_obslocalization_vertical
+[100%] Linking CXX executable ../../../bin/mpasjedi_enshofx.x
+[100%] Built target mpasjedi_enshofx.x
+[100%] Linking CXX executable ../../../bin/mpasjedi_unbalance_ensemble.x
+[100%] Linking CXX executable ../../../bin/mpasjedi_gen_ens_pert_B.x
+[100%] Built target mpasjedi_unbalance_ensemble.x
+[100%] Linking CXX executable ../../../bin/mpasjedi_error_covariance_toolbox.x
+[100%] Built target mpasjedi_gen_ens_pert_B.x
+[100%] Linking CXX executable ../../../bin/mpasjedi_process_perts.x
+[100%] Built target mpasjedi_error_covariance_toolbox.x
+[100%] Built target mpasjedi_process_perts.x
+[100%] Linking CXX executable ../../../bin/mpasjedi_hofx3d.x
+[100%] Built target mpasjedi_hofx3d.x
+[100%] Linking CXX executable ../../../bin/mpasjedi_hofx.x
+[100%] Built target mpasjedi_hofx.x
+[100%] Linking CXX executable ../../../bin/mpasjedi_enkf.x
+[100%] Built target mpasjedi_enkf.x
+[100%] Linking CXX executable ../../../bin/mpasjedi_variational.x
+[100%] Linking CXX executable ../../../bin/mpasjedi_eda.x
+[100%] Built target mpasjedi_variational.x
+[100%] Built target mpasjedi_eda.x
+[INFO] Validated required MPAS-JEDI executables after build
+[INFO]   process_perts=/p/projetos/monan_das/rodrigo.braz/work/monan-jedi/build/bin/mpasjedi_process_perts.x
+[INFO]   unbalance=/p/projetos/monan_das/rodrigo.braz/work/monan-jedi/build/bin/mpasjedi_unbalance_ensemble.x
+
+Executar:
+bash scripts/monan-jedi.sh install --config config/jaci.yaml …
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/bin/mpasjedi_unbalance_ensemble.x
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/lib/cmake/monan-jedi-mpas-only/monan-jedi-mpas-only-config-version.cmake
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/lib/cmake/monan-jedi-mpas-only/monan-jedi-mpas-only-config.cmake
+[INFO] Validated required MPAS-JEDI executables after install
+[INFO]   process_perts=/p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/bin/mpasjedi_process_perts.x
+[INFO]   unbalance=/p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/bin/mpasjedi_unbalance_ensemble.x
+
+
+Executar:
+bash scripts/monan-jedi.sh obs2ioda --config config/jaci.yaml …
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/lib/libgtest_main.a
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/lib/pkgconfig/gtest.pc
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/lib/pkgconfig/gtest_main.pc
+[INFO] obs2ioda install target completed
+[INFO] obs2ioda published=/p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/bin/obs2ioda_v3
+
+
+Executar:
+bash scripts/monan-jedi.sh test --config config/jaci.yaml [JACI:ian04 MONAN-JEDI]$ bash scripts/monan-jedi.sh test --config config/jaci.yaml
+[INFO] MONAN-JEDI stack environment is missing or incomplete; loading configured stack
+[INFO] MONAN-JEDI stack environment loaded and validated
+[INFO]   STACK_INSTANCE=spack-stack-inpe-overlay-20260515T181917Z
+[INFO]   MONAN_JEDI_RUN_ID=monan-jedi
+[INFO]   STACK_ROOT=/p/projetos/monan_das/joao.gerd/work/spack-stack-inpe-overlay-20260515T181917Z/spack-stack
+[INFO]   STACK_SITE_SETUP=configs/sites/tier2/jaci/setup.sh
+[INFO]   STACK_ENV_MODULE=cray-mpich/8.1.31/none/none/jedi-mpas-env/1.0.0
+[INFO]   SPACK=/p/projetos/monan_das/joao.gerd/work/spack-stack-inpe-overlay-20260515T181917Z/spack-stack/spack/bin/spack
+[INFO]   ECBUILD=/p/projetos/monan_das/joao.gerd/env/spack-stack/spack-stack-inpe-overlay-20260515T181917Z/install/gcc/12.3.0/ecbuild-3.12.0-oissw3v/bin/ecbuild
+[INFO]   CMAKE=/p/projetos/monan_das/joao.gerd/env/spack-stack/spack-stack-inpe-overlay-20260515T181917Z/install/gcc/12.3.0/cmake-3.31.8-y433tfu/bin/cmake
+[INFO]   CTEST=/p/projetos/monan_das/joao.gerd/env/spack-stack/spack-stack-inpe-overlay-20260515T181917Z/install/gcc/12.3.0/cmake-3.31.8-y433tfu/bin/ctest
+[INFO]   PYTHON=/p/projetos/monan_das/joao.gerd/env/spack-stack/spack-stack-inpe-overlay-20260515T181917Z/install/none/none/python-venv-1.0-34756rd/bin/python
+[INFO]   GIT=/p/projetos/monan_das/joao.gerd/env/spack-stack/spack-stack-inpe-overlay-20260515T181917Z/install/gcc/12.3.0/git-2.48.1-ud2rh4d/bin/git
+[INFO]   CC=/opt/cray/pe/craype/2.7.33/bin/cc
+[INFO]   CXX=/opt/cray/pe/craype/2.7.33/bin/CC
+[INFO]   FC=/opt/cray/pe/craype/2.7.33/bin/ftn
+Test project /p/projetos/monan_das/rodrigo.braz/work/monan-jedi/build
+    Start 2236: mpasjedi_coding_norms
+1/1 Test #2236: mpasjedi_coding_norms ............   Passed    1.30 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Label Time Summary:
+mpasjedi    =   1.30 sec*proc (1 test)
+script      =   1.30 sec*proc (1 test)
+tier2       =   1.30 sec*proc (1 test)
+
+Total Test time (real) =   2.87 sec
+
+
+Executar:
+bash scripts/monan-jedi.sh logs --config config/jaci.yaml
+
+# MONAN-JEDI log summary
+GeneratedAt=2026-08-26T15:49:56Z
+
+## Files
+/p/projetos/monan_das/rodrigo.braz/logs/monan-jedi/01_stack_environment.log
+/p/projetos/monan_das/rodrigo.braz/logs/monan-jedi/03_crtm_coeffs_download.log
+/p/projetos/monan_das/rodrigo.braz/logs/monan-jedi/04_configure_environment.log
+/p/projetos/monan_das/rodrigo.braz/logs/monan-jedi/04_ecbuild.log
+/p/projetos/monan_das/rodrigo.braz/logs/monan-jedi/04_ecbuild_materialize.log
+/p/projetos/monan_das/rodrigo.braz/logs/monan-jedi/04_unbalance_patches.log
+/p/projetos/monan_das/rodrigo.braz/logs/monan-jedi/05_make.log
+/p/projetos/monan_das/rodrigo.braz/logs/monan-jedi/06_make_install.log
+/p/projetos/monan_das/rodrigo.braz/logs/monan-jedi/07_ctest.log
+/p/projetos/monan_das/rodrigo.braz/logs/monan-jedi/08_obs2ioda_build.log
+/p/projetos/monan_das/rodrigo.braz/logs/monan-jedi/08_obs2ioda_checkout.log
+/p/projetos/monan_das/rodrigo.braz/logs/monan-jedi/08_obs2ioda_clone.log
+/p/projetos/monan_das/rodrigo.braz/logs/monan-jedi/08_obs2ioda_cmake.log
+/p/projetos/monan_das/rodrigo.braz/logs/monan-jedi/08_obs2ioda_fetch.log
+/p/projetos/monan_das/rodrigo.braz/logs/monan-jedi/08_obs2ioda_install.log
+/p/projetos/monan_das/rodrigo.braz/logs/monan-jedi/08_obs2ioda_ldd.log
+/p/projetos/monan_das/rodrigo.braz/logs/monan-jedi/99_summary.log
+
+## Configure tail
+--     flags      :  -O2 -g -DNDEBUG  
+--     link flags : 
+-- linker : /usr/bin/ld
+-- ar     : /usr/bin/ar
+-- ranlib : /usr/bin/ranlib
+-- link flags
+--     executable [    -Wl,--disable-new-dtags ]
+--     shared lib [ -Wl,--disable-new-dtags ]
+--     static lib [ -Wl,--disable-new-dtags ]
+-- install rpath  : $ORIGIN/../lib
+-- common definitions: 
+-- ---------------------------------------------------------
+-- Feature summary
+-- ---------------------------------------------------------
+-- The following features have been enabled:
+
+ * TESTS, monan-jedi-mpas-only(ON): 'Enable the unit tests', monan-jedi-mpas-only(ON): 'Enable the unit tests', gsw(ON): 'Enable the unit tests', oops(ON): 'Enable the unit tests', vader(ON): 'Enable the unit tests', saber(ON): 'Enable the unit tests', ioda-data(ON): 'Enable the unit tests', ioda(ON): 'Enable the unit tests', ufo-data(ON): 'Enable the unit tests', ufo(ON): 'Enable the unit tests', mpas-jedi-data(ON): 'Enable the unit tests', mpasjedi(ON): 'Enable the unit tests'
+ * PKGCONFIG, monan-jedi-mpas-only(ON): 'Enable ecbuild_pkgconfig', monan-jedi-mpas-only(ON): 'Enable ecbuild_pkgconfig', gsw(ON): 'Enable ecbuild_pkgconfig', oops(ON): 'Enable ecbuild_pkgconfig', vader(ON): 'Enable ecbuild_pkgconfig', saber(ON): 'Enable ecbuild_pkgconfig', ioda-data(ON): 'Enable ecbuild_pkgconfig', ioda(ON): 'Enable ecbuild_pkgconfig', ufo-data(ON): 'Enable ecbuild_pkgconfig', ufo(ON): 'Enable ecbuild_pkgconfig', mpas-jedi-data(ON): 'Enable ecbuild_pkgconfig', mpasjedi(ON): 'Enable ecbuild_pkgconfig'
+ * WARNINGS, oops(ON): 'Add warnings to compiler', vader(ON): 'Add warnings to compiler', saber(ON): 'Add warnings to compiler', ioda(ON): 'Add warnings to compiler', ufo(ON): 'Add warnings to compiler', mpasjedi(ON): 'Add warnings to compiler'
+ * Python, Build Python bindings using pybind11
+
+-- The following OPTIONAL packages have been found:
+
+ * ECTRANS (required version >= 1.6.0)
+ * Python3
+ * pybind11
+ * ioda-data
+ * ufo-data
+ * Git
+ * PkgConfig
+ * mpas-jedi-data
+ * Perl
+
+-- The following REQUIRED packages have been found:
+
+ * ecbuild (required version >= 3.3.2)
+ * boost_headers (required version == 1.84.0)
+ * Boost
+ * PnetCDF
+ * PIO
+ * MPAS (required version >= 8.0)
+ * hic
+ * Eigen3
+ * atlas (required version >= 0.35.0)
+ * jedicmake
+ * nlohmann_json
+ * oops (required version >= 1.10.0)
+ * gsw
+ * FFTW
+ * gsibec
+ * BLAS
+ * LAPACK
+ * saber (required version >= 1.10.0)
+ * Threads
+ * HDF5
+ * gsl-lite
+ * udunits (required version >= 2.2.0)
+ * OpenMP
+ * eckit
+ * bufr (required version >= 12.0.1)
+ * bufr_query (required version >= 0.0.4)
+ * ioda (required version >= 2.9.0)
+ * MPI
+ * NetCDF
+ * ufo (required version >= 1.10.0)
+
+-- The following OPTIONAL packages have not been found:
+
+ * jedi-model-data (required version >= 1.0.0)
+ * geos-aero
+ * oasim
+ * rttov (required version >= 12.1.0)
+ * ropp-ufo
+ * MKL
+ * ARMPL
+ * NVPL
+
+-- Configuring done (68.1s)
+-- Generating done (11.0s)
+-- Build files have been written to: /p/projetos/monan_das/rodrigo.braz/work/monan-jedi/build
+
+## Bundle build tail
+[ 97%] Linking CXX executable ufo_geovals_spec
+[ 97%] Linking CXX executable ufo_qc_met_office_buddy_pair_finder
+[ 97%] Linking CXX executable ufo_qc_gauss_thinning_satrad
+[ 97%] Linking CXX executable ufo_qc_stuckcheck_unittests
+[ 97%] Built target ufo_qc_gauss_thinning_unittests
+[ 97%] Linking CXX executable ufo_bias_linear_op
+[ 97%] Built target ufo_geovals_spec
+[ 97%] Built target mpasjedi
+[ 97%] Built target ufo_qc_met_office_buddy_pair_finder
+[ 97%] Building CXX object mpas-jedi/src/mains/CMakeFiles/mpasjedi_saca.x.dir/mpasSACA.cc.o
+[ 97%] Building CXX object mpas-jedi/src/mains/CMakeFiles/mpasjedi_enshofx.x.dir/mpasEnsHofX.cc.o
+[ 97%] Building CXX object mpas-jedi/src/mains/CMakeFiles/mpasjedi_eda.x.dir/mpasEDA.cc.o
+[ 97%] Built target ufo_qc_gauss_thinning_satrad
+[ 97%] Building CXX object mpas-jedi/src/mains/CMakeFiles/mpasjedi_forecast.x.dir/mpasForecast.cc.o
+[ 97%] Built target ufo_qc_stuckcheck_unittests
+[ 97%] Building CXX object mpas-jedi/src/mains/CMakeFiles/mpasjedi_gen_ens_pert_B.x.dir/mpasGenEnsPertB.cc.o
+[ 97%] Building CXX object mpas-jedi/src/mains/CMakeFiles/mpasjedi_hofx.x.dir/mpasHofX.cc.o
+[ 97%] Linking CXX executable ufo_qc_trackcheck_unittests
+[ 97%] Building CXX object mpas-jedi/src/mains/CMakeFiles/mpasjedi_hofx3d.x.dir/mpasHofX3D.cc.o
+[ 97%] Linking CXX executable ufo_qc_temporal_thinning_unittests
+[ 97%] Building CXX object mpas-jedi/src/mains/CMakeFiles/mpasjedi_enkf.x.dir/mpasEnKF.cc.o
+[ 97%] Building CXX object mpas-jedi/src/mains/CMakeFiles/mpasjedi_error_covariance_toolbox.x.dir/mpasErrorCovarianceToolbox.cc.o
+[ 97%] Building CXX object mpas-jedi/src/mains/CMakeFiles/mpasjedi_rtpp.x.dir/mpasRTPP.cc.o
+[ 97%] Building CXX object mpas-jedi/src/mains/CMakeFiles/mpasjedi_ens_mean_variance.x.dir/mpasEnsMeanVariance.cc.o
+[ 98%] Building CXX object mpas-jedi/src/mains/CMakeFiles/mpasjedi_variational.x.dir/mpasVariational.cc.o
+[ 98%] Building CXX object mpas-jedi/src/mains/CMakeFiles/mpasjedi_convertstate.x.dir/mpasConvertState.cc.o
+[ 98%] Building CXX object mpas-jedi/src/mains/CMakeFiles/mpasjedi_converttostructuredgrid.x.dir/mpasConvertToStructuredGrid.cc.o
+[ 98%] Building CXX object mpas-jedi/src/mains/CMakeFiles/mpasjedi_process_perts.x.dir/mpasProcessPerts.cc.o
+[ 98%] Building CXX object mpas-jedi/src/mains/CMakeFiles/mpasjedi_unbalance_ensemble.x.dir/mpasUnbalanceEnsemble.cc.o
+[ 98%] Building CXX object mpas-jedi/test/CMakeFiles/mpasjedi_geometry.dir/executables/TestGeometry.cc.o
+[ 98%] Linking CXX executable ufo_qc_trackcheckship_unittests
+[ 98%] Building CXX object mpas-jedi/test/CMakeFiles/mpasjedi_state.dir/executables/TestState.cc.o
+[ 98%] Built target ufo_bias_linear_op
+[ 98%] Linking CXX executable ufo_qc_trackcheckship_mainloop_unittests
+[ 98%] Building CXX object mpas-jedi/test/CMakeFiles/mpasjedi_model.dir/executables/TestModel.cc.o
+[ 98%] Building CXX object mpas-jedi/test/CMakeFiles/mpasjedi_increment.dir/executables/TestIncrement.cc.o
+[ 98%] Building CXX object mpas-jedi/test/CMakeFiles/mpasjedi_errorcovariance.dir/executables/TestErrorCovariance.cc.o
+[ 98%] Building CXX object mpas-jedi/test/CMakeFiles/mpasjedi_linvarcha.dir/executables/TestLinVarCha.cc.o
+[ 98%] Building CXX object mpas-jedi/test/CMakeFiles/mpasjedi_geometry_iterator_2d_2pe.dir/executables/TestGeometryIterator.cc.o
+[ 98%] Building CXX object mpas-jedi/test/CMakeFiles/mpasjedi_geometry_iterator_3d_2pe.dir/executables/TestGeometryIterator.cc.o
+[ 98%] Building CXX object mpas-jedi/test/CMakeFiles/mpasjedi_getvalues.dir/executables/TestGetValues.cc.o
+[ 98%] Building CXX object mpas-jedi/test/CMakeFiles/mpasjedi_obslocalization.dir/executables/TestObsLocalization.cc.o
+[ 98%] Building CXX object mpas-jedi/test/CMakeFiles/mpasjedi_obslocalization_vertical.dir/executables/TestObsLocalization.cc.o
+[ 98%] Building CXX object mpas-jedi/test/CMakeFiles/mpasjedi_obslocalizations.dir/executables/TestObsLocalizations.cc.o
+[ 98%] Linking CXX executable ufo_qc_poisson_disk_thinning_parallel
+[ 98%] Linking CXX executable ufo_qc_poisson_disk_thinning_unittests
+[ 98%] Linking CXX executable ufo_qc_historycheck_unittests
+[ 98%] Linking CXX executable ufo_qc_met_office_buddy_check_unittests
+[ 98%] Built target ufo_qc_temporal_thinning_unittests
+[ 98%] Built target ufo_qc_trackcheck_unittests
+[ 98%] Built target ufo_qc_trackcheckship_unittests
+[ 98%] Built target ufo_qc_trackcheckship_mainloop_unittests
+[ 98%] Built target ufo_qc_poisson_disk_thinning_parallel
+[ 98%] Linking CXX executable ../../bin/test_ConventionalProfileProcessing.x
+[ 98%] Built target ufo_qc_poisson_disk_thinning_unittests
+[ 98%] Built target ufo_qc_historycheck_unittests
+[ 98%] Built target ufo_qc_met_office_buddy_check_unittests
+[ 98%] Built target test_ConventionalProfileProcessing.x
+[ 98%] Linking CXX executable ../../../bin/ufo_preprocess.x
+[ 98%] Built target ufo_preprocess.x
+[ 98%] Linking CXX executable ../../../bin/mpasjedi_saca.x
+[ 98%] Linking CXX executable ../../../bin/mpasjedi_convertstate.x
+[ 98%] Built target mpasjedi_saca.x
+[ 98%] Linking CXX executable mpasjedi_geometry
+[ 98%] Built target mpasjedi_convertstate.x
+[ 99%] Linking CXX executable mpasjedi_geometry_iterator_2d_2pe
+[ 99%] Linking CXX executable mpasjedi_geometry_iterator_3d_2pe
+[ 99%] Built target mpasjedi_geometry
+[ 99%] Linking CXX executable mpasjedi_linvarcha
+[ 99%] Linking CXX executable mpasjedi_state
+[ 99%] Built target mpasjedi_geometry_iterator_2d_2pe
+[ 99%] Built target mpasjedi_geometry_iterator_3d_2pe
+[ 99%] Built target mpasjedi_linvarcha
+[ 99%] Built target mpasjedi_state
+[ 99%] Linking CXX executable mpasjedi_model
+[ 99%] Linking CXX executable mpasjedi_increment
+[ 99%] Built target mpasjedi_model
+[ 99%] Linking CXX executable ../../../bin/mpasjedi_forecast.x
+[ 99%] Linking CXX executable ../../../bin/mpasjedi_converttostructuredgrid.x
+[ 99%] Built target mpasjedi_increment
+[ 99%] Linking CXX executable ../../../bin/mpasjedi_rtpp.x
+[ 99%] Linking CXX executable ../../bin/test_ObsFilters.x
+[ 99%] Linking CXX executable ../../../bin/mpasjedi_ens_mean_variance.x
+[ 99%] Built target mpasjedi_forecast.x
+[ 99%] Built target mpasjedi_converttostructuredgrid.x
+[ 99%] Built target mpasjedi_rtpp.x
+[ 99%] Built target mpasjedi_ens_mean_variance.x
+[ 99%] Built target test_ObsFilters.x
+[100%] Linking CXX executable ../../bin/test_EnsembleObsFilters.x
+[100%] Built target test_EnsembleObsFilters.x
+[100%] Linking CXX executable mpasjedi_getvalues
+[100%] Built target mpasjedi_getvalues
+[100%] Linking CXX executable mpasjedi_errorcovariance
+[100%] Linking CXX executable mpasjedi_obslocalization
+[100%] Linking CXX executable mpasjedi_obslocalizations
+[100%] Built target mpasjedi_errorcovariance
+[100%] Built target mpasjedi_obslocalization
+[100%] Linking CXX executable mpasjedi_obslocalization_vertical
+[100%] Built target mpasjedi_obslocalizations
+[100%] Built target mpasjedi_obslocalization_vertical
+[100%] Linking CXX executable ../../../bin/mpasjedi_enshofx.x
+[100%] Built target mpasjedi_enshofx.x
+[100%] Linking CXX executable ../../../bin/mpasjedi_unbalance_ensemble.x
+[100%] Linking CXX executable ../../../bin/mpasjedi_gen_ens_pert_B.x
+[100%] Built target mpasjedi_unbalance_ensemble.x
+[100%] Linking CXX executable ../../../bin/mpasjedi_error_covariance_toolbox.x
+[100%] Built target mpasjedi_gen_ens_pert_B.x
+[100%] Linking CXX executable ../../../bin/mpasjedi_process_perts.x
+[100%] Built target mpasjedi_error_covariance_toolbox.x
+[100%] Built target mpasjedi_process_perts.x
+[100%] Linking CXX executable ../../../bin/mpasjedi_hofx3d.x
+[100%] Built target mpasjedi_hofx3d.x
+[100%] Linking CXX executable ../../../bin/mpasjedi_hofx.x
+[100%] Built target mpasjedi_hofx.x
+[100%] Linking CXX executable ../../../bin/mpasjedi_enkf.x
+[100%] Built target mpasjedi_enkf.x
+[100%] Linking CXX executable ../../../bin/mpasjedi_variational.x
+[100%] Linking CXX executable ../../../bin/mpasjedi_eda.x
+[100%] Built target mpasjedi_variational.x
+[100%] Built target mpasjedi_eda.x
+
+## Bundle install tail
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/lib/libsmiolf.so
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/lib/libesmf.so
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/lib/libmpas_framework.so
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/lib/libmpas_operators.so
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/share/MPAS/core_init_atmosphere
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/share/MPAS/core_init_atmosphere/namelist.init_atmosphere
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/share/MPAS/core_init_atmosphere/streams.init_atmosphere
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/lib/libmpas_init_atmosphere.so
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/bin/mpas_init_atmosphere
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/share/MPAS/core_atmosphere
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/share/MPAS/core_atmosphere/streams.atmosphere
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/share/MPAS/core_atmosphere/stream_list.atmosphere.output
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/share/MPAS/core_atmosphere/stream_list.atmosphere.surface
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/share/MPAS/core_atmosphere/stream_list.atmosphere.diag_ugwp
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/share/MPAS/core_atmosphere/namelist.atmosphere
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/share/MPAS/core_atmosphere/stream_list.atmosphere.diagnostics
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/lib/libmpas_atmosphere.so
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/bin/mpas_atmosphere
+-- Up-to-date: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/share/MPAS/core_atmosphere
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/share/MPAS/core_atmosphere/CAM_AEROPT_DATA.DBL
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/share/MPAS/core_atmosphere/OZONE_DAT.TBL
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/share/MPAS/core_atmosphere/RRTMG_SW_DATA.DBL
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/share/MPAS/core_atmosphere/RRTMG_SW_DATA
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/share/MPAS/core_atmosphere/VEGPARM.TBL
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/share/MPAS/core_atmosphere/OZONE_LAT.TBL
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/share/MPAS/core_atmosphere/SOILPARM.TBL
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/share/MPAS/core_atmosphere/LANDUSE.TBL
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/share/MPAS/core_atmosphere/GENPARM.TBL
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/share/MPAS/core_atmosphere/OZONE_PLEV.TBL
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/share/MPAS/core_atmosphere/CAM_ABS_DATA.DBL
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/share/MPAS/core_atmosphere/RRTMG_LW_DATA.DBL
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/share/MPAS/core_atmosphere/RRTMG_LW_DATA
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/share/MPAS/core_atmosphere/VERSION
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/share/MPAS/core_atmosphere/COMPATIBILITY
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/bin/mpas_atmosphere_build_tables
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/lib/cmake/mpas-jedi-data/mpas-jedi-data-config-version.cmake
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/lib/cmake/mpas-jedi-data/mpas-jedi-data-config.cmake
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/lib/cmake/mpasjedi/mpasjedi-config-version.cmake
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/lib/cmake/mpasjedi/mpasjedi-config.cmake
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/lib/cmake/mpasjedi/mpasjedi-targets.cmake
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/lib/cmake/mpasjedi/mpasjedi-targets-relwithdebinfo.cmake
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/lib/libmpasjedi.so
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/Covariance/ErrorCovariance.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/Covariance/ErrorCovariance.interface.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/Fortran.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/Geometry/Geometry.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/Geometry/GeometryParameters.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/Geometry/Geometry.interface.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/GeometryIterator/GeometryIterator.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/GeometryIterator/GeometryIterator.interface.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/Increment/Increment.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/Increment/IncrementParameters.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/Increment/Increment.interface.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/LinearVariableChange/LinearVariableChange.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/LinearVariableChange/Base/LinearVariableChangeBase.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/LinearVariableChange/Control2Analysis/LinVarChaC2A.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/LinearVariableChange/Control2Analysis/LinVarChaC2A.interface.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/LinearVariableChange/Model2GeoVars/LinVarChaModel2GeoVars.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/LinearVariableChange/Model2GeoVars/LinVarChaModel2GeoVars.interface.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/Model/Model.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/Model/ModelParameters.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/Model/Model.interface.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/ModelBias/ModelBiasCovariance.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/ModelBias/ModelBiasIncrement.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/ModelBias/ModelBias.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/ModelData/ModelData.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/State/State.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/State/State.interface.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/State/StateParameters.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/Tlm/Tlm.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/Traits.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/VariableChange/VariableChange.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/VariableChange/Base/VariableChangeBase.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/VariableChange/Model2GeoVars/VarChaModel2GeoVars.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/include/mpasjedi/VariableChange/Model2GeoVars/VarChaModel2GeoVars.interface.h
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/module/mpasjedi/GNU/12.3.0
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/module/mpasjedi/GNU/12.3.0/iter2d_mod.mod
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/module/mpasjedi/GNU/12.3.0/iter3d_mod.mod
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/module/mpasjedi/GNU/12.3.0/mpasjedi_vc_model2geovars_interface_mod.mod
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/module/mpasjedi/GNU/12.3.0/mpas_increment_interface_mod.mod
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/module/mpasjedi/GNU/12.3.0/mpas2ufo_vars_mod.mod
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/module/mpasjedi/GNU/12.3.0/mpas_geom_iter_mod_c.mod
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/module/mpasjedi/GNU/12.3.0/mpas_constants_mod.mod
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/module/mpasjedi/GNU/12.3.0/mpasjedi_lvc_model2geovars_mod.mod
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/module/mpasjedi/GNU/12.3.0/mpasjedi_lvc_model2geovars_interface_mod.mod
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/module/mpasjedi/GNU/12.3.0/mpasjedi_linvarcha_c2a_mod.mod
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/module/mpasjedi/GNU/12.3.0/mpas_saca_interface_mod.mod
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/module/mpasjedi/GNU/12.3.0/module_mp_thompson_cldfra3_saca.mod
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/module/mpasjedi/GNU/12.3.0/mpas_geom_iter_mod.mod
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/module/mpasjedi/GNU/12.3.0/mpas_model_mod.mod
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/module/mpasjedi/GNU/12.3.0/mpas_fields_mod.mod
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/module/mpasjedi/GNU/12.3.0/mpas_geom_mod.mod
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/module/mpasjedi/GNU/12.3.0/mpas_covariance_mod.mod
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/module/mpasjedi/GNU/12.3.0/mpas_state_interface_mod.mod
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/module/mpasjedi/GNU/12.3.0/mpas_trajectories.mod
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/module/mpasjedi/GNU/12.3.0/iter_mod.mod
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/module/mpasjedi/GNU/12.3.0/mpas_kinds.mod
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/module/mpasjedi/GNU/12.3.0/mpas4da_mod.mod
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/module/mpasjedi/GNU/12.3.0/mpasjedi_vc_model2geovars_mod.mod
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/module/mpasjedi/GNU/12.3.0/mpasjedi_linvarcha_c2a_interface_mod.mod
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/module/mpasjedi/GNU/12.3.0/mpas_state_mod.mod
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/module/mpasjedi/GNU/12.3.0/mpas_increment_mod.mod
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/bin/mpasjedi_saca.x
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/bin/mpasjedi_enshofx.x
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/bin/mpasjedi_eda.x
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/bin/mpasjedi_forecast.x
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/bin/mpasjedi_gen_ens_pert_B.x
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/bin/mpasjedi_hofx.x
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/bin/mpasjedi_hofx3d.x
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/bin/mpasjedi_enkf.x
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/bin/mpasjedi_error_covariance_toolbox.x
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/bin/mpasjedi_rtpp.x
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/bin/mpasjedi_ens_mean_variance.x
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/bin/mpasjedi_variational.x
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/bin/mpasjedi_convertstate.x
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/bin/mpasjedi_converttostructuredgrid.x
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/bin/mpasjedi_process_perts.x
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/bin/mpasjedi_unbalance_ensemble.x
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/lib/cmake/monan-jedi-mpas-only/monan-jedi-mpas-only-config-version.cmake
+-- Installing: /p/projetos/monan_das/rodrigo.braz/builds/monan-jedi/lib/cmake/monan-jedi-mpas-only/monan-jedi-mpas-only-config.cmake
+
+## CTest tail
+Test project /p/projetos/monan_das/rodrigo.braz/work/monan-jedi/build
+    Start 2236: mpasjedi_coding_norms
+1/1 Test #2236: mpasjedi_coding_norms ............   Passed    1.30 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Label Time Summary:
+mpasjedi    =   1.30 sec*proc (1 test)
+script      =   1.30 sec*proc (1 test)
+tier2       =   1.30 sec*proc (1 test)
+
+Total Test time (real) =   2.87 sec
+
+## obs2ioda build tail
+[  1%] Building CXX object _deps/googletest-build/googletest/CMakeFiles/gtest.dir/src/gtest-all.cc.o
+[  2%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/contrib/graphbuilder.cpp.o
+[  3%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/contrib/graphbuilderadapter.cpp.o
+[  4%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/binary.cpp.o
+[  5%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/convert.cpp.o
+[  6%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/depthguard.cpp.o
+[  7%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/directives.cpp.o
+[  9%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/emit.cpp.o
+[ 10%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/emitfromevents.cpp.o
+[ 11%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/emitter.cpp.o
+[ 12%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/emitterstate.cpp.o
+[ 13%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/emitterutils.cpp.o
+[ 14%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/exceptions.cpp.o
+[ 17%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/exp.cpp.o
+[ 17%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/memory.cpp.o
+[ 19%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/node_data.cpp.o
+[ 19%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/node.cpp.o
+[ 20%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/nodeevents.cpp.o
+[ 23%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/null.cpp.o
+[ 23%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/nodebuilder.cpp.o
+[ 23%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/ostream_wrapper.cpp.o
+[ 26%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/parser.cpp.o
+[ 26%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/parse.cpp.o
+[ 28%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/scanner.cpp.o
+[ 28%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/regex_yaml.cpp.o
+[ 31%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/scanscalar.cpp.o
+[ 31%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/scantag.cpp.o
+[ 32%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/scantoken.cpp.o
+[ 34%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/simplekey.cpp.o
+[ 35%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/singledocparser.cpp.o
+[ 36%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/tag.cpp.o
+[ 36%] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/stream.cpp.o
+[ 37%] Linking CXX static library libyaml-cpp.a
+[ 37%] Built target yaml-cpp
+[ 39%] Building CXX object src/cxx/CMakeFiles/obs2ioda_cxx.dir/netcdf_error.cc.o
+[ 39%] Building CXX object src/cxx/CMakeFiles/obs2ioda_cxx.dir/netcdf_file.cc.o
+[ 43%] Building CXX object src/cxx/CMakeFiles/obs2ioda_cxx.dir/netcdf_group.cc.o
+[ 43%] Building CXX object src/cxx/CMakeFiles/obs2ioda_cxx.dir/netcdf_dimension.cc.o
+[ 44%] Building CXX object src/cxx/CMakeFiles/obs2ioda_cxx.dir/netcdf_attribute.cc.o
+[ 44%] Building CXX object src/cxx/CMakeFiles/obs2ioda_cxx.dir/netcdf_variable.cc.o
+[ 45%] Building CXX object src/cxx/CMakeFiles/obs2ioda_cxx.dir/ioda_obs_schema.cc.o
+[ 46%] Building CXX object _deps/yaml-cpp-build/util/CMakeFiles/yaml-cpp-parse.dir/parse.cpp.o
+[ 47%] Building CXX object _deps/yaml-cpp-build/util/CMakeFiles/yaml-cpp-sandbox.dir/sandbox.cpp.o
+[ 48%] Building CXX object _deps/yaml-cpp-build/util/CMakeFiles/yaml-cpp-read.dir/read.cpp.o
+[ 50%] Linking CXX executable ../../../bin/parse
+[ 51%] Linking CXX executable ../../../bin/read
+[ 52%] Linking CXX executable ../../../bin/sandbox
+[ 52%] Built target yaml-cpp-parse
+[ 52%] Built target yaml-cpp-read
+[ 52%] Built target yaml-cpp-sandbox
+[ 53%] Linking CXX shared library libobs2ioda_cxx.so
+[ 53%] Built target obs2ioda_cxx
+[ 54%] Building Fortran object src/CMakeFiles/v3.dir/kinds.f90.o
+[ 55%] Building Fortran object src/CMakeFiles/v3.dir/ufo_variables_mod.F90.o
+[ 56%] Building Fortran object src/CMakeFiles/v3.dir/f_c_string_t_mod.f90.o
+[ 57%] Building Fortran object src/CMakeFiles/v3.dir/netcdf_cxx_i_mod.f90.o
+[ 59%] Building Fortran object src/CMakeFiles/v3.dir/utils_mod.f90.o
+[ 60%] Building Fortran object src/CMakeFiles/v3.dir/define_mod.f90.o
+[ 61%] Building Fortran object src/CMakeFiles/v3.dir/f_c_string_1D_t_mod.f90.o
+[ 62%] Building Fortran object src/CMakeFiles/v3.dir/netcdf_cxx_mod.f90.o
+[ 63%] Building Fortran object src/CMakeFiles/v3.dir/hsd.f90.o
+[ 67%] Building Fortran object src/CMakeFiles/v3.dir/radiance_mod.f90.o
+[ 67%] Building Fortran object src/CMakeFiles/v3.dir/prepbufr_mod.f90.o
+[ 67%] Building Fortran object src/CMakeFiles/v3.dir/satwnd_mod.f90.o
+[ 70%] Building Fortran object src/CMakeFiles/v3.dir/ncio_mod.f90.o
+[ 70%] Building Fortran object src/CMakeFiles/v3.dir/gnssro_mod.f90.o
+[ 70%] Building Fortran object src/CMakeFiles/v3.dir/goes_abi_converter_mod.f90.o
+[ 71%] Linking CXX static library ../../../lib/libgtest.a
+[ 71%] Built target gtest
+[ 72%] Building CXX object _deps/googletest-build/googlemock/CMakeFiles/gmock.dir/src/gmock-all.cc.o
+[ 73%] Building CXX object _deps/googletest-build/googletest/CMakeFiles/gtest_main.dir/src/gtest_main.cc.o
+[ 75%] Linking CXX shared library libv3.so
+[ 75%] Built target v3
+[ 76%] Building Fortran object src/CMakeFiles/obs2ioda_v3.dir/main.f90.o
+[ 77%] Linking CXX static library ../../../lib/libgtest_main.a
+[ 79%] Building Fortran object test/validation/CMakeFiles/test_write_goes_abi_ioda_v3.dir/write_goes_abi_ioda_v3.test.f90.o
+[ 79%] Building Fortran object test/fortran/CMakeFiles/test_transpose_and_flatten.dir/transpose_and_flatten.test.f90.o
+[ 80%] Building Fortran object test/fortran/CMakeFiles/test_get_julian_time.dir/get_julian_time.test.f90.o
+[ 81%] Building Fortran object test/fortran/CMakeFiles/test_to_lower.dir/to_lower.test.f90.o
+[ 82%] Building Fortran object test/fortran/CMakeFiles/test_compute_bt_superob.dir/compute_bt_superob.test.f90.o
+[ 84%] Building Fortran object test/fortran/CMakeFiles/test_calc_solar_zenith_angle.dir/calc_solar_zenith_angle.test.f90.o
+[ 85%] Building Fortran object test/fortran/CMakeFiles/test_set_goes_abi_out_fname.dir/set_goes_abi_out_fname.test.f90.o
+[ 85%] Built target gtest_main
+[ 86%] Building CXX object test/cxx/CMakeFiles/test_ioda_obs_schema.dir/ioda_obs_schema.test.cc.o
+[ 87%] Linking Fortran executable ../../bin/test_get_julian_time
+[ 88%] Linking Fortran executable ../../bin/test_transpose_and_flatten
+[ 89%] Linking Fortran executable ../../bin/test_to_lower
+[ 90%] Linking Fortran executable ../../bin/test_set_goes_abi_out_fname
+[ 92%] Linking Fortran executable ../../bin/test_compute_bt_superob
+[ 93%] Linking Fortran executable ../../bin/test_calc_solar_zenith_angle
+[ 94%] Linking Fortran executable ../bin/obs2ioda_v3
+[ 95%] Linking Fortran executable ../../bin/test_write_goes_abi_ioda_v3
+[ 95%] Built target test_transpose_and_flatten
+[ 95%] Built target test_compute_bt_superob
+[ 95%] Built target obs2ioda_v3
+[ 95%] Built target test_write_goes_abi_ioda_v3
+[ 95%] Built target test_set_goes_abi_out_fname
+[ 95%] Built target test_calc_solar_zenith_angle
+[ 95%] Built target test_get_julian_time
+[ 95%] Built target test_to_lower
+[ 96%] Linking CXX static library ../../../lib/libgmock.a
+[ 96%] Built target gmock
+[ 97%] Building CXX object _deps/googletest-build/googlemock/CMakeFiles/gmock_main.dir/src/gmock_main.cc.o
+[ 98%] Linking CXX executable ../../bin/test_ioda_obs_schema
+[100%] Linking CXX static library ../../../lib/libgmock_main.a
+[100%] Built target test_ioda_obs_schema
+[100%] Built target gmock_main
+
+## WPS configure tail
+
+## WPS build tail
+
+## WPS validation
+
+[INFO] Log summary written to /p/projetos/monan_das/rodrigo.braz/logs/monan-jedi/99_summary.log
