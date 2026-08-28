@@ -29,6 +29,7 @@ jobs:
           bash -n tests/test_pbs_placement_policy.sh
           bash -n tests/test_pbs_result.sh
           bash -n tests/test_stack_environment.sh
+          bash -n tests/test_install_runtime_contract.sh
 
           shellcheck --severity=error -e SC1090,SC1091 \
             scripts/monan-jedi.sh scripts/monan-jedi-wps.sh scripts/lib/*.sh \
@@ -36,13 +37,15 @@ jobs:
             tests/test_unbalance_build_contract.sh \
             tests/test_pbs_placement_policy.sh \
             tests/test_pbs_result.sh \
-            tests/test_stack_environment.sh
+            tests/test_stack_environment.sh \
+            tests/test_install_runtime_contract.sh
 
           bash tests/test_wps_dependency_resolution.sh
           bash tests/test_unbalance_build_contract.sh
           bash tests/test_pbs_placement_policy.sh
           bash tests/test_pbs_result.sh
           bash tests/test_stack_environment.sh
+          bash tests/test_install_runtime_contract.sh
       - name: Check Python
         run: |
           python -m py_compile scripts/lib/read_config.py tests/test_config.py

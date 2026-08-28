@@ -17,6 +17,7 @@ source "${script_dir}/lib/pbs_result.sh"
 source "${script_dir}/lib/logs.sh"
 source "${script_dir}/lib/obs2ioda.sh"
 source "${script_dir}/lib/wps.sh"
+source "${script_dir}/lib/install_test.sh"
 
 usage() {
   cat <<'EOF_USAGE'
@@ -29,13 +30,14 @@ Commands:
   build            Build the configured bundle
   install          Install the configured bundle into install.root
   test             Run the login-node-safe CTest subset
+  test-install     Validate the installed runtime contract and dependencies
   test-pbs         Submit CTest to PBS
   test-pbs-result  Validate the most recent PBS CTest result
   obs2ioda         Build and publish NCAR/obs2ioda
   wps              Build, validate and publish WPS/UNGRIB
   test-wps         Validate the published WPS/UNGRIB installation
   logs             Collect workflow logs
-  all              Run the bundle and all enabled auxiliary tools
+  all              Run the bundle, auxiliaries and installed-runtime validation
 EOF_USAGE
 }
 
@@ -70,6 +72,7 @@ case "${command_name}" in
   build) monan_jedi_build_bundle ;;
   install) monan_jedi_install_bundle ;;
   test) monan_jedi_test_login ;;
+  test-install) monan_jedi_test_install ;;
   test-pbs)
     # Preflight must use the same validated environment as configure/build.
     # Preserve the checkout directory because monan_jedi_load_stack enters the
@@ -101,7 +104,17 @@ case "${command_name}" in
     if monan_jedi_obs2ioda_enabled; then monan_jedi_build_obs2ioda; fi
     if monan_jedi_wps_enabled; then monan_jedi_build_wps; fi
     monan_jedi_test_login
+
+    # Always collect the final log summary, including a failed installation
+    # validation. This makes `all` end with one compact diagnostic record while
+    # still returning non-zero when the installed runtime is unusable.
+    all_install_test_status=0
+    monan_jedi_test_install || all_install_test_status=$?
     monan_jedi_collect_logs
+    if [[ "${all_install_test_status}" -ne 0 ]]; then
+      log_error "MONAN-JEDI all failed installed-runtime validation."
+      exit "${all_install_test_status}"
+    fi
     ;;
   ""|-h|--help) usage ;;
   *) log_error "Unknown command: ${command_name}"; usage; exit 1 ;;

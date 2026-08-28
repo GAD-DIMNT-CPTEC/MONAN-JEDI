@@ -143,6 +143,7 @@ configure
 build
 install
 test
+test-install
 test-pbs
 test-pbs-result
 obs2ioda
@@ -157,6 +158,11 @@ The normal complete sequence is:
 ```bash
 bash scripts/monan-jedi.sh all --config config/jaci.yaml
 ```
+
+`all` finishes by validating the installed runtime and then collecting the log
+summary. A missing executable, runtime file, shared library or project-group
+permission therefore makes the complete workflow fail instead of leaving a
+partially usable installation marked as successful.
 
 Individual stack-dependent commands bootstrap and validate the configured stack
 environment themselves, so separate login sessions are supported:
@@ -202,6 +208,25 @@ A login-node-safe subset can be run with:
 ```bash
 bash scripts/monan-jedi.sh test --config config/jaci.yaml
 ```
+
+The installed runtime can be validated independently after `install`, `wps` and
+other selected publication steps with:
+
+```bash
+bash scripts/monan-jedi.sh test-install --config config/jaci.yaml
+```
+
+`test-install` loads the configured spack-stack environment and checks:
+
+- required public directories and executables;
+- MPAS runtime data and installed MPAS-JEDI YAML files;
+- `install-manifest.json` consistency;
+- WPS and obs2ioda products when enabled;
+- `ldd` resolution for required executables in the configured runtime environment;
+- project-group ownership, file readability, directory traversal and executable access.
+
+The result is written to `${project.root}/logs/${build.id}/10_install_test.log`
+and ends with `RESULT=PASS` or `RESULT=FAIL`.
 
 The complete configured CTest suite is submitted to PBS with:
 
