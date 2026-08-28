@@ -1,15 +1,9 @@
 # MONAN-JEDI reduced MPAS-JEDI-only bundle for JACI validation.
 #
-# This is the project-controlled bundle definition used by MONAN-JEDI.
-# It was derived from the JCSDA jedi-bundle workflow and reduced for the
-# MPAS-JEDI-only validation workflow on JACI.
-#
-# The original upstream reference must be documented in docs/BUNDLE_ORIGIN.md.
-# This repository now owns this CMakeLists.txt directly instead of cloning
-# jedi-bundle and replacing its top-level CMakeLists.txt during the build.
-#
-# This file does not create or modify the Spack-stack environment. The required
-# software stack must already have been created and validated separately.
+# This is the project-controlled bundle definition used by MONAN-JEDI. It was
+# derived from the JCSDA jedi-bundle workflow and reduced for MPAS-JEDI-only
+# validation on JACI. The original upstream reference is documented in
+# docs/BUNDLE_ORIGIN.md.
 
 cmake_minimum_required( VERSION 3.14 FATAL_ERROR )
 
@@ -30,6 +24,11 @@ set( Python3_FIND_STRATEGY LOCATION )
 set(DEPEND_LIB_ROOT ${CMAKE_CURRENT_BINARY_DIR}/Depends)
 list(APPEND CMAKE_PREFIX_PATH ${DEPEND_LIB_ROOT})
 link_directories(${CMAKE_CURRENT_BINARY_DIR}/lib)
+
+# Build artifacts remain private to the build tree. The public install prefix is
+# populated only by `make install` and explicit auxiliary publication steps.
+# This prevents a failed/incomplete build from partially mutating install/bin.
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin" CACHE PATH "Bundle runtime build output" FORCE)
 
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH ON)
 set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
