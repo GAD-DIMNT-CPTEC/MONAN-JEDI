@@ -55,7 +55,8 @@ stack:
   env_module: cray-mpich/8.1.31/none/none/jedi-mpas-env/1.0.0
 
 build:
-  id: monan-jedi
+  # Keep this control experiment isolated from the regular MONAN-JEDI build tree.
+  id: mpas-8.3.1-control
   dir:
   jobs: 64
 
