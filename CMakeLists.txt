@@ -71,7 +71,9 @@ if(BUILD_MPAS)
   set(MPAS_CORES init_atmosphere atmosphere CACHE STRING "MPAS-Model: cores to build.")
   set(MPAS_OPENMP "ON" CACHE STRING "MPAS-Model: Enable OpenMP.")
 
-  ecbuild_bundle( PROJECT mpas           GIT "https://github.com/MPAS-Dev/MPAS-Model.git" TAG 0e5a47a0e1bcccd6e3d99909b76e740a643c4db6 )
+  # Compatibility control: keep the current MPAS-JEDI stack unchanged and
+  # test it against upstream MPAS v8.3.1, close to the MONAN baseline.
+  ecbuild_bundle( PROJECT mpas           GIT "https://github.com/MPAS-Dev/MPAS-Model.git" TAG a402dba90397be1dace86b1b79522792b791512a )
   ecbuild_bundle( PROJECT mpas-jedi-data GIT "https://github.com/jcsda-internal/mpas-jedi-data.git" TAG 3307edcdb27cef650fe121367c3bb48d6cfa968b)
   ecbuild_bundle( PROJECT mpas-jedi      GIT "https://github.com/jcsda/mpas-jedi.git" TAG 19eb7fb3273c7b3094825201af184834c15afdd0)
 endif()
