@@ -95,6 +95,11 @@ share/wps/Variable_Tables
 
 `mpaswf` should use those paths directly.
 
+The WPS publication step must not preserve private checkout ownership or
+restrictive source permissions. Runtime files are published with project-group
+access so other members of the shared MONAN-DAS project can consume the same
+installation.
+
 ## MPAS-JEDI runtime YAMLs
 
 `geovars.yaml` and `keptvars.yaml` are runtime inputs, not development-only test
@@ -118,6 +123,41 @@ are deliberately separate:
 STACK_ROOT               -> external software/dependency environment
 MONAN_JEDI_INSTALL_ROOT  -> MONAN/MPAS/JEDI runtime products
 ```
+
+An installed executable is therefore considered runtime-valid only after its
+shared libraries resolve in the configured spack-stack environment. Running
+`ldd` from an arbitrary login shell is not sufficient evidence of a broken
+installation because that shell may not contain the required MPI/dependency
+modules.
+
+## Machine-checkable validation
+
+The runtime contract is validated with:
+
+```bash
+bash scripts/monan-jedi.sh test-install --config config/jaci.yaml
+```
+
+The command loads and validates the configured stack before checking the
+installation. It verifies the required public layout, core executables, MPAS
+runtime data, MPAS-JEDI namelists, install manifest, enabled WPS/obs2ioda
+products, shared-library resolution and project-group access.
+
+The result is recorded in:
+
+```text
+${project.root}/logs/${build.id}/10_install_test.log
+```
+
+A successful result ends with:
+
+```text
+RESULT=PASS
+```
+
+`all` runs this validation automatically before producing `99_summary.log`. If
+the runtime validation fails, `all` still writes the final log summary and then
+returns a non-zero status.
 
 ## Regression policy
 
