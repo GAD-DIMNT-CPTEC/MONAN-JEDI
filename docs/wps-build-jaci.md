@@ -1,14 +1,35 @@
 # WPS/UNGRIB build on JACI
 
-## Scope
+MONAN-JEDI builds the WPS components required to decode GRIB input for MPAS
+initialization. The integration intentionally uses `USE_WRF=OFF`, so it builds
+UNGRIB without requiring a compiled WRF tree.
 
-MONAN-JEDI builds the WPS components required to decode GRIB input for MPAS initialization. The integration intentionally sets `USE_WRF=OFF`, so it does not build `geogrid` or `metgrid` and does not require a compiled WRF tree.
+## Public versus private paths
 
-The primary product is `ungrib.exe` together with `link_grib.csh` and the WPS variable tables. The auxiliary `g1print` and `g2print` targets are also compiled.
+WPS has a versioned internal release, but downstream workflows must not depend on
+that directory.
+
+Private implementation path:
+
+```text
+${install.root}/libexec/monan-jedi/wps/WPS-${wps.version}
+```
+
+Stable public paths:
+
+```text
+${install.root}/bin/ungrib.exe
+${install.root}/bin/link_grib.csh
+${install.root}/share/wps/Vtable
+${install.root}/share/wps/Variable_Tables
+```
+
+`mpaswf` consumes only the stable public paths through the shared
+`MONAN_JEDI_INSTALL_ROOT` contract.
 
 ## Configuration
 
-The complete configuration lives in `config/jaci.yaml`:
+The WPS block lives in `config/jaci.yaml`:
 
 ```yaml
 wps:
@@ -31,103 +52,44 @@ wps:
   default_vtable: Vtable.GFS
 ```
 
-Empty paths are derived from `project.root`, `build.id` and `install.root`.
+Empty paths are derived from `project.root`, `build.id`, and `install.root`.
 
-For JasPer, libpng and zlib, dependency discovery uses the following precedence:
+The default work trees are private:
 
-1. an explicit root in `config/jaci.yaml`;
-2. dependency prefixes already exported by the loaded stack environment;
-3. `spack location -i` using the Spack executable shipped inside `STACK_ROOT`;
-4. a controlled search below known stack installation trees.
+```text
+${project.root}/work/${build.id}/wps/src
+${project.root}/work/${build.id}/wps/build
+```
 
-No configure-menu number is required. The workflow uses the native CMake build included in WPS 4.6.0.
+The default release parent is:
+
+```text
+${install.root}/libexec/monan-jedi/wps
+```
+
+## Dependency resolution
+
+JasPer, libpng and zlib are resolved in this order:
+
+1. explicit root in the YAML;
+2. prefixes from the loaded stack environment;
+3. `spack location -i` through the configured stack;
+4. controlled searches in known stack installation trees.
 
 ## Compatibility patches
 
-The pinned WPS source is kept unchanged in Git. Compatibility changes are stored as ordered patch files under `patches/wps/`, checked before application and recorded with SHA-256 hashes in `build-manifest.json`.
+The pinned upstream source is reset before each build. MONAN-JEDI then applies
+ordered patches from `patches/wps/` and records their SHA-256 hashes in the WPS
+`build-manifest.json`.
 
-The current patch set is:
+The current patch set covers:
 
-### `0001-modern-jasper-api.patch`
-
-WPS 4.6.0 calls the old JasPer decoder function:
-
-```c
-jpc_decode(...)
-```
-
-JasPer 4.x exposes the supported generic decoder API:
-
-```c
-jas_image_decode(...)
-```
-
-The patch changes only this decoder call and its associated error message. A build log containing:
-
-```text
-Applied WPS patch: 0001-modern-jasper-api.patch
-```
-
-confirms that this API compatibility patch was applied before CMake configuration.
-
-### `0002-relax-jasper-version.patch`
-
-The WPS 4.6.0 CMake configuration restricts JasPer to the historical range `1.900.1...1.900.29`. The JACI stack provides JasPer 4.x. This patch retains the minimum version requirement but removes the obsolete upper bound.
-
-### `0003-handle-empty-wps-definitions.patch`
-
-When WPS is configured directly with CMake and without a legacy architecture file, `WPS_DEFINITIONS` may legitimately be empty. WPS 4.6.0 expands that value without quotes:
-
-```cmake
-string(REPLACE " " ";" WPS_DEFINITIONS_LIST ${WPS_DEFINITIONS})
-```
-
-With an empty value, CMake receives too few arguments and reports:
-
-```text
-string sub-command REPLACE requires at least four arguments
-```
-
-The patch quotes the input variable so that an empty string remains a valid fourth argument. This error is independent of the JasPer decoder API patch.
-
-### `0004-restore-gnu-linux-build-contract.patch`
-
-The native CMake path does not restore the architecture definitions and GNU Fortran flags supplied by the legacy `arch/configure.defaults` profile for Linux x86_64. Without `BIT32`, `ungrib/src/gribcode.F` does not declare `MWSIZE` and compilation fails with:
-
-```text
-Error: Symbol ‘mwsize’ has no IMPLICIT type
-```
-
-`BIT32` describes the default Fortran `INTEGER` size, which is 32 bits for the GNU compiler used through the JACI Cray wrappers; it does not describe the 64-bit operating-system pointer size.
-
-For a GNU Fortran build on Linux, the patch restores these definitions when `WPS_DEFINITIONS` was not supplied explicitly:
-
-```text
--D_UNDERSCORE -DBYTESWAP -DLINUX -DBIT32 -DNO_SIGNAL
-```
-
-Their relevant roles are:
-
-- `_UNDERSCORE`: matches the GNU Fortran symbol convention used by C helpers such as `cio.c`;
-- `BYTESWAP`: enables the GRIB1 byte-order conversion used on little-endian JACI nodes;
-- `BIT32`: defines `MWSIZE=32` in `module_grib`;
-- `LINUX` and `NO_SIGNAL`: retain the established GNU/Linux architecture behavior.
-
-The patch also restores the GNU Fortran options used by the legacy WPS profile:
-
-```text
--fconvert=big-endian -frecord-marker=4
-```
-
-These options preserve the expected byte order and record-marker size of the WPS intermediate files. The later error about a missing `module_grib.mod` is only a consequence of the failed `gribcode.F` compilation; it is not a separate missing dependency.
-
-Compiler warnings about legacy argument type or rank mismatches are currently tolerated through WPS's existing `-fallow-argument-mismatch` option. They should be recorded, but they are not the cause of the `MWSIZE` failure.
-
-### `0005-disable-utilities-for-standalone-build.patch`
-
-The WPS CMake project always registers utility programs such as `rd_intermediate`, `avg_tsfc` and `mod_levs` for installation. When the standalone integration intentionally builds only `ungrib`, `g1print` and `g2print`, an unrestricted `cmake --install` subsequently fails because the utility executables were never produced.
-
-The patch adds a `BUILD_UTILS` option whose default follows `USE_WRF`. Complete WPS builds keep the utilities enabled, while the MONAN-JEDI standalone configuration (`USE_WRF=OFF`) excludes their targets and installation rules.
+- the modern JasPer decoder API;
+- removal of the obsolete JasPer upper-version restriction;
+- an empty `WPS_DEFINITIONS` CMake case;
+- the GNU/Linux architecture flags required by the standalone CMake path;
+- disabling unrelated utilities in the standalone UNGRIB build;
+- a relocatable UNGRIB executable symlink produced by the WPS build itself.
 
 ## Build
 
@@ -135,51 +97,44 @@ The patch adds a `BUILD_UTILS` option whose default follows `USE_WRF`. Complete 
 bash scripts/monan-jedi.sh wps --config config/jaci.yaml
 ```
 
-The command performs a clean detached checkout of `wps.ref`, applies all patches in filename order, configures WPS with CMake and builds `ungrib`, `g1print` and `g2print`.
+The command:
 
-Because the source checkout is reset and cleaned at the beginning of every build, rerunning the command after updating the MONAN-JEDI branch is sufficient. No manual editing or cleanup inside the WPS source directory is required.
+1. resets/checks out the pinned WPS source;
+2. applies the compatibility patches;
+3. resolves the stack dependencies;
+4. configures an out-of-source CMake build;
+5. builds `ungrib`, `g1print`, and `g2print`;
+6. installs into a temporary staging release;
+7. adds `link_grib.csh` and the complete `Variable_Tables` runtime tree;
+8. validates executables and runtime libraries;
+9. writes the release manifest;
+10. promotes the validated release and updates stable public links.
 
-## Publication contract
-
-The versioned release is installed under:
-
-```text
-${install.root}/wps/WPS-${wps.version}
-```
-
-Stable links are published only after the staged release passes validation:
-
-```text
-${install.bin_dir}/ungrib.exe
-${install.bin_dir}/link_grib.csh
-${install.root}/share/wps/Vtable
-${install.root}/share/wps/Variable_Tables
-```
-
-If a rebuild fails, existing stable links continue to reference the previously validated release. An incomplete staging directory is never promoted as the active release.
+If any pre-promotion step fails, the previously published stable runtime remains
+untouched.
 
 ## Validation
 
-The build verifies that:
+The WPS tree is checked for:
 
-- `ungrib.exe` exists and is executable;
-- `link_grib.csh` passes `csh -n`;
-- the configured default Vtable exists;
-- `ldd` reports no missing runtime libraries.
+- executable `ungrib.exe`;
+- valid/executable `link_grib.csh`;
+- configured default Vtable;
+- no `ldd` runtime dependency reported as `not found`.
 
-The installed release can be checked again with:
+Re-run the installed-tree validation with:
 
 ```bash
 bash scripts/monan-jedi.sh test-wps --config config/jaci.yaml
 ```
 
-Run `test-wps` only after the `wps` command completes successfully. If configuration or compilation fails, no new release is promoted and the expected `WPS-4.6.0/bin/ungrib.exe` may not exist.
-
-A GRIB-to-`FILE:*` functional test should be run by the operational workflow with the same sample and namelist used by `mpas_init_atmosphere`. This repository validates the compiled runtime contract; cycle-specific GRIB input remains the responsibility of the runtime workflow.
+A real GRIB-to-`FILE:*` functional test belongs in the operational workflow
+(`mpaswf`), which supplies the real GFS file and case-specific `namelist.wps`.
+This cleanly separates build/runtime validation from experiment input validation.
 
 ## Logs
 
-Relevant files under `${project.root}/logs/${build.id}` include:
+Relevant logs under `${project.root}/logs/${build.id}` include:
 
 ```text
 09_wps_clone.log
@@ -192,15 +147,13 @@ Relevant files under `${project.root}/logs/${build.id}` include:
 09_wps_test.log
 ```
 
-The first failing phase should be diagnosed from its corresponding log. For example, a CMake configuration failure is recorded in `09_wps_cmake.log`; it is not a runtime failure of `ungrib.exe`.
-
 ## Manifest
 
-`build-manifest.json` records:
+The private versioned release contains:
 
-- source repository, requested ref and resolved commit;
-- WPS version label;
-- compatibility patch names and SHA-256 hashes;
-- resolved JasPer, libpng and zlib roots;
-- build type and disabled WRF/MPI/OpenMP options;
-- installed runtime artifacts.
+```text
+build-manifest.json
+```
+
+It records source/ref/commit, WPS version, patch hashes, resolved dependencies,
+build type, runtime configuration and installed WPS artifacts.
