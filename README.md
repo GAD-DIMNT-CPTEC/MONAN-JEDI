@@ -91,7 +91,9 @@ A validated spack-stack environment must already exist. The current JACI
 baseline uses the configured `jedi-mpas-env` module and Cray MPICH environment.
 
 Git LFS is also required because JEDI test-data repositories contain binary
-NetCDF/HDF5 inputs. The current JACI stack normally provides it.
+NetCDF/HDF5 inputs. The current JACI spack-stack already provides Git LFS; the
+normal diagnostic reports `provider=loaded stack/environment` when that copy is
+selected.
 
 Check the loaded environment with:
 
