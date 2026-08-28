@@ -2,15 +2,35 @@
 # MONAN-JEDI site configuration template
 # =============================================================================
 #
-# Copy to config/<site>.yaml and adapt the machine/stack values.
+# PURPOSE
+# -------
+# Copy this file to config/<site>.yaml and adapt the machine/stack values used to
+# build, install and validate MONAN-JEDI. This is not an operational data-assimilation
+# experiment configuration; scientific experiment settings belong elsewhere.
 #
-# Filesystem model:
+# IMPORTANT FILESYSTEM MODEL
+# --------------------------
 #   ${project.root}/work/${build.id}   private work/build trees
 #   ${project.root}/logs/${build.id}   logs
 #   ${project.root}/build/${build.id}  public runtime installation
 #
+# The validated spack-stack may be shared and live outside project.root. Do not
+# assume that the stack is located below project.root.
+#
+# MAIN DERIVED PATHS
+# ------------------
+#   work root:    ${project.root}/work/${build.id}
+#   log root:     ${project.root}/logs/${build.id}
+#   bundle build: ${project.root}/work/${build.id}/build
+#   install root: ${project.root}/build/${build.id}
+#   install bin:  ${install.root}/bin
+#
 # Downstream workflows should receive only MONAN_JEDI_INSTALL_ROOT and must not
 # depend on source or build-tree paths.
+#
+# Keep this value quoted applies to CMake ON/OFF settings such as
+# model.double_precision so YAML does not coerce them to booleans.
+# Pin external component refs to tested full commit SHAs for reproducible builds.
 # =============================================================================
 
 site: site-name
@@ -39,6 +59,7 @@ install:
   bin_dir:
 
 model:
+  # Keep this value quoted so YAML does not coerce ON/OFF.
   double_precision: 'ON'
 
 data:
