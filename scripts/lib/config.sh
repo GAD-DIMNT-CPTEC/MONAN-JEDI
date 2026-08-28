@@ -46,11 +46,15 @@ load_monan_jedi_config() {
   export STACK_ROOT="${STACK_ROOT:-${STACK_WORK_ROOT}/spack-stack}"
   export STACK_MODULE_ROOT="${STACK_MODULE_ROOT:-${STACK_ROOT}/envs/${STACK_ENV_NAME}/modules}"
 
+  # Files below work/ are private, rebuildable products. Files below build/ are
+  # the public runtime installation consumed by mpaswf, MPAS-BMatrix and other
+  # workflows. Consumers must never depend on MONAN_JEDI_WORK_ROOT or source
+  # checkouts created by ecbuild_bundle.
   export MONAN_JEDI_WORK_ROOT="${MONAN_JEDI_WORK_ROOT:-${PROJECT_ROOT}/work/${MONAN_JEDI_RUN_ID}}"
   export MONAN_JEDI_LOG_ROOT="${MONAN_JEDI_LOG_ROOT:-${PROJECT_ROOT}/logs/${MONAN_JEDI_RUN_ID}}"
   export MONAN_JEDI_SOURCE_DIR="${MONAN_JEDI_SOURCE_DIR:-${repo_root}}"
   export MONAN_JEDI_BUILD_DIR="${MONAN_JEDI_BUILD_DIR:-${MONAN_JEDI_WORK_ROOT}/build}"
-  export MONAN_JEDI_INSTALL_ROOT="${MONAN_JEDI_INSTALL_ROOT:-${PROJECT_ROOT}/builds/${MONAN_JEDI_RUN_ID}}"
+  export MONAN_JEDI_INSTALL_ROOT="${MONAN_JEDI_INSTALL_ROOT:-${PROJECT_ROOT}/build/${MONAN_JEDI_RUN_ID}}"
   export MONAN_JEDI_INSTALL_BIN_DIR="${MONAN_JEDI_INSTALL_BIN_DIR:-${MONAN_JEDI_INSTALL_ROOT}/bin}"
 
   export MONAN_JEDI_DATA_ROOT="${MONAN_JEDI_DATA_ROOT:-${MONAN_JEDI_WORK_ROOT}/cache/data}"
@@ -66,7 +70,9 @@ load_monan_jedi_config() {
 
   export MONAN_JEDI_WPS_SOURCE_DIR="${MONAN_JEDI_WPS_SOURCE_DIR:-${MONAN_JEDI_WORK_ROOT}/wps/src}"
   export MONAN_JEDI_WPS_BUILD_DIR="${MONAN_JEDI_WPS_BUILD_DIR:-${MONAN_JEDI_WORK_ROOT}/wps/build}"
-  export MONAN_JEDI_WPS_RELEASES_DIR="${MONAN_JEDI_WPS_RELEASES_DIR:-${MONAN_JEDI_INSTALL_ROOT}/wps}"
+  # Versioned WPS releases are implementation details. Stable public entry
+  # points are always install/bin and install/share/wps.
+  export MONAN_JEDI_WPS_RELEASES_DIR="${MONAN_JEDI_WPS_RELEASES_DIR:-${MONAN_JEDI_INSTALL_ROOT}/libexec/monan-jedi/wps}"
   export MONAN_JEDI_WPS_INSTALL_DIR="${MONAN_JEDI_WPS_INSTALL_DIR:-${MONAN_JEDI_WPS_RELEASES_DIR}/WPS-${MONAN_JEDI_WPS_VERSION}}"
   export MONAN_JEDI_WPS_PATCH_DIR="${MONAN_JEDI_WPS_PATCH_DIR:-${MONAN_JEDI_SOURCE_DIR}/patches/wps}"
 

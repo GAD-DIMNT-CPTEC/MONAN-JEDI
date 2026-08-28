@@ -16,8 +16,11 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 READER = ROOT / "scripts" / "lib" / "read_config.py"
+CONFIG_SH = ROOT / "scripts" / "lib" / "config.sh"
+BUILD_SH = ROOT / "scripts" / "lib" / "build.sh"
 JACI = ROOT / "config" / "jaci.yaml"
 TEMPLATE = ROOT / "config" / "template.yaml"
+RUNTIME_CONTRACT = ROOT / "docs" / "runtime-install-contract.md"
 
 READER_SPEC = importlib.util.spec_from_file_location("read_config", READER)
 assert READER_SPEC is not None
@@ -66,33 +69,15 @@ class ConfigurationTests(unittest.TestCase):
         source = READER.read_text(encoding="utf-8")
         ast.parse(source, filename=str(READER), feature_version=(3, 6))
 
-    def test_nested_lookup_uses_default_for_missing_null_or_invalid_path(
-        self,
-    ) -> None:
+    def test_nested_lookup_uses_default_for_missing_null_or_invalid_path(self) -> None:
         data = {
             "build": {"jobs": 8, "empty": None},
             "model": "not-a-mapping",
         }
-        self.assertEqual(
-            READER_MODULE.get_nested_value(data, "build.jobs", "fallback"),
-            8,
-        )
-        self.assertEqual(
-            READER_MODULE.get_nested_value(data, "build.missing", "fallback"),
-            "fallback",
-        )
-        self.assertEqual(
-            READER_MODULE.get_nested_value(data, "build.empty", "fallback"),
-            "fallback",
-        )
-        self.assertEqual(
-            READER_MODULE.get_nested_value(
-                data,
-                "model.double_precision",
-                "fallback",
-            ),
-            "fallback",
-        )
+        self.assertEqual(READER_MODULE.get_nested_value(data, "build.jobs", "fallback"), 8)
+        self.assertEqual(READER_MODULE.get_nested_value(data, "build.missing", "fallback"), "fallback")
+        self.assertEqual(READER_MODULE.get_nested_value(data, "build.empty", "fallback"), "fallback")
+        self.assertEqual(READER_MODULE.get_nested_value(data, "model.double_precision", "fallback"), "fallback")
 
     def test_scalar_normalization_and_environment_expansion(self) -> None:
         previous = os.environ.get("MONAN_JEDI_TEST_ROOT")
@@ -102,9 +87,7 @@ class ConfigurationTests(unittest.TestCase):
             self.assertEqual(READER_MODULE.normalize_value(False), "0")
             self.assertEqual(READER_MODULE.normalize_value(64), "64")
             self.assertEqual(
-                READER_MODULE.normalize_value(
-                    "${MONAN_JEDI_TEST_ROOT}/bundle"
-                ),
+                READER_MODULE.normalize_value("${MONAN_JEDI_TEST_ROOT}/bundle"),
                 "/tmp/test root/bundle",
             )
         finally:
@@ -114,13 +97,10 @@ class ConfigurationTests(unittest.TestCase):
                 os.environ["MONAN_JEDI_TEST_ROOT"] = previous
 
     def test_non_scalar_values_are_rejected(self) -> None:
-        for value in (["invalid"], {"invalid": "mapping"}):
-            with self.subTest(value=value):
-                with self.assertRaisesRegex(
-                    ValueError,
-                    "lists and mappings cannot be exported",
-                ):
-                    READER_MODULE.normalize_value(value)
+        for item in (["invalid"], {"invalid": "mapping"}):
+            with self.subTest(value=item):
+                with self.assertRaisesRegex(ValueError, "lists and mappings cannot be exported"):
+                    READER_MODULE.normalize_value(item)
 
     def test_empty_environment_override_is_preserved(self) -> None:
         name = "MONAN_JEDI_TEST_EMPTY_OVERRIDE"
@@ -136,14 +116,14 @@ class ConfigurationTests(unittest.TestCase):
 
     def test_export_is_shell_quoted_and_round_trips(self) -> None:
         stream = io.StringIO()
-        value = "path with spaces; $(do-not-run)"
-        READER_MODULE.write_export(stream, "MONAN_JEDI_TEST_VALUE", value)
+        item = "path with spaces; $(do-not-run)"
+        READER_MODULE.write_export(stream, "MONAN_JEDI_TEST_VALUE", item)
         line = stream.getvalue().strip()
         prefix, assignment = line.split(" ", 1)
         name, raw_value = assignment.split("=", 1)
         self.assertEqual(prefix, "export")
         self.assertEqual(name, "MONAN_JEDI_TEST_VALUE")
-        self.assertEqual(shlex.split(raw_value), [value])
+        self.assertEqual(shlex.split(raw_value), [item])
 
     def test_yaml_documents_are_mappings(self) -> None:
         for path in (JACI, TEMPLATE):
@@ -176,6 +156,42 @@ class ConfigurationTests(unittest.TestCase):
             env=env,
         )
         self.assertIn("export MONAN_JEDI_WPS_BUILD_TYPE=Debug", completed.stdout)
+
+    def test_canonical_install_prefix_and_private_wps_release_layout(self) -> None:
+        source = CONFIG_SH.read_text(encoding="utf-8")
+        self.assertIn(
+            'MONAN_JEDI_INSTALL_ROOT:-${PROJECT_ROOT}/build/${MONAN_JEDI_RUN_ID}',
+            source,
+        )
+        self.assertIn(
+            'MONAN_JEDI_INSTALL_ROOT}/libexec/monan-jedi/wps',
+            source,
+        )
+        self.assertNotIn(
+            'MONAN_JEDI_INSTALL_ROOT:-${PROJECT_ROOT}/builds/${MONAN_JEDI_RUN_ID}',
+            source,
+        )
+
+    def test_runtime_support_is_published_into_install_share(self) -> None:
+        source = BUILD_SH.read_text(encoding="utf-8")
+        for item in (
+            "share/monan-jedi/mpas-jedi/namelists",
+            "geovars.yaml",
+            "keptvars.yaml",
+            "share/monan-jedi/install-manifest.json",
+        ):
+            self.assertIn(item, source)
+
+    def test_runtime_contract_document_names_public_roots(self) -> None:
+        text = RUNTIME_CONTRACT.read_text(encoding="utf-8")
+        for item in (
+            "MONAN_JEDI_INSTALL_ROOT",
+            "bin/ungrib.exe",
+            "share/wps/Variable_Tables",
+            "share/MPAS/core_atmosphere",
+            "share/monan-jedi/mpas-jedi/namelists",
+        ):
+            self.assertIn(item, text)
 
 
 if __name__ == "__main__":
