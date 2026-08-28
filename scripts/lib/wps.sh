@@ -89,7 +89,13 @@ monan_jedi_wps_prepare_runtime_tree() {
     exit 1
   }
   mkdir -p "${stage_dir}/share/wps"
-  cp -a "${MONAN_JEDI_WPS_SOURCE_DIR}/ungrib/Variable_Tables" "${stage_dir}/share/wps/"
+
+  # Do not preserve checkout ownership or restrictive source modes in the
+  # shared runtime installation. The destination tree inherits the project
+  # group from the setgid install directories; then ensure all table files are
+  # readable and directories searchable by that group.
+  cp -R "${MONAN_JEDI_WPS_SOURCE_DIR}/ungrib/Variable_Tables" "${stage_dir}/share/wps/"
+  chmod -R g+rX "${stage_dir}/share/wps/Variable_Tables"
 }
 
 monan_jedi_validate_wps_tree() {
