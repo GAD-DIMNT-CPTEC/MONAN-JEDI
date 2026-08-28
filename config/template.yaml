@@ -14,8 +14,8 @@
 #   ${project.root}/logs/${build.id}   logs
 #   ${project.root}/build/${build.id}  public runtime installation
 #
-# The validated spack-stack may be shared and live outside project.root. Do not
-# assume that the stack is located below project.root.
+# The validated spack-stack may be shared and live outside project.root.
+# Do not assume that the stack is located below project.root.
 #
 # MAIN DERIVED PATHS
 # ------------------
