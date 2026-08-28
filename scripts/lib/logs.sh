@@ -30,6 +30,7 @@ obs2ioda build tail|08_obs2ioda_build.log|120
 WPS configure tail|09_wps_cmake.log|120
 WPS build tail|09_wps_build.log|120
 WPS validation|09_wps_validate.log|120
+Installed runtime validation|10_install_test.log|200
 EOF_TAILS
   } | tee "${summary_file}"
 
