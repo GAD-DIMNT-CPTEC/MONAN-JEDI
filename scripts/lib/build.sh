@@ -31,6 +31,59 @@ monan_jedi_validate_required_mpas_executables() {
   log_info "  unbalance=${bin_dir}/mpasjedi_unbalance_ensemble.x"
 }
 
+monan_jedi_publish_runtime_support() {
+  local source_dir="${MONAN_JEDI_SOURCE_DIR}/mpas-jedi/test/testinput/namelists"
+  local target_dir="${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/mpas-jedi/namelists"
+  local manifest="${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/install-manifest.json"
+  local name
+
+  mkdir -p "${target_dir}" "$(dirname "${manifest}")"
+
+  # These YAMLs are runtime inputs used by downstream workflows. They are part
+  # of the public installation contract and must not be read from the ecbuild
+  # source/materialization tree by consumers.
+  for name in geovars.yaml keptvars.yaml; do
+    if [[ ! -f "${source_dir}/${name}" ]]; then
+      log_error "Required MPAS-JEDI runtime support file is missing: ${source_dir}/${name}"
+      exit 1
+    fi
+    install -m 644 "${source_dir}/${name}" "${target_dir}/${name}"
+  done
+
+  require_cmd python3
+  python3 - "${manifest}" <<'PY'
+import json
+import os
+import sys
+from pathlib import Path
+
+root = Path(os.environ["MONAN_JEDI_INSTALL_ROOT"])
+manifest = Path(sys.argv[1])
+record = {
+    "schema_version": 1,
+    "install_root": str(root),
+    "public_contract": {
+        "bin": "bin",
+        "lib": "lib",
+        "include": "include",
+        "share": "share",
+        "mpas_atmosphere_share": "share/MPAS/core_atmosphere",
+        "wps_variable_tables": "share/wps/Variable_Tables",
+        "mpas_jedi_namelists": "share/monan-jedi/mpas-jedi/namelists",
+    },
+    "required_runtime_support": [
+        "share/monan-jedi/mpas-jedi/namelists/geovars.yaml",
+        "share/monan-jedi/mpas-jedi/namelists/keptvars.yaml",
+    ],
+}
+manifest.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+PY
+
+  log_info "Published MONAN-JEDI runtime support"
+  log_info "  namelists=${target_dir}"
+  log_info "  manifest=${manifest}"
+}
+
 monan_jedi_build_bundle() {
   # Load the configured MONAN-JEDI stack before resolving build tools.
   monan_jedi_load_stack
@@ -63,6 +116,7 @@ monan_jedi_build_bundle() {
 monan_jedi_install_bundle() {
   monan_jedi_load_stack
   require_cmd make
+  require_cmd install
 
   if [[ ! -f "${MONAN_JEDI_BUILD_DIR}/Makefile" ]]; then
     log_error "Build tree does not contain Makefile: ${MONAN_JEDI_BUILD_DIR}"
@@ -83,4 +137,5 @@ monan_jedi_install_bundle() {
 
   make install 2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/06_make_install.log"
   monan_jedi_validate_required_mpas_executables "${MONAN_JEDI_INSTALL_BIN_DIR}" "install"
+  monan_jedi_publish_runtime_support
 }
