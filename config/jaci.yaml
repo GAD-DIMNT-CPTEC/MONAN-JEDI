@@ -2,14 +2,35 @@
 # MONAN-JEDI — JACI build/install configuration
 # =============================================================================
 #
-# Filesystem contract
-# -------------------
+# PURPOSE
+# -------
+# This file configures how MONAN-JEDI is built, installed and validated on JACI.
+# It is not an operational data-assimilation experiment configuration; cycles,
+# observations, backgrounds and scientific application settings belong elsewhere.
+#
+# IMPORTANT FILESYSTEM MODEL
+# --------------------------
 # project.root/work/<build.id>  : private, rebuildable work/build trees
 # project.root/logs/<build.id>  : logs
 # project.root/build/<build.id> : public runtime installation
 #
+# The spack-stack may be owned by another account and may live outside
+# project.root. Do not assume that the stack is located below project.root.
+#
+# MAIN DERIVED PATHS
+# ------------------
+#   work root:    ${project.root}/work/${build.id}
+#   log root:     ${project.root}/logs/${build.id}
+#   bundle build: ${project.root}/work/${build.id}/build
+#   install root: ${project.root}/build/${build.id}
+#   install bin:  ${install.root}/bin
+#
 # Downstream workflows consume ONLY the public installation. They must not use
 # source checkouts, ecbuild materialization directories, or WPS build trees.
+#
+# Keep this value quoted applies to CMake ON/OFF settings such as
+# model.double_precision so YAML does not coerce them to booleans.
+# Pin external component refs to tested full commit SHAs for reproducible builds.
 #
 # Default public layout:
 #   ${project.root}/build/${build.id}/bin
@@ -45,7 +66,7 @@ install:
   bin_dir:
 
 model:
-  # Keep ON/OFF quoted so YAML does not coerce the value.
+  # Keep this value quoted so YAML does not coerce ON/OFF.
   double_precision: 'ON'
 
 data:
