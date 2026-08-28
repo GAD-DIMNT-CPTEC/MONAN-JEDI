@@ -110,7 +110,19 @@ export PATH="${fake_bin}:${PATH}"
 positive_log="${tmp_root}/positive.log"
 monan_jedi_validate_install_tree > "${positive_log}"
 grep -Fq 'RESULT=PASS' "${positive_log}"
+grep -Fq 'warnings=0' "${positive_log}"
 grep -Fq 'project-group readability: all files are group-readable' "${positive_log}"
+
+# Warnings are diagnostic and must not increment the fatal failure count.
+MONAN_JEDI_INSTALL_CHECKS=0
+MONAN_JEDI_INSTALL_PASSES=0
+MONAN_JEDI_INSTALL_WARNINGS=0
+MONAN_JEDI_INSTALL_FAILURES=0
+warning_log="${tmp_root}/warning.log"
+monan_jedi_install_record_warn "ownership drift fixture" > "${warning_log}"
+grep -Fq '[WARN] ownership drift fixture' "${warning_log}"
+[[ "${MONAN_JEDI_INSTALL_WARNINGS}" -eq 1 ]]
+[[ "${MONAN_JEDI_INSTALL_FAILURES}" -eq 0 ]]
 
 vtable="${MONAN_JEDI_WPS_INSTALL_DIR}/share/wps/Variable_Tables/Vtable.GFS"
 chmod 600 "${vtable}"

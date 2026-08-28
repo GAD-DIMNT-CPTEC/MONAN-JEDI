@@ -21,6 +21,12 @@ monan_jedi_install_record_pass() {
   printf '[PASS] %s\n' "$1"
 }
 
+monan_jedi_install_record_warn() {
+  MONAN_JEDI_INSTALL_CHECKS=$((MONAN_JEDI_INSTALL_CHECKS + 1))
+  MONAN_JEDI_INSTALL_WARNINGS=$((MONAN_JEDI_INSTALL_WARNINGS + 1))
+  printf '[WARN] %s\n' "$1"
+}
+
 monan_jedi_install_record_fail() {
   MONAN_JEDI_INSTALL_CHECKS=$((MONAN_JEDI_INSTALL_CHECKS + 1))
   MONAN_JEDI_INSTALL_FAILURES=$((MONAN_JEDI_INSTALL_FAILURES + 1))
@@ -131,7 +137,7 @@ monan_jedi_install_check_manifest() {
     return 0
   fi
 
-  if output="$(python3 - "${manifest}" "${MONAN_JEDI_INSTALL_ROOT}" <<'PY'
+  if output="$(python3 - "${manifest}" "${MONAN_JEDI_INSTALL_ROOT}" 2>&1 <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -191,10 +197,15 @@ monan_jedi_install_check_group_access() {
 
   root_gid="$(stat -c '%g' "${MONAN_JEDI_INSTALL_ROOT}")"
 
+  # Different group ownership is useful diagnostic information, but it is not
+  # by itself a runtime failure. CMake and third-party installers may preserve
+  # source ownership on some entries. The runtime contract is blocked only
+  # when permissions make those entries unusable by the project group.
   first="$(find "${MONAN_JEDI_INSTALL_ROOT}" -xdev ! -gid "${root_gid}" -print -quit)"
   if [[ -n "${first}" ]]; then
-    monan_jedi_install_record_fail "project-group ownership: entries differ from install-root group"
-    find "${MONAN_JEDI_INSTALL_ROOT}" -xdev ! -gid "${root_gid}" -print | sed -n '1,20p'
+    monan_jedi_install_record_warn "project-group ownership drift: entries differ from install-root group"
+    find "${MONAN_JEDI_INSTALL_ROOT}" -xdev ! -gid "${root_gid}" \
+      -printf '%M %u %g %p\n' | sed -n '1,20p'
   else
     monan_jedi_install_record_pass "project-group ownership: all entries match install-root group"
   fi
@@ -202,7 +213,8 @@ monan_jedi_install_check_group_access() {
   first="$(find "${MONAN_JEDI_INSTALL_ROOT}" -xdev -type f ! -perm -0040 -print -quit)"
   if [[ -n "${first}" ]]; then
     monan_jedi_install_record_fail "project-group readability: files without group-read permission"
-    find "${MONAN_JEDI_INSTALL_ROOT}" -xdev -type f ! -perm -0040 -printf '%M %u %g %p\n' | sed -n '1,20p'
+    find "${MONAN_JEDI_INSTALL_ROOT}" -xdev -type f ! -perm -0040 \
+      -printf '%M %u %g %p\n' | sed -n '1,20p'
   else
     monan_jedi_install_record_pass "project-group readability: all files are group-readable"
   fi
@@ -210,7 +222,8 @@ monan_jedi_install_check_group_access() {
   first="$(find "${MONAN_JEDI_INSTALL_ROOT}" -xdev -type d ! -perm -0050 -print -quit)"
   if [[ -n "${first}" ]]; then
     monan_jedi_install_record_fail "project-group directory access: directories without group r-x"
-    find "${MONAN_JEDI_INSTALL_ROOT}" -xdev -type d ! -perm -0050 -printf '%M %u %g %p\n' | sed -n '1,20p'
+    find "${MONAN_JEDI_INSTALL_ROOT}" -xdev -type d ! -perm -0050 \
+      -printf '%M %u %g %p\n' | sed -n '1,20p'
   else
     monan_jedi_install_record_pass "project-group directory access: all directories are group-readable/searchable"
   fi
@@ -218,7 +231,8 @@ monan_jedi_install_check_group_access() {
   first="$(find "${MONAN_JEDI_INSTALL_ROOT}" -xdev -type f -perm -0100 ! -perm -0010 -print -quit)"
   if [[ -n "${first}" ]]; then
     monan_jedi_install_record_fail "project-group executable access: owner-executable files missing group-execute"
-    find "${MONAN_JEDI_INSTALL_ROOT}" -xdev -type f -perm -0100 ! -perm -0010 -printf '%M %u %g %p\n' | sed -n '1,20p'
+    find "${MONAN_JEDI_INSTALL_ROOT}" -xdev -type f -perm -0100 ! -perm -0010 \
+      -printf '%M %u %g %p\n' | sed -n '1,20p'
   else
     monan_jedi_install_record_pass "project-group executable access: executable files are group-executable"
   fi
@@ -237,6 +251,7 @@ monan_jedi_validate_install_tree() {
 
   MONAN_JEDI_INSTALL_CHECKS=0
   MONAN_JEDI_INSTALL_PASSES=0
+  MONAN_JEDI_INSTALL_WARNINGS=0
   MONAN_JEDI_INSTALL_FAILURES=0
 
   echo "============================================================"
@@ -301,11 +316,16 @@ monan_jedi_validate_install_tree() {
   echo "------------------------------------------------------------"
   echo "checks=${MONAN_JEDI_INSTALL_CHECKS}"
   echo "passed=${MONAN_JEDI_INSTALL_PASSES}"
+  echo "warnings=${MONAN_JEDI_INSTALL_WARNINGS}"
   echo "failed=${MONAN_JEDI_INSTALL_FAILURES}"
 
   if [[ "${MONAN_JEDI_INSTALL_FAILURES}" -eq 0 ]]; then
     echo "RESULT=PASS"
-    echo "MONAN-JEDI installation is ready for downstream runtime use."
+    if [[ "${MONAN_JEDI_INSTALL_WARNINGS}" -gt 0 ]]; then
+      echo "MONAN-JEDI installation is ready for downstream runtime use with warnings."
+    else
+      echo "MONAN-JEDI installation is ready for downstream runtime use."
+    fi
     echo "============================================================"
     return 0
   fi
