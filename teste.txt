@@ -1,0 +1,140 @@
+[ 48%] Building Fortran object mpas/src/core_atmosphere/CMakeFiles/core_atmosphere.dir/physics/physics_noaa/UGWP/cires_ugwpv1_module.F.o
+[ 48%] Built target vader
+/p/projetos/monan_das/rodrigo.braz/src/spack-stack/MONAN-JEDI/mpas/src/core_atmosphere/physics/physics_wrf/module_bl_gwdo.F:215:49:
+
+  215 |                     ,errmsg=errmsg,errflg=errflg)
+      |                                                 1
+Error: Missing actual argument for argument ‘omax’ at (1)
+make[2]: *** [mpas/src/core_atmosphere/CMakeFiles/core_atmosphere.dir/build.make:2769: mpas/src/core_atmosphere/CMakeFiles/core_atmosphere.dir/physics/physics_wrf/module_bl_gwdo.F.o] Error 1
+make[2]: *** Waiting for unfinished jobs....
+[ 48%] Building Fortran object mpas/src/core_atmosphere/CMakeFiles/core_atmosphere.dir/physics/mpas_atmphys_o3climatology.F.o
+[ 48%] Linking CXX executable oops_l95_geometry_iterator
+[ 48%] Linking CXX executable ../../../../bin/l95_enshofx.x
+[ 48%] Linking CXX executable oops_l95_modelauxcontrol
+[ 48%] Building CXX object oops/qg/mains/CMakeFiles/qg_etkf.x.dir/qgETKF.cc.o
+[ 48%] Linking CXX executable oops_l95_state
+[ 48%] Building CXX object oops/qg/mains/CMakeFiles/qg_ens_recenter.x.dir/qgEnsRecenter.cc.o
+[ 48%] Built target l95_hofx.x
+make[1]: *** [CMakeFiles/Makefile2:38924: mpas/src/core_atmosphere/CMakeFiles/core_atmosphere.dir/all] Error 2
+make[1]: *** Waiting for unfinished jobs....
+[ 48%] Building CXX object oops/qg/mains/CMakeFiles/qg_hybridgain.x.dir/qgHybridGain.cc.o
+[ 48%] Building CXX object oops/qg/mains/CMakeFiles/qg_ensemble_inflation.x.dir/qgEnsembleInflation.cc.o
+[ 48%] Building CXX object oops/qg/mains/CMakeFiles/qg_templated_eda.x.dir/qgTemplatedEDA.cc.o
+[ 48%] Built target oops_l95_geovals
+[ 48%] Built target oops_l95_geometry
+[ 48%] Built target oops_l95_departuresensemble
+[ 48%] Linking CXX executable oops_l95_model
+[ 48%] Linking CXX executable oops_l95_obs_iterator
+[ 48%] Built target oops_l95_modelauxcontrol
+[ 48%] Built target l95_enshofx.x
+[ 48%] Built target oops_l95_geometry_iterator
+[ 48%] Linking CXX executable oops_l95_pseudomodel
+[ 48%] Linking CXX executable oops_l95_obsspace
+[ 48%] Linking CXX executable oops_l95_modelauxcovariance
+[ 48%] Built target oops_l95_state
+[ 48%] Linking CXX executable oops_l95_pseudomodel_state4d
+[ 48%] Linking CXX executable oops_l95_obsdatavector
+[ 48%] Linking CXX executable oops_l95_modelauxincrement
+[ 48%] Built target oops_l95_model
+[ 48%] Linking CXX executable oops_l95_obsvector
+[ 48%] Linking CXX executable oops_l95_obsauxcovariance
+[ 48%] Built target oops_l95_obs_iterator
+[ 48%] Linking CXX executable oops_l95_obsaux
+[ 48%] Linking CXX executable oops_l95_obsoperator
+[ 48%] Built target oops_l95_modelauxcovariance
+[ 48%] Built target oops_l95_obsspace
+[ 48%] Built target oops_l95_pseudomodel
+[ 48%] Linking CXX executable oops_l95_identitymodel
+[ 48%] Built target oops_l95_pseudomodel_state4d
+[ 48%] Linking CXX executable oops_l95_eda_3dvar_zeromeanpert_compare
+[ 48%] Linking CXX executable oops_l95_obserrorcovar
+[ 48%] Linking CXX executable oops_l95_increment
+[ 48%] Built target oops_l95_obsdatavector
+/p/projetos/monan_das/rodrigo.braz/src/spack-stack/MONAN-JEDI/ioda/src/engines/ioda/src/ioda/Engines/Script/Script.cpp:26:9: warning: ‘ioda::Engines::Script::details::ScriptInterpreter’ declared with greater visibility than the type of its field ‘ioda::Engines::Script::details::ScriptInterpreter::guard’ [-Wattributes]
+   26 |   class ScriptInterpreter {
+      |         ^~~~~~~~~~~~~~~~~
+[ 48%] Built target oops_l95_modelauxincrement
+[ 48%] Linking CXX executable oops_l95_obsauxincrement
+[ 48%] Linking CXX executable oops_l95_obslocalization
+[ 48%] Linking CXX executable ../../../bin/qg_dfi.x
+[ 48%] Built target oops_l95_obsvector
+[ 48%] Built target oops_l95_obsauxcovariance
+[ 48%] Linking CXX executable ../../../../bin/l95_genpert.x
+[ 48%] Linking CXX executable oops_l95_linobsoperator
+[ 48%] Built target oops_l95_obsaux
+[ 48%] Built target oops_l95_obsoperator
+[ 48%] Linking CXX executable ../../../bin/qg_diffstates.x
+[ 48%] Linking CXX executable oops_l95_obslocalizations
+[ 48%] Built target oops_l95_identitymodel
+[ 48%] Linking CXX executable oops_l95_getvalues
+[ 48%] Built target oops_l95_eda_3dvar_zeromeanpert_compare
+[ 48%] Linking CXX executable ../../../bin/qg_rescale_ens_perts.x
+[ 48%] Built target oops_l95_increment
+[ 48%] Built target oops_l95_obserrorcovar
+[ 48%] Built target oops_l95_obsauxincrement
+[ 48%] Built target oops_l95_obslocalization
+[ 48%] Built target qg_dfi.x
+[ 48%] Built target oops_l95_linobsoperator
+[ 48%] Built target l95_genpert.x
+[ 48%] Built target qg_diffstates.x
+[ 48%] Built target oops_l95_obslocalizations
+[ 48%] Built target oops_l95_getvalues
+[ 48%] Linking CXX executable ../../../bin/qg_addincrement.x
+[ 48%] Built target qg_rescale_ens_perts.x
+[ 48%] Linking CXX executable ../../../bin/qg_convertstate.x
+[ 48%] Linking CXX executable ../../../bin/qg_convertincrement.x
+[ 48%] Built target qg_addincrement.x
+[ 48%] Built target qg_convertstate.x
+[ 48%] Built target qg_convertincrement.x
+[ 48%] Linking CXX executable ../../../bin/qg_forecast.x
+[ 48%] Linking CXX executable ../../../bin/qg_ens_forecast.x
+[ 48%] Built target qg_forecast.x
+[ 48%] Built target qg_ens_forecast.x
+[ 48%] Linking CXX executable ../../../bin/qg_hybridgain.x
+[ 48%] Built target qg_hybridgain.x
+[ 48%] Linking CXX executable ../../../bin/qg_ens_recenter.x
+[ 48%] Built target qg_ens_recenter.x
+[ 48%] Linking CXX shared library ../../../../lib/libioda_engines.so
+[ 48%] Linking CXX executable ../../../bin/qg_hofx3d.x
+[ 48%] Built target qg_hofx3d.x
+[ 48%] Linking CXX executable ../../../bin/qg_ens_hofx.x
+[ 48%] Linking CXX executable ../../../bin/qg_ens_mean_variance.x
+[ 48%] Linking CXX executable oops_l95_localization
+[ 48%] Built target qg_ens_mean_variance.x
+[ 48%] Built target qg_ens_hofx.x
+[ 49%] Linking CXX executable ../../../../bin/l95_sqrtofvertloc.x
+[ 49%] Built target ioda_engines
+[ 49%] Built target oops_l95_localization
+[ 49%] Linking CXX executable ../../../bin/qg_ensemble_inflation.x
+[ 49%] Built target qg_ensemble_inflation.x
+[ 49%] Built target l95_sqrtofvertloc.x
+[ 49%] Linking CXX executable ../../../bin/qg_hofx.x
+[ 49%] Built target qg_hofx.x
+[ 49%] Linking CXX executable oops_l95_errorcovariance
+[ 49%] Built target oops_l95_errorcovariance
+[ 49%] Linking CXX executable ../../../bin/qg_gen_ens_pert_B.x
+[ 49%] Built target qg_gen_ens_pert_B.x
+[ 49%] Linking CXX executable ../../../../bin/l95_letkf.x
+[ 49%] Built target l95_letkf.x
+[ 49%] Linking CXX executable ../../../../bin/l95_adjointforecast.x
+[ 49%] Built target l95_adjointforecast.x
+[ 49%] Linking CXX executable ../../../bin/qg_gen_hybrid_linear_model_coeffs.x
+[ 49%] Linking CXX executable ../../../bin/qg_etkf.x
+[ 49%] Built target qg_gen_hybrid_linear_model_coeffs.x
+[ 49%] Built target qg_etkf.x
+[ 49%] Linking CXX executable oops_l95_linearmodel
+[ 49%] Built target oops_l95_linearmodel
+[ 49%] Linking CXX executable ../../../../bin/l95_4dvar.x
+[ 49%] Built target l95_4dvar.x
+[ 49%] Linking CXX executable ../../../../bin/l95_eda.x
+[ 49%] Built target l95_eda.x
+[ 49%] Linking CXX executable ../../../bin/qg_4dvar.x
+[ 49%] Linking CXX executable ../../../bin/qg_templated_eda.x
+[ 49%] Built target qg_4dvar.x
+[ 49%] Built target qg_templated_eda.x
+[ 49%] Linking CXX executable ../../../bin/qg_eda.x
+[ 49%] Built target qg_eda.x
+[ 49%] Linking CXX executable ../../../bin/qg_ControlPert.x
+[ 49%] Built target qg_ControlPert.x
+make: *** [Makefile:166: all] Error 2
+[JACI:ian05 MONAN-JEDI]$
