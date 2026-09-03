@@ -1,3 +1,22 @@
+MONAN-JEDI com MPAS v8.3.1
+
+
+git clone https://github.com/GAD-DIMNT-CPTEC/MONAN-JEDI.git
+
+git switch teste831
+branch 'teste831' set up to track 'origin/teste831'.
+Switched to a new branch 'teste831'
+
+
+bash scripts/monan-jedi.sh all --config config/jaci.yaml
+
+
+.
+.
+.
+
+
+
 [ 48%] Building Fortran object mpas/src/core_atmosphere/CMakeFiles/core_atmosphere.dir/physics/physics_noaa/UGWP/cires_ugwpv1_module.F.o
 [ 48%] Built target vader
 /p/projetos/monan_das/rodrigo.braz/src/spack-stack/MONAN-JEDI/mpas/src/core_atmosphere/physics/physics_wrf/module_bl_gwdo.F:215:49:
