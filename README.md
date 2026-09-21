@@ -119,13 +119,18 @@ chooses. Work/build/install paths and other implementation details are derived
 by the workflow. JEDI application inputs are separate and live under
 `examples/`.
 
-Configuration is strictly validated; unknown keys and invalid types fail early:
+Configuration is strictly validated; unknown keys and invalid types fail early.
+The YAML files are also intentionally self-documenting: explanatory comments are
+part of the public interface and are protected by an automated documentation
+contract.
 
 ```bash
 python3 scripts/lib/read_config.py --check config/jaci.yaml
+python3 scripts/check_config_documentation.py
 ```
 
-See [the configuration reference](docs/configuration-reference.md).
+See [the configuration reference](docs/configuration-reference.md) and
+[the contribution guidelines](CONTRIBUTING.md).
 
 ## Workflow
 
