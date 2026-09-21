@@ -1,9 +1,9 @@
 # MONAN-JEDI configuration
 
 The `config/` directory contains only **MONAN-JEDI build/install site
-configuration**. It does not contain operational data-assimilation experiments;
-those belong in the workflow/experiment repository, while maintained usage
-examples belong under `examples/`.
+configuration**. It does not contain JEDI experiment/application inputs or operational
+assimilation-cycle configuration; those belong in the workflow/experiment
+repository, while maintained usage examples belong under `examples/`.
 
 ## Files
 
