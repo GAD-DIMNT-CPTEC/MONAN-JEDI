@@ -27,7 +27,7 @@ by MONAN-JEDI as patches against the pinned upstream components.
   application and registers its header.
 - `patches/unbalance/mpas-jedi-unbalance-ensemble.patch` adds the MPAS main and
   executable target.
-- `configs/examples/mpasjedi_unbalance_ensemble_example.yaml` is an example
+- `examples/unbalance-ensemble/config.yaml` is an example
   runtime configuration.
 - `scripts/apply_unbalance_ensemble_patches.sh` validates and applies both
   patches.
