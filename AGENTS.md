@@ -14,7 +14,10 @@ When editing configuration behavior:
 1. preserve the explanatory header blocks in the YAML files;
 2. keep meaningful comments immediately above every public value;
 3. never replace the self-documenting YAML with a compact bare key/value file;
-4. keep `config/template.yaml` complete with every public key;
+4. keep `config/template.yaml` complete with every legitimate user/site override;
+   prefer an empty value plus a documented derived default for optional paths;
+   do not hide paths, URLs, repositories or component locations in code merely
+   because a standard default exists;
 5. update the detailed reference section for every key whose meaning, default,
    allowed values or environment override changes;
 6. run `python3 scripts/check_config_documentation.py`;
