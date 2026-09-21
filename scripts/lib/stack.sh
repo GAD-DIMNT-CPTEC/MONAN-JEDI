@@ -252,6 +252,8 @@ monan_jedi_load_stack() {
 monan_jedi_record_environment_snapshot() {
   local output_file="$1"
 
+  mkdir -p "$(dirname "${output_file}")"
+
   {
     echo "GeneratedAt=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     echo "MONAN_JEDI_CONFIG=${MONAN_JEDI_CONFIG}"
