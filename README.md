@@ -107,25 +107,25 @@ recovery procedure.
 
 ## Configuration
 
-User-editable settings are centralized in:
+Site/user settings live only under `config/`:
 
 ```text
-config/jaci.yaml
-config/template.yaml
+config/jaci.yaml      maintained INPE/JACI settings
+config/template.yaml  starting point for another site
 ```
 
-Important defaults when path values are empty:
+The public YAML interface contains only values a site or operator reasonably
+chooses. Work/build/install paths and other implementation details are derived
+by the workflow. JEDI application inputs are separate and live under
+`examples/`.
 
-| Setting | Default |
-| --- | --- |
-| `build.dir` | `${project.root}/work/${build.id}/build` |
-| `install.root` | `${project.root}/build/${build.id}` |
-| `install.bin_dir` | `${install.root}/bin` |
-| `wps.build_dir` | `${project.root}/work/${build.id}/wps/build` |
-| `wps.releases_dir` | `${install.root}/libexec/monan-jedi/wps` |
-| `wps.install_dir` | `${wps.releases_dir}/WPS-${wps.version}` |
+Configuration is strictly validated; unknown keys and invalid types fail early:
 
-Keep `model.double_precision` quoted as `'ON'` or `'OFF'`.
+```bash
+python3 scripts/lib/read_config.py --check config/jaci.yaml
+```
+
+See [the configuration reference](docs/configuration-reference.md).
 
 ## Workflow
 
@@ -245,7 +245,7 @@ See:
 - [JACI PBS queue limits](docs/jaci-pbs-queues.md)
 - [JEDI test data and Git LFS](docs/jedi-test-data.md)
 - [WPS build on JACI](docs/wps-build-jaci.md)
-- [YAML configuration](docs/YAML_CONFIGURATION.md)
+- [YAML configuration](docs/configuration-reference.md)
 
 ## Design principles
 
