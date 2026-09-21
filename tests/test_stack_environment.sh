@@ -47,7 +47,7 @@ chmod +x "${stack_root}/spack/bin/spack"
   export STACK_SITE_SETUP='configs/sites/tier2/jaci/setup.sh'
   export STACK_ENV_MODULE='fake/jedi-mpas-env/1.0.0'
   export STACK_INSTANCE='fake-stack'
-  export MONAN_JEDI_RUN_ID='test'
+  export MONAN_JEDI_BUILD_ID='test'
   export MONAN_JEDI_CONFIG='config/test.yaml'
 
   export MONAN_JEDI_CC='cc'

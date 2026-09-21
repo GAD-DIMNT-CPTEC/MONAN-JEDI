@@ -1,35 +1,66 @@
-# MONAN-JEDI configuration files
+# MONAN-JEDI configuration
 
-The files in this directory are executable documentation as well as workflow input. Their comments are intentionally detailed because they record site assumptions, path derivations, safety constraints and the rationale behind non-obvious values.
+The `config/` directory contains only **MONAN-JEDI build/install site
+configuration**.
+
+It does not contain JEDI experiment/application inputs. Those belong under
+`examples/` or in the downstream workflow repository that runs the
+experiment.
 
 ## Files
 
-- `jaci.yaml` is the maintained configuration for INPE/JACI.
-- `template.yaml` is the starting point for another site or stack installation.
+- `jaci.yaml`: maintained INPE/JACI configuration.
+- `template.yaml`: complete example for creating another site configuration.
 
-The YAML files configure preparation, compilation, installation and validation of the MONAN-JEDI bundle and its auxiliary components. They are not operational data-assimilation experiment files.
+The canonical key reference is
+[`docs/configuration-reference.md`](../docs/configuration-reference.md).
 
-## Documentation contract
+## Configuration contract
 
-Every configuration key should remain documented next to the value. A useful comment must state, when applicable:
+The public YAML interface intentionally exposes only values that a site or user
+can reasonably choose. Paths that follow the repository installation contract
+are derived by `scripts/lib/config.sh` and are not duplicated in YAML.
 
-1. what the key controls;
-2. whether it is required or optional;
-3. accepted values or expected format;
-4. the exact derived value when left empty;
-5. important side effects, destructive behavior or scheduler constraints;
-6. whether another key or environment variable takes precedence.
+Examples of derived/private values include:
 
-The introductory filesystem model in both YAML files is part of this contract. It explains that the writable user workspace and the existing spack-stack installation are independent areas and must not be conflated.
+- work, log, build and install directories;
+- `install/bin`;
+- obs2ioda source/build/install directories;
+- WPS source/build/release/install/patch directories;
+- the CRTM cache archive path.
+
+Advanced diagnostics can still override those derived shell variables through
+the environment before calling `scripts/monan-jedi.sh`.
+
+## Validation
+
+`scripts/lib/read_config.py` is the single source of truth for:
+
+- supported YAML keys;
+- value types;
+- defaults;
+- accepted enumerations and formats;
+- YAML-to-environment mappings.
+
+Unknown keys are errors. This is intentional: a typo such as
+`pbs.wall_time` must not silently fall back to a default.
+
+Validate a file without executing the workflow:
+
+```bash
+python3 scripts/lib/read_config.py --check config/jaci.yaml
+```
 
 ## Change policy
 
-When adding, renaming or removing a key:
+When adding, renaming or removing a public setting:
 
-- update `config/jaci.yaml` and `config/template.yaml` together;
-- update `scripts/lib/read_config.py` and any derived-path logic;
-- update or add configuration tests;
-- preserve historical rationale when behavior remains relevant;
-- remove comments only when the associated behavior no longer exists, and explain that removal in the commit or pull request.
+1. update the schema in `scripts/lib/read_config.py`;
+2. update `config/template.yaml`;
+3. update `docs/configuration-reference.md`;
+4. update configuration tests;
+5. add the setting to `config/jaci.yaml` only when JACI needs a non-default
+   value or when keeping it explicit materially improves operator clarity.
 
-The CI includes documentation regression checks for the core conceptual guidance so that future refactors do not silently reduce these files to undocumented value lists.
+Do not create a second `configs/` directory. JEDI runtime examples belong in
+`examples/`.

@@ -1,59 +1,31 @@
 #!/usr/bin/env python3
-"""Read a MONAN-JEDI YAML configuration and emit shell export commands.
+"""Read and validate MONAN-JEDI build/install configuration.
 
-Purpose
--------
-This helper is the YAML boundary used by ``scripts/lib/config.sh``. Its output
-is intended to be evaluated by the caller:
+This module is the single source of truth for the public YAML configuration
+interface. It defines supported keys, types, defaults, allowed values and the
+shell variables exported for the workflow.
 
-    eval "$(python3 scripts/lib/read_config.py config.yaml)"
+The YAML intentionally contains only site/user decisions. Derived filesystem
+paths and private implementation details are computed by scripts/lib/config.sh.
+Advanced diagnostics may still override those derived shell variables directly.
 
-Configuration model
--------------------
-The YAML root must be a mapping. Supported sections are ``project``, ``stack``,
-``build``, ``install``, ``model``, ``data``, ``obs2ioda``, ``wps``,
-``compilers``, ``mpi``, ``ctest`` and ``pbs``. The top-level ``site`` key is
-descriptive metadata and is intentionally not exported.
+Precedence for public settings is:
 
-Environment precedence
-----------------------
-For each supported variable, values are resolved in this order:
+1. non-empty environment variable;
+2. YAML value;
+3. default declared in CONFIG_FIELDS.
 
-1. Existing environment variable, including an explicitly empty value.
-2. Value declared in the YAML configuration.
-3. Built-in default.
-4. Empty string when no configured value or default exists.
+Empty environment variables do not mask YAML/default values. This matches the
+shell derivation rules and avoids the historical ambiguity between the Python
+loader and config.sh.
 
-Value conversion
-----------------
-YAML booleans become shell-friendly values (``true`` -> ``1`` and ``false`` ->
-``0``). Environment-variable references inside YAML strings are expanded using
-the current process environment. Lists and mappings are rejected because the
-shell export contract accepts scalar values only. Values are safely quoted with
-``shlex.quote`` before emission, preserving spaces and shell metacharacters.
-
-Division of responsibility
---------------------------
-This module maps individual YAML values and owns context-free defaults.
-``config.sh`` derives values that depend on multiple settings, such as work,
-log and installation paths. The canonical user-facing configuration reference
-is ``docs/YAML_CONFIGURATION.md``.
-
-Compatibility
--------------
-This script must remain compatible with Python 3.6 because JACI compute nodes
-may execute it before the spack-stack environment is loaded. Use types from
-``typing`` and avoid syntax introduced by newer Python releases.
-
-Output and errors
------------------
-Standard output contains only safely quoted ``export NAME=value`` commands.
-Diagnostics are written to standard error. A processing failure returns status
-1; invalid command-line usage is handled by argparse with status 2.
+The script must remain compatible with Python 3.6 because it can run before the
+JACI spack-stack environment is loaded.
 """
 
 import argparse
 import os
+import re
 import shlex
 import sys
 from collections.abc import Mapping as MappingABC
@@ -70,207 +42,89 @@ except ImportError:
     sys.exit(1)
 
 
-# Type used to represent the loaded YAML configuration.
 Config = Mapping[str, Any]
+_MISSING = object()
+
+OBS2IODA_PIN = "11b9e60522d63bc03b0b104a52f3dd22127fb828"
+WPS_PIN = "335c76a111f84503e8b963abaf273ea8053645bb"
+
+# Public YAML interface. Each entry defines one user-facing key. Multiple
+# environment names allow one concise YAML value to feed compatibility aliases
+# such as FC/F77/F90 without exposing those aliases as duplicate YAML keys.
+CONFIG_FIELDS = (
+    {"path": "site", "envs": (), "kind": "str", "required": True},
+    {"path": "project.root", "envs": ("PROJECT_ROOT",), "kind": "str", "required": True},
+    {"path": "stack.owner", "envs": ("STACK_OWNER",), "kind": "str", "default": lambda: os.environ.get("USER", "unknown")},
+    {"path": "stack.instance", "envs": ("STACK_INSTANCE",), "kind": "str", "required": True},
+    {"path": "stack.env_name", "envs": ("STACK_ENV_NAME",), "kind": "str", "required": True},
+    {"path": "stack.site_setup", "envs": ("STACK_SITE_SETUP",), "kind": "str", "default": "configs/sites/tier2/jaci/setup.sh"},
+    {"path": "stack.env_module", "envs": ("STACK_ENV_MODULE",), "kind": "str", "required": True},
+    {"path": "build.id", "envs": ("MONAN_JEDI_BUILD_ID",), "kind": "str", "required": True},
+    {"path": "build.jobs", "envs": ("MONAN_JEDI_BUILD_JOBS",), "kind": "int", "default": 8, "minimum": 1},
+    {"path": "model.double_precision", "envs": ("MONAN_JEDI_MODEL_DOUBLE_PRECISION",), "kind": "str", "default": "ON", "choices": ("ON", "OFF")},
+    {"path": "data.local_mirror_dir", "envs": ("MONAN_JEDI_DATA_LOCAL_ROOT",), "kind": "str", "default": ""},
+    {"path": "data.download_missing", "envs": ("MONAN_JEDI_DATA_DOWNLOAD_MISSING",), "kind": "bool", "default": True},
+    {"path": "obs2ioda.enabled", "envs": ("MONAN_JEDI_OBS2IODA_ENABLED",), "kind": "bool", "default": False},
+    {"path": "obs2ioda.ref", "envs": ("MONAN_JEDI_OBS2IODA_REF",), "kind": "str", "default": OBS2IODA_PIN, "pattern": r"^[0-9a-f]{40}$"},
+    {"path": "obs2ioda.bufr_root", "envs": ("MONAN_JEDI_OBS2IODA_BUFR_ROOT",), "kind": "str", "default": ""},
+    {"path": "obs2ioda.bufr_lib", "envs": ("MONAN_JEDI_OBS2IODA_BUFR_LIB",), "kind": "str", "default": ""},
+    {"path": "obs2ioda.cmake_prefix_path", "envs": ("MONAN_JEDI_OBS2IODA_CMAKE_PREFIX_PATH",), "kind": "str", "default": ""},
+    {"path": "obs2ioda.build_type", "envs": ("MONAN_JEDI_OBS2IODA_BUILD_TYPE",), "kind": "str", "default": "Release", "choices": ("Release", "Debug", "RelWithDebInfo", "MinSizeRel")},
+    {"path": "obs2ioda.build_goes_abi_converter", "envs": ("MONAN_JEDI_OBS2IODA_BUILD_GOES_ABI_CONVERTER",), "kind": "str", "default": "OFF", "choices": ("ON", "OFF")},
+    {"path": "wps.enabled", "envs": ("MONAN_JEDI_WPS_ENABLED",), "kind": "bool", "default": False},
+    {"path": "wps.ref", "envs": ("MONAN_JEDI_WPS_REF",), "kind": "str", "default": WPS_PIN, "pattern": r"^[0-9a-f]{40}$"},
+    {"path": "wps.version", "envs": ("MONAN_JEDI_WPS_VERSION",), "kind": "str", "default": "4.6.0"},
+    {"path": "wps.jasper_root", "envs": ("MONAN_JEDI_WPS_JASPER_ROOT",), "kind": "str", "default": ""},
+    {"path": "wps.png_root", "envs": ("MONAN_JEDI_WPS_PNG_ROOT",), "kind": "str", "default": ""},
+    {"path": "wps.zlib_root", "envs": ("MONAN_JEDI_WPS_ZLIB_ROOT",), "kind": "str", "default": ""},
+    {"path": "wps.cmake_prefix_path", "envs": ("MONAN_JEDI_WPS_CMAKE_PREFIX_PATH",), "kind": "str", "default": ""},
+    {"path": "wps.build_type", "envs": ("MONAN_JEDI_WPS_BUILD_TYPE",), "kind": "str", "default": "Release", "choices": ("Release", "Debug", "RelWithDebInfo", "MinSizeRel")},
+    {"path": "wps.default_vtable", "envs": ("MONAN_JEDI_WPS_DEFAULT_VTABLE",), "kind": "str", "default": "Vtable.GFS", "pattern": r"^[A-Za-z0-9._-]+$"},
+    {"path": "compilers.cc", "envs": ("MONAN_JEDI_CC",), "kind": "str", "default": "cc"},
+    {"path": "compilers.cxx", "envs": ("MONAN_JEDI_CXX",), "kind": "str", "default": "CC"},
+    {"path": "compilers.fortran", "envs": ("MONAN_JEDI_FC", "MONAN_JEDI_F77", "MONAN_JEDI_F90"), "kind": "str", "default": "ftn"},
+    {"path": "mpi.cc", "envs": ("MONAN_JEDI_MPICC",), "kind": "str", "default": "cc"},
+    {"path": "mpi.cxx", "envs": ("MONAN_JEDI_MPICXX",), "kind": "str", "default": "CC"},
+    {"path": "mpi.fortran", "envs": ("MONAN_JEDI_MPIFC", "MONAN_JEDI_MPIF77", "MONAN_JEDI_MPIF90"), "kind": "str", "default": "ftn"},
+    {"path": "ctest.login_regex", "envs": ("MONAN_JEDI_CTEST_REGEX",), "kind": "str", "default": "^mpasjedi_coding_norms$"},
+    {"path": "ctest.pbs_regex", "envs": ("MONAN_JEDI_CTEST_PBS_REGEX",), "kind": "str", "default": ""},
+    {"path": "ctest.exclude_regex", "envs": ("MONAN_JEDI_CTEST_EXCLUDE_REGEX",), "kind": "str", "default": ""},
+    {"path": "ctest.jobs", "envs": ("MONAN_JEDI_CTEST_JOBS",), "kind": "int", "default": 1, "minimum": 1},
+    {"path": "ctest.allow_login_node_mpi_tests", "envs": ("ALLOW_LOGIN_NODE_MPI_TESTS",), "kind": "bool", "default": False},
+    {"path": "pbs.queue", "envs": ("MONAN_JEDI_PBS_QUEUE",), "kind": "str", "default": "pesqmidi"},
+    {"path": "pbs.ncpus", "envs": ("MONAN_JEDI_PBS_NCPUS",), "kind": "int", "default": 64, "minimum": 1},
+    {"path": "pbs.walltime", "envs": ("MONAN_JEDI_PBS_WALLTIME",), "kind": "str", "default": "02:00:00", "pattern": r"^\d{2,3}:[0-5]\d:[0-5]\d$"},
+    {"path": "pbs.submit_job", "envs": ("MONAN_JEDI_SUBMIT_JOB",), "kind": "bool", "default": False},
+)
+
+# Fixed implementation defaults. They remain overridable through non-empty
+# environment variables, but they are deliberately not part of the YAML API.
+INTERNAL_DEFAULTS = (
+    ("MONAN_JEDI_CRTM_COEFFS_URL", "https://bin.ssec.wisc.edu/pub/s4/CRTM/fix_REL-3.1.2.0.tgz"),
+    ("MONAN_JEDI_OBS2IODA_REPO", "https://github.com/NCAR/obs2ioda.git"),
+    ("MONAN_JEDI_OBS2IODA_EXECUTABLE_NAME", "obs2ioda_v3"),
+    ("MONAN_JEDI_WPS_REPO", "https://github.com/wrf-model/WPS.git"),
+    ("MONAN_JEDI_WPS_UNGRIB_NAME", "ungrib.exe"),
+    ("MONAN_JEDI_WPS_LINK_GRIB_NAME", "link_grib.csh"),
+)
 
 
-# Maps environment-variable names to dotted YAML paths. For example,
-# "build.jobs" represents configuration["build"]["jobs"]. Keep this table
-# synchronized with config/template.yaml and docs/YAML_CONFIGURATION.md.
-VARIABLE_MAPPING = {
-    # Project
-    "PROJECT_ROOT": "project.root",
-
-    # spack-stack
-    "STACK_OWNER": "stack.owner",
-    "STACK_INSTANCE": "stack.instance",
-    "STACK_WORK_ROOT": "stack.work_root",
-    "STACK_ROOT": "stack.root",
-    "STACK_ENV_NAME": "stack.env_name",
-    "STACK_MODULE_ROOT": "stack.module_root",
-    "STACK_SITE_SETUP": "stack.site_setup",
-    "STACK_ENV_MODULE": "stack.env_module",
-
-    # MONAN-JEDI build
-    "MONAN_JEDI_RUN_ID": "build.id",
-    "MONAN_JEDI_BUILD_DIR": "build.dir",
-    "MONAN_JEDI_BUILD_JOBS": "build.jobs",
-
-    # MONAN-JEDI installation
-    "MONAN_JEDI_INSTALL_ROOT": "install.root",
-    "MONAN_JEDI_INSTALL_BIN_DIR": "install.bin_dir",
-
-    # Compilers
-    "MONAN_JEDI_CC": "compilers.cc",
-    "MONAN_JEDI_CXX": "compilers.cxx",
-    "MONAN_JEDI_FC": "compilers.fc",
-    "MONAN_JEDI_F77": "compilers.f77",
-    "MONAN_JEDI_F90": "compilers.f90",
-
-    # MPI compiler wrappers
-    "MONAN_JEDI_MPICC": "mpi.mpicc",
-    "MONAN_JEDI_MPICXX": "mpi.mpicxx",
-    "MONAN_JEDI_MPIFC": "mpi.mpifc",
-    "MONAN_JEDI_MPIF77": "mpi.mpif77",
-    "MONAN_JEDI_MPIF90": "mpi.mpif90",
-
-    # Model configuration
-    "MONAN_JEDI_MODEL_DOUBLE_PRECISION": "model.double_precision",
-
-    # Runtime and coefficient data
-    "MONAN_JEDI_DATA_ROOT": "data.root",
-    "MONAN_JEDI_DATA_LOCAL_ROOT": "data.local_root",
-    "MONAN_JEDI_DATA_DOWNLOAD_MISSING": "data.download_missing",
-    "MONAN_JEDI_CRTM_COEFFS_URL": "data.crtm_coeffs_url",
-    "MONAN_JEDI_CRTM_COEFFS_TGZ": "data.crtm_coeffs_tgz",
-
-    # obs2ioda
-    "MONAN_JEDI_OBS2IODA_ENABLED": "obs2ioda.enabled",
-    "MONAN_JEDI_OBS2IODA_REPO": "obs2ioda.repo",
-    "MONAN_JEDI_OBS2IODA_REF": "obs2ioda.ref",
-    "MONAN_JEDI_OBS2IODA_SOURCE_DIR": "obs2ioda.source_dir",
-    "MONAN_JEDI_OBS2IODA_BUILD_DIR": "obs2ioda.build_dir",
-    "MONAN_JEDI_OBS2IODA_INSTALL_DIR": "obs2ioda.install_dir",
-    "MONAN_JEDI_OBS2IODA_EXECUTABLE_NAME": "obs2ioda.executable_name",
-    "MONAN_JEDI_OBS2IODA_BUFR_ROOT": "obs2ioda.bufr_root",
-    "MONAN_JEDI_OBS2IODA_BUFR_LIB": "obs2ioda.bufr_lib",
-    "MONAN_JEDI_OBS2IODA_CMAKE_PREFIX_PATH": "obs2ioda.cmake_prefix_path",
-    "MONAN_JEDI_OBS2IODA_BUILD_TYPE": "obs2ioda.build_type",
-    "MONAN_JEDI_OBS2IODA_BUILD_GOES_ABI_CONVERTER": "obs2ioda.build_goes_abi_converter",
-
-    # WPS
-    "MONAN_JEDI_WPS_ENABLED": "wps.enabled",
-    "MONAN_JEDI_WPS_REPO": "wps.repo",
-    "MONAN_JEDI_WPS_REF": "wps.ref",
-    "MONAN_JEDI_WPS_VERSION": "wps.version",
-    "MONAN_JEDI_WPS_SOURCE_DIR": "wps.source_dir",
-    "MONAN_JEDI_WPS_BUILD_DIR": "wps.build_dir",
-    "MONAN_JEDI_WPS_RELEASES_DIR": "wps.releases_dir",
-    "MONAN_JEDI_WPS_INSTALL_DIR": "wps.install_dir",
-    "MONAN_JEDI_WPS_PATCH_DIR": "wps.patch_dir",
-    "MONAN_JEDI_WPS_JASPER_ROOT": "wps.jasper_root",
-    "MONAN_JEDI_WPS_PNG_ROOT": "wps.png_root",
-    "MONAN_JEDI_WPS_ZLIB_ROOT": "wps.zlib_root",
-    "MONAN_JEDI_WPS_CMAKE_PREFIX_PATH": "wps.cmake_prefix_path",
-    "MONAN_JEDI_WPS_BUILD_TYPE": "wps.build_type",
-    "MONAN_JEDI_WPS_UNGRIB_NAME": "wps.ungrib_name",
-    "MONAN_JEDI_WPS_LINK_GRIB_NAME": "wps.link_grib_name",
-    "MONAN_JEDI_WPS_DEFAULT_VTABLE": "wps.default_vtable",
-
-    # CTest
-    "MONAN_JEDI_CTEST_REGEX": "ctest.login_regex",
-    "MONAN_JEDI_CTEST_PBS_REGEX": "ctest.pbs_regex",
-    "MONAN_JEDI_CTEST_EXCLUDE_REGEX": "ctest.exclude_regex",
-    "MONAN_JEDI_CTEST_JOBS": "ctest.jobs",
-    "ALLOW_LOGIN_NODE_MPI_TESTS": "ctest.allow_login_node_mpi_tests",
-
-    # PBS
-    "MONAN_JEDI_PBS_QUEUE": "pbs.queue",
-    "MONAN_JEDI_PBS_NCPUS": "pbs.ncpus",
-    "MONAN_JEDI_PBS_WALLTIME": "pbs.walltime",
-    "MONAN_JEDI_SUBMIT_JOB": "pbs.submit_job",
-}
-
-
-# Context-free values used when a variable is absent from the environment and
-# YAML. Variables not listed here default to an empty string. Defaults derived
-# from other settings remain in scripts/lib/config.sh.
-DEFAULTS = {
-    # spack-stack
-    "STACK_OWNER": os.environ.get("USER", "unknown"),
-    "STACK_SITE_SETUP": "configs/sites/tier2/jaci/setup.sh",
-
-    # Build
-    "MONAN_JEDI_BUILD_JOBS": "8",
-
-    # Compilers
-    "MONAN_JEDI_CC": "cc",
-    "MONAN_JEDI_CXX": "CC",
-    "MONAN_JEDI_FC": "ftn",
-    "MONAN_JEDI_F77": "ftn",
-    "MONAN_JEDI_F90": "ftn",
-
-    # MPI compiler wrappers
-    "MONAN_JEDI_MPICC": "cc",
-    "MONAN_JEDI_MPICXX": "CC",
-    "MONAN_JEDI_MPIFC": "ftn",
-    "MONAN_JEDI_MPIF77": "ftn",
-    "MONAN_JEDI_MPIF90": "ftn",
-
-    # Model
-    "MONAN_JEDI_MODEL_DOUBLE_PRECISION": "ON",
-
-    # Data
-    "MONAN_JEDI_DATA_DOWNLOAD_MISSING": "1",
-    "MONAN_JEDI_CRTM_COEFFS_URL": "https://bin.ssec.wisc.edu/pub/s4/CRTM/fix_REL-3.1.2.0.tgz",
-
-    # obs2ioda
-    "MONAN_JEDI_OBS2IODA_ENABLED": "0",
-    "MONAN_JEDI_OBS2IODA_REPO": "https://github.com/NCAR/obs2ioda.git",
-    "MONAN_JEDI_OBS2IODA_REF": "main",
-    "MONAN_JEDI_OBS2IODA_EXECUTABLE_NAME": "obs2ioda_v3",
-    "MONAN_JEDI_OBS2IODA_BUILD_TYPE": "Release",
-    "MONAN_JEDI_OBS2IODA_BUILD_GOES_ABI_CONVERTER": "OFF",
-
-    # WPS
-    "MONAN_JEDI_WPS_ENABLED": "0",
-    "MONAN_JEDI_WPS_REPO": "https://github.com/wrf-model/WPS.git",
-    "MONAN_JEDI_WPS_REF": "335c76a111f84503e8b963abaf273ea8053645bb",
-    "MONAN_JEDI_WPS_VERSION": "4.6.0",
-    "MONAN_JEDI_WPS_BUILD_TYPE": "Release",
-    "MONAN_JEDI_WPS_UNGRIB_NAME": "ungrib.exe",
-    "MONAN_JEDI_WPS_LINK_GRIB_NAME": "link_grib.csh",
-    "MONAN_JEDI_WPS_DEFAULT_VTABLE": "Vtable.GFS",
-
-    # CTest
-    "MONAN_JEDI_CTEST_JOBS": "1",
-
-    # PBS
-    "MONAN_JEDI_PBS_QUEUE": "pesqmidi",
-    "MONAN_JEDI_PBS_NCPUS": "64",
-    "MONAN_JEDI_PBS_WALLTIME": "02:00:00",
-    "MONAN_JEDI_SUBMIT_JOB": "1",
-}
-
-def parse_arguments(
-    argv: Optional[List[str]] = None,
-) -> argparse.Namespace:
-    """Parse command-line arguments.
-
-    Args:
-        argv: Optional argument list. When omitted, argparse uses ``sys.argv``.
-
-    Returns:
-        Parsed command-line arguments.
-    """
+def parse_arguments(argv=None):
     parser = argparse.ArgumentParser(
-        description=(
-            "Read a MONAN-JEDI YAML configuration and emit shell exports."
-        ),
-        epilog='Example: eval "$(python3 read_config.py config.yaml)"',
+        description="Read and validate a MONAN-JEDI YAML configuration."
     )
     parser.add_argument(
-        "configuration",
-        type=Path,
-        metavar="CONFIG",
-        help="path to the MONAN-JEDI YAML configuration file",
+        "--check",
+        action="store_true",
+        help="validate the configuration without emitting shell exports",
     )
+    parser.add_argument("configuration", type=Path, metavar="CONFIG")
     return parser.parse_args(argv)
 
 
-def read_yaml(path: Path) -> Dict[str, Any]:
-    """Load and validate a YAML configuration file.
-
-    Empty YAML documents are interpreted as empty mappings.
-
-    Raises:
-        OSError: If the file cannot be opened or read.
-        yaml.YAMLError: If the file does not contain valid YAML.
-        ValueError: If the YAML document root is not a mapping.
-    """
+def read_yaml(path):
     with path.open("r", encoding="utf-8") as stream:
         loaded = yaml.safe_load(stream)
-
     if loaded is None:
         return {}
     if not isinstance(loaded, dict):
@@ -278,110 +132,165 @@ def read_yaml(path: Path) -> Dict[str, Any]:
     return loaded
 
 
-def get_nested_value(
-    data: Config,
-    dotted_path: str,
-    default: Any = "",
-) -> Any:
-    """Retrieve a nested value through a dotted path.
-
-    ``build.jobs``, for example, accesses ``data["build"]["jobs"]``. The
-    supplied default is returned when a component is absent, an intermediate
-    value is not a mapping, or the final YAML value is null.
-    """
+def get_nested_value(data, dotted_path, default=_MISSING):
     current = data
     for key in dotted_path.split("."):
         if not isinstance(current, MappingABC) or key not in current:
             return default
         current = current[key]
+    return current
 
-    return default if current is None else current
+
+def supported_yaml_paths():
+    return tuple(field["path"] for field in CONFIG_FIELDS)
 
 
-def normalize_value(value: Any) -> str:
-    """Convert one YAML/default scalar into a shell-compatible string.
+def _allowed_prefixes():
+    prefixes = set()
+    for path in supported_yaml_paths():
+        parts = path.split(".")
+        for index in range(1, len(parts)):
+            prefixes.add(".".join(parts[:index]))
+    return prefixes
 
-    Boolean values become ``1`` or ``0`` and environment references in scalar
-    strings are expanded. Lists and mappings are rejected instead of being
-    silently serialized as Python representations.
-    """
-    if value is None:
-        return ""
+
+def validate_unknown_keys(data):
+    allowed = set(supported_yaml_paths())
+    prefixes = _allowed_prefixes()
+
+    def visit(value, prefix=""):
+        if not isinstance(value, MappingABC):
+            return
+        for key, child in value.items():
+            path = "{0}.{1}".format(prefix, key) if prefix else str(key)
+            if path not in allowed and path not in prefixes:
+                raise ValueError("unknown configuration key: {0}".format(path))
+            if isinstance(child, MappingABC):
+                visit(child, path)
+
+    visit(data)
+
+
+def _default_value(field):
+    default = field.get("default", _MISSING)
+    if callable(default):
+        return default()
+    return default
+
+
+def _normalize_bool(value, path):
     if isinstance(value, bool):
         return "1" if value else "0"
-    if isinstance(value, (list, MappingABC)):
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in ("1", "true", "yes", "on"):
+            return "1"
+        if lowered in ("0", "false", "no", "off"):
+            return "0"
+    raise ValueError("{0} must be a boolean".format(path))
+
+
+def normalize_field_value(field, value):
+    path = field["path"]
+    kind = field["kind"]
+
+    if value is None:
+        value = _MISSING
+
+    if value is _MISSING:
+        value = _default_value(field)
+
+    if value is _MISSING:
+        if field.get("required"):
+            raise ValueError("required configuration key is missing: {0}".format(path))
+        value = ""
+
+    if kind == "bool":
+        normalized = _normalize_bool(value, path)
+    elif kind == "int":
+        if isinstance(value, bool):
+            raise ValueError("{0} must be an integer".format(path))
+        try:
+            integer = int(value)
+        except (TypeError, ValueError):
+            raise ValueError("{0} must be an integer".format(path))
+        minimum = field.get("minimum")
+        if minimum is not None and integer < minimum:
+            raise ValueError("{0} must be >= {1}".format(path, minimum))
+        normalized = str(integer)
+    elif kind == "str":
+        if not isinstance(value, str):
+            raise ValueError("{0} must be a string".format(path))
+        normalized = os.path.expandvars(value)
+    else:
+        raise ValueError("internal error: unsupported type for {0}".format(path))
+
+    if field.get("required") and normalized == "":
+        raise ValueError("required configuration key is empty: {0}".format(path))
+
+    choices = field.get("choices")
+    if choices and normalized not in choices:
         raise ValueError(
-            "lists and mappings cannot be exported as shell variables"
+            "{0} must be one of: {1}".format(path, ", ".join(choices))
         )
-    return os.path.expandvars(str(value))
+
+    pattern = field.get("pattern")
+    if pattern and normalized and re.match(pattern, normalized) is None:
+        raise ValueError(
+            "{0} has invalid format: {1}".format(path, normalized)
+        )
+
+    return normalized
 
 
-def resolve_value(env_name: str, yaml_value: Any) -> str:
-    """Resolve one value, preserving an existing environment override.
-
-    Membership is tested explicitly so an exported empty value still overrides
-    YAML and defaults.
-    """
-    if env_name in os.environ:
-        return os.environ[env_name]
-    return normalize_value(yaml_value)
-
-
-def write_export(stream: TextIO, name: str, value: str) -> None:
-    """Write one safely quoted POSIX-shell export command."""
+def write_export(stream, name, value):
     stream.write("export {0}={1}\n".format(name, shlex.quote(value)))
 
 
-def emit_configuration(
-    data: Config,
-    stream: TextIO = sys.stdout,
-) -> None:
-    """Resolve and emit the complete supported environment-variable contract.
+def emit_configuration(data, stream=sys.stdout):
+    validate_unknown_keys(data)
 
-    Raises:
-        ValueError: If a configured value is not a supported shell scalar.
-    """
-    for env_name, yaml_path in VARIABLE_MAPPING.items():
-        yaml_value = get_nested_value(
-            data=data,
-            dotted_path=yaml_path,
-            default=DEFAULTS.get(env_name, ""),
-        )
-        resolved_value = resolve_value(
-            env_name=env_name,
-            yaml_value=yaml_value,
-        )
-        write_export(
-            stream=stream,
-            name=env_name,
-            value=resolved_value,
-        )
+    for field in CONFIG_FIELDS:
+        yaml_value = get_nested_value(data, field["path"], _MISSING)
+        baseline = normalize_field_value(field, yaml_value)
+
+        for env_name in field["envs"]:
+            env_value = os.environ.get(env_name, "")
+            resolved = normalize_field_value(field, env_value) if env_value else baseline
+            write_export(stream, env_name, resolved)
+
+    for env_name, default in INTERNAL_DEFAULTS:
+        value = os.environ.get(env_name, "") or default
+        write_export(stream, env_name, os.path.expandvars(value))
 
 
-def main(argv: Optional[List[str]] = None) -> int:
-    """Run the command-line application.
+def validate_configuration(data):
+    sink = _NullWriter()
+    emit_configuration(data, stream=sink)
 
-    Returns:
-        Zero on success or one when configuration processing fails. Argparse
-        terminates with status two for invalid command-line usage.
-    """
+
+class _NullWriter(object):
+    def write(self, value):
+        return len(value)
+
+
+def main(argv=None):
     args = parse_arguments(argv)
-
     try:
         data = read_yaml(args.configuration)
-        emit_configuration(data)
+        if args.check:
+            validate_configuration(data)
+        else:
+            emit_configuration(data)
     except BrokenPipeError:
-        # Consumers such as ``head`` may close the output pipe early.
         return 0
     except (OSError, ValueError, yaml.YAMLError) as exc:
         sys.stderr.write(
             "Error: could not process configuration {0}: {1}\n".format(
-                args.configuration,
-                exc,
+                args.configuration, exc
             )
         )
         return 1
-
     return 0
 
 

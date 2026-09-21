@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Configuration regression tests for MONAN-JEDI auxiliary tools."""
+"""Configuration regression tests for MONAN-JEDI."""
 
 from __future__ import annotations
 
 import ast
 import importlib.util
-import io
 import os
 import shlex
 import subprocess
@@ -17,26 +16,39 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 READER = ROOT / "scripts" / "lib" / "read_config.py"
 CONFIG_SH = ROOT / "scripts" / "lib" / "config.sh"
-BUILD_SH = ROOT / "scripts" / "lib" / "build.sh"
+CONFIGURE_SH = ROOT / "scripts" / "lib" / "configure.sh"
 JACI = ROOT / "config" / "jaci.yaml"
 TEMPLATE = ROOT / "config" / "template.yaml"
-RUNTIME_CONTRACT = ROOT / "docs" / "runtime-install-contract.md"
 
-READER_SPEC = importlib.util.spec_from_file_location("read_config", READER)
-assert READER_SPEC is not None
-assert READER_SPEC.loader is not None
-READER_MODULE = importlib.util.module_from_spec(READER_SPEC)
-READER_SPEC.loader.exec_module(READER_MODULE)
+SPEC = importlib.util.spec_from_file_location("read_config", READER)
+assert SPEC is not None
+assert SPEC.loader is not None
+READER_MODULE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(READER_MODULE)
 
 
-def read_exports(path: Path) -> dict[str, str]:
+def clean_environment() -> dict[str, str]:
+    env = dict(os.environ)
+    for field in READER_MODULE.CONFIG_FIELDS:
+        for name in field["envs"]:
+            env.pop(name, None)
+    for name, _default in READER_MODULE.INTERNAL_DEFAULTS:
+        env.pop(name, None)
+    env["USER"] = "test-user"
+    return env
+
+
+def read_exports(path: Path, extra_env: dict[str, str] | None = None) -> dict[str, str]:
+    env = clean_environment()
+    if extra_env:
+        env.update(extra_env)
     completed = subprocess.run(
         ["python3", str(READER), str(path)],
         cwd=ROOT,
         check=True,
         text=True,
         capture_output=True,
-        env={**os.environ, "USER": "test-user"},
+        env=env,
     )
     values: dict[str, str] = {}
     for line in completed.stdout.splitlines():
@@ -48,150 +60,112 @@ def read_exports(path: Path) -> dict[str, str]:
     return values
 
 
+def load_yaml(path: Path) -> dict:
+    with path.open(encoding="utf-8") as stream:
+        value = yaml.safe_load(stream)
+    assert isinstance(value, dict)
+    return value
+
+
 class ConfigurationTests(unittest.TestCase):
-    def test_reader_documents_its_internal_contract(self) -> None:
-        source = READER.read_text(encoding="utf-8")
-        module_doc = ast.get_docstring(ast.parse(source))
-        self.assertIsNotNone(module_doc)
-
-        for section in (
-            "Purpose",
-            "Configuration model",
-            "Value conversion",
-            "Environment precedence",
-            "Division of responsibility",
-            "Compatibility",
-            "Output and errors",
-        ):
-            self.assertIn(section, module_doc)
-
     def test_reader_syntax_is_python_36_compatible(self) -> None:
         source = READER.read_text(encoding="utf-8")
         ast.parse(source, filename=str(READER), feature_version=(3, 6))
 
-    def test_nested_lookup_uses_default_for_missing_null_or_invalid_path(self) -> None:
-        data = {
-            "build": {"jobs": 8, "empty": None},
-            "model": "not-a-mapping",
-        }
-        self.assertEqual(READER_MODULE.get_nested_value(data, "build.jobs", "fallback"), 8)
-        self.assertEqual(READER_MODULE.get_nested_value(data, "build.missing", "fallback"), "fallback")
-        self.assertEqual(READER_MODULE.get_nested_value(data, "build.empty", "fallback"), "fallback")
-        self.assertEqual(READER_MODULE.get_nested_value(data, "model.double_precision", "fallback"), "fallback")
-
-    def test_scalar_normalization_and_environment_expansion(self) -> None:
-        previous = os.environ.get("MONAN_JEDI_TEST_ROOT")
-        os.environ["MONAN_JEDI_TEST_ROOT"] = "/tmp/test root"
-        try:
-            self.assertEqual(READER_MODULE.normalize_value(True), "1")
-            self.assertEqual(READER_MODULE.normalize_value(False), "0")
-            self.assertEqual(READER_MODULE.normalize_value(64), "64")
-            self.assertEqual(
-                READER_MODULE.normalize_value("${MONAN_JEDI_TEST_ROOT}/bundle"),
-                "/tmp/test root/bundle",
-            )
-        finally:
-            if previous is None:
-                os.environ.pop("MONAN_JEDI_TEST_ROOT", None)
-            else:
-                os.environ["MONAN_JEDI_TEST_ROOT"] = previous
-
-    def test_non_scalar_values_are_rejected(self) -> None:
-        for item in (["invalid"], {"invalid": "mapping"}):
-            with self.subTest(value=item):
-                with self.assertRaisesRegex(ValueError, "lists and mappings cannot be exported"):
-                    READER_MODULE.normalize_value(item)
-
-    def test_empty_environment_override_is_preserved(self) -> None:
-        name = "MONAN_JEDI_TEST_EMPTY_OVERRIDE"
-        previous = os.environ.get(name)
-        os.environ[name] = ""
-        try:
-            self.assertEqual(READER_MODULE.resolve_value(name, "yaml"), "")
-        finally:
-            if previous is None:
-                os.environ.pop(name, None)
-            else:
-                os.environ[name] = previous
-
-    def test_export_is_shell_quoted_and_round_trips(self) -> None:
-        stream = io.StringIO()
-        item = "path with spaces; $(do-not-run)"
-        READER_MODULE.write_export(stream, "MONAN_JEDI_TEST_VALUE", item)
-        line = stream.getvalue().strip()
-        prefix, assignment = line.split(" ", 1)
-        name, raw_value = assignment.split("=", 1)
-        self.assertEqual(prefix, "export")
-        self.assertEqual(name, "MONAN_JEDI_TEST_VALUE")
-        self.assertEqual(shlex.split(raw_value), [item])
-
-    def test_yaml_documents_are_mappings(self) -> None:
+    def test_both_repository_configs_pass_strict_validation(self) -> None:
         for path in (JACI, TEMPLATE):
-            with path.open(encoding="utf-8") as stream:
-                self.assertIsInstance(yaml.safe_load(stream), dict)
+            completed = subprocess.run(
+                ["python3", str(READER), "--check", str(path)],
+                cwd=ROOT,
+                text=True,
+                capture_output=True,
+                env=clean_environment(),
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+
+    def test_unknown_key_is_rejected(self) -> None:
+        data = load_yaml(JACI)
+        data["pbs"]["wall_time"] = data["pbs"]["walltime"]
+        with self.assertRaisesRegex(ValueError, "unknown configuration key: pbs.wall_time"):
+            READER_MODULE.validate_configuration(data)
+
+    def test_invalid_type_is_rejected(self) -> None:
+        data = load_yaml(JACI)
+        data["pbs"]["ncpus"] = "sixty-four"
+        with self.assertRaisesRegex(ValueError, "pbs.ncpus must be an integer"):
+            READER_MODULE.validate_configuration(data)
+
+    def test_invalid_enum_is_rejected(self) -> None:
+        data = load_yaml(JACI)
+        data["model"]["double_precision"] = "YES"
+        with self.assertRaisesRegex(ValueError, "model.double_precision must be one of"):
+            READER_MODULE.validate_configuration(data)
+
+    def test_public_yaml_does_not_expose_derived_paths(self) -> None:
+        forbidden = {
+            "stack.work_root",
+            "stack.root",
+            "stack.module_root",
+            "build.dir",
+            "install.root",
+            "install.bin_dir",
+            "data.root",
+            "data.crtm_coeffs_tgz",
+            "obs2ioda.source_dir",
+            "obs2ioda.build_dir",
+            "obs2ioda.install_dir",
+            "wps.source_dir",
+            "wps.build_dir",
+            "wps.releases_dir",
+            "wps.install_dir",
+            "wps.patch_dir",
+        }
+        self.assertTrue(forbidden.isdisjoint(set(READER_MODULE.supported_yaml_paths())))
+
+    def test_fortran_config_fans_out_to_compatibility_aliases(self) -> None:
+        values = read_exports(JACI)
+        for name in ("MONAN_JEDI_FC", "MONAN_JEDI_F77", "MONAN_JEDI_F90"):
+            self.assertEqual(values[name], "ftn")
+        for name in ("MONAN_JEDI_MPIFC", "MONAN_JEDI_MPIF77", "MONAN_JEDI_MPIF90"):
+            self.assertEqual(values[name], "ftn")
+
+    def test_non_empty_environment_override_wins(self) -> None:
+        values = read_exports(JACI, {"MONAN_JEDI_WPS_BUILD_TYPE": "Debug"})
+        self.assertEqual(values["MONAN_JEDI_WPS_BUILD_TYPE"], "Debug")
+
+    def test_empty_environment_override_does_not_mask_yaml(self) -> None:
+        values = read_exports(JACI, {"MONAN_JEDI_BUILD_JOBS": ""})
+        self.assertEqual(values["MONAN_JEDI_BUILD_JOBS"], "64")
+
+    def test_external_refs_are_full_commit_shas(self) -> None:
+        values = read_exports(JACI)
+        for name in ("MONAN_JEDI_OBS2IODA_REF", "MONAN_JEDI_WPS_REF"):
+            self.assertRegex(values[name], r"^[0-9a-f]{40}$")
+            self.assertNotEqual(values[name], "main")
 
     def test_jaci_enables_integrated_auxiliary_tools(self) -> None:
         values = read_exports(JACI)
         self.assertEqual(values["MONAN_JEDI_OBS2IODA_ENABLED"], "1")
         self.assertEqual(values["MONAN_JEDI_WPS_ENABLED"], "1")
-        self.assertEqual(values["MONAN_JEDI_WPS_VERSION"], "4.6.0")
-        self.assertEqual(values["MONAN_JEDI_WPS_DEFAULT_VTABLE"], "Vtable.GFS")
-        self.assertNotIn("MONAN_JEDI_WPS_CONFIGURE_OPTION", values)
         self.assertEqual(values["MONAN_JEDI_PBS_QUEUE"], "pesqmidi")
         self.assertEqual(values["MONAN_JEDI_PBS_WALLTIME"], "02:00:00")
 
-    def test_template_disables_optional_auxiliary_tools(self) -> None:
+    def test_template_disables_optional_auxiliary_tools_and_submission(self) -> None:
         values = read_exports(TEMPLATE)
         self.assertEqual(values["MONAN_JEDI_OBS2IODA_ENABLED"], "0")
         self.assertEqual(values["MONAN_JEDI_WPS_ENABLED"], "0")
+        self.assertEqual(values["MONAN_JEDI_SUBMIT_JOB"], "0")
 
-    def test_environment_override_wins(self) -> None:
-        env = {**os.environ, "MONAN_JEDI_WPS_BUILD_TYPE": "Debug"}
-        completed = subprocess.run(
-            ["python3", str(READER), str(JACI)],
-            cwd=ROOT,
-            check=True,
-            text=True,
-            capture_output=True,
-            env=env,
-        )
-        self.assertIn("export MONAN_JEDI_WPS_BUILD_TYPE=Debug", completed.stdout)
-
-    def test_canonical_install_prefix_and_private_wps_release_layout(self) -> None:
+    def test_config_sh_derives_private_paths_from_build_id(self) -> None:
         source = CONFIG_SH.read_text(encoding="utf-8")
-        self.assertIn(
-            'MONAN_JEDI_INSTALL_ROOT:-${PROJECT_ROOT}/build/${MONAN_JEDI_RUN_ID}',
-            source,
-        )
-        self.assertIn(
-            'MONAN_JEDI_INSTALL_ROOT}/libexec/monan-jedi/wps',
-            source,
-        )
-        self.assertNotIn(
-            'MONAN_JEDI_INSTALL_ROOT:-${PROJECT_ROOT}/builds/${MONAN_JEDI_RUN_ID}',
-            source,
-        )
+        self.assertIn("MONAN_JEDI_BUILD_ID", source)
+        self.assertNotIn("MONAN_JEDI_RUN_ID", source)
+        self.assertIn('${PROJECT_ROOT}/work/${MONAN_JEDI_BUILD_ID}', source)
+        self.assertIn('${PROJECT_ROOT}/build/${MONAN_JEDI_BUILD_ID}', source)
 
-    def test_runtime_support_is_published_into_install_share(self) -> None:
-        source = BUILD_SH.read_text(encoding="utf-8")
-        for item in (
-            "share/monan-jedi/mpas-jedi/namelists",
-            "geovars.yaml",
-            "keptvars.yaml",
-            "share/monan-jedi/install-manifest.json",
-        ):
-            self.assertIn(item, source)
-
-    def test_runtime_contract_document_names_public_roots(self) -> None:
-        text = RUNTIME_CONTRACT.read_text(encoding="utf-8")
-        for item in (
-            "MONAN_JEDI_INSTALL_ROOT",
-            "bin/ungrib.exe",
-            "share/wps/Variable_Tables",
-            "share/MPAS/core_atmosphere",
-            "share/monan-jedi/mpas-jedi/namelists",
-        ):
-            self.assertIn(item, text)
+    def test_configure_does_not_publish_build_outputs_directly(self) -> None:
+        source = CONFIGURE_SH.read_text(encoding="utf-8")
+        self.assertNotIn("-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${MONAN_JEDI_INSTALL_BIN_DIR}", source)
 
 
 if __name__ == "__main__":

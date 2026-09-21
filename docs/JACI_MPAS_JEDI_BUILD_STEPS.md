@@ -68,5 +68,5 @@ That model has been replaced. The old `prepare` and `reduce` concepts are no lon
 
 ```text
 docs/BUNDLE_ORIGIN.md
-docs/YAML_CONFIGURATION.md
+docs/configuration-reference.md
 ```

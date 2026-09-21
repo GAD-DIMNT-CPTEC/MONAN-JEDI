@@ -46,10 +46,17 @@ jobs:
           bash tests/test_pbs_result.sh
           bash tests/test_stack_environment.sh
           bash tests/test_install_runtime_contract.sh
-      - name: Check Python
+      - name: Check Python and configuration
         run: |
-          python -m py_compile scripts/lib/read_config.py tests/test_config.py
+          python scripts/lib/read_config.py --check config/jaci.yaml
+          python scripts/lib/read_config.py --check config/template.yaml
+          python -m compileall -q scripts tests
           python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Validate pinned obs2ioda source
+        run: |
+          eval "$(python scripts/lib/read_config.py config/jaci.yaml)"
+          git clone --filter=blob:none "$MONAN_JEDI_OBS2IODA_REPO" /tmp/obs2ioda
+          git -C /tmp/obs2ioda checkout --detach "$MONAN_JEDI_OBS2IODA_REF"
       - name: Validate unbalance patches against pinned sources
         run: |
           git clone --filter=blob:none https://github.com/jcsda/saber.git saber
