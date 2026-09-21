@@ -1,49 +1,48 @@
 #!/usr/bin/env python3
-"""Regression tests for the configuration files' conceptual documentation."""
+"""Regression tests for configuration documentation."""
 
 from __future__ import annotations
 
+import importlib.util
 import unittest
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[1]
+READER = ROOT / "scripts" / "lib" / "read_config.py"
+REFERENCE = ROOT / "docs" / "configuration-reference.md"
+CONFIG_README = ROOT / "config" / "README.md"
+TEMPLATE = ROOT / "config" / "template.yaml"
 
-REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
-CONFIG_DIRECTORY = REPOSITORY_ROOT / "config"
+SPEC = importlib.util.spec_from_file_location("read_config", READER)
+assert SPEC is not None
+assert SPEC.loader is not None
+READER_MODULE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(READER_MODULE)
 
 
 class ConfigurationDocumentationTests(unittest.TestCase):
-    """Protect guidance that has historically been lost during refactors."""
+    def test_every_public_key_is_documented(self) -> None:
+        text = REFERENCE.read_text(encoding="utf-8")
+        for path in READER_MODULE.supported_yaml_paths():
+            self.assertIn(
+                "`{0}`".format(path),
+                text,
+                msg="public configuration key is undocumented: {0}".format(path),
+            )
 
-    def test_yaml_files_keep_core_guidance(self) -> None:
-        required_markers = (
-            "PURPOSE",
-            "IMPORTANT FILESYSTEM MODEL",
-            "not an operational data-assimilation",
-            "Do not assume that the stack",
-            "MAIN DERIVED PATHS",
-            "Keep this value quoted",
-            "Pin external component refs",
-        )
-
-        for filename in ("jaci.yaml", "template.yaml"):
-            with self.subTest(filename=filename):
-                text = (CONFIG_DIRECTORY / filename).read_text(encoding="utf-8")
-                for marker in required_markers:
-                    self.assertIn(
-                        marker,
-                        text,
-                        msg=f"{filename} lost required configuration guidance: {marker}",
-                    )
-
-    def test_configuration_contract_is_present(self) -> None:
-        contract = (CONFIG_DIRECTORY / "README.md").read_text(encoding="utf-8")
+    def test_contract_explains_product_vs_application_configuration(self) -> None:
+        text = CONFIG_README.read_text(encoding="utf-8")
         for marker in (
-            "Documentation contract",
-            "update `config/jaci.yaml` and `config/template.yaml` together",
-            "preserve historical rationale",
-            "documentation regression checks",
+            "MONAN-JEDI build/install site configuration",
+            "JEDI experiment/application inputs",
+            "Unknown keys are errors",
+            "Do not create a second `configs/` directory",
         ):
-            self.assertIn(marker, contract)
+            self.assertIn(marker, text)
+
+    def test_template_points_to_canonical_reference(self) -> None:
+        text = TEMPLATE.read_text(encoding="utf-8")
+        self.assertIn("docs/configuration-reference.md", text)
 
 
 if __name__ == "__main__":
