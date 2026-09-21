@@ -23,8 +23,8 @@ python3 -m unittest discover -s tests -p 'test_*.py' -v
 ```
 
 A configuration cleanup must not remove explanatory comments merely because the
-same information exists in `docs/configuration-reference.md`. It also must not
-remove legitimate user/site overrides merely because a derived default exists.
+same information exists in `docs/configuration-reference.md`. Configuration changes must not remove legitimate user/site overrides merely
+because a derived default exists.
 The complete template is the discoverable configuration API; maintained site
 files may stay concise by relying on those defaults.
 
