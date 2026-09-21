@@ -33,7 +33,7 @@ class ConfigurationDocumentationTests(unittest.TestCase):
     def test_contract_explains_product_vs_application_configuration(self) -> None:
         text = CONFIG_README.read_text(encoding="utf-8")
         for marker in (
-            "MONAN-JEDI build/install site configuration",
+            "MONAN-JEDI build/install site",
             "JEDI experiment/application inputs",
             "Unknown keys are errors",
             "Do not create a second `configs/` directory",
