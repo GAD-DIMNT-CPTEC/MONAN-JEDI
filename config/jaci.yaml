@@ -4,262 +4,184 @@
 #
 # PURPOSE
 # -------
-# This is the user-editable configuration entry point for preparing, compiling,
-# installing and testing the MONAN-JEDI bundle and its auxiliary components on
-# JACI. Normal users should change this file instead of editing workflow scripts.
+# This is the maintained JACI configuration used to prepare, build, install and
+# validate MONAN-JEDI. It contains only values that are important to make
+# explicit for JACI; all other supported options use the documented defaults.
 #
-# This is not an operational data-assimilation experiment configuration. It does
-# not describe cycles, observations, backgrounds or MPAS-JEDI application YAMLs.
-# Runtime experiment settings belong in the workflow/experiment repository or in
-# examples/ when they are maintained only as usage examples.
+# The complete list of user-configurable options lives in config/template.yaml.
+# A user may copy that template or add any supported key here when an override
+# is needed. Empty optional values mean "derive the documented default".
 #
 # IMPORTANT FILESYSTEM MODEL
 # --------------------------
-# The workflow deliberately separates two independent filesystem areas:
-#
-#   1. project.root
-#      User-owned, writable area where MONAN-JEDI derives work trees, build
-#      trees, logs, cached data and the public installation.
-#
-#   2. stack.owner + stack.instance
-#      Existing, validated spack-stack installation. It may be maintained by a
-#      different account and may be read-only for the user running MONAN-JEDI.
-#
-# Do not assume that the stack is located below project.root. A user may build
-# in their own project area while consuming a shared stack owned by another
-# account.
+# project.root is the user-owned workspace. The validated spack-stack may be
+# shared and owned by another account. The stack therefore remains independent
+# from the user's MONAN-JEDI work/install area.
 #
 # MAIN DERIVED PATHS
 # ------------------
-# Private/internal paths were intentionally removed from the public YAML
-# interface. The workflow derives them from project.root and build.id:
+# Unless overridden through a supported YAML option or environment variable:
 #
-#   work root:       ${project.root}/work/${build.id}
-#   log root:        ${project.root}/logs/${build.id}
-#   bundle build:    ${project.root}/work/${build.id}/build
-#   data cache:      ${project.root}/work/${build.id}/cache/data
+#   project work:    ${project.root}/work/${build.id}
+#   logs:            ${project.root}/logs/${build.id}
+#   bundle build:    ${project work}/build
+#   data cache:      ${project work}/cache/data
 #   install root:    ${project.root}/build/${build.id}
-#   install bin:     ${project.root}/build/${build.id}/bin
-#   obs2ioda source: ${work root}/obs2ioda/src
-#   obs2ioda build:  ${work root}/obs2ioda/build
-#   WPS source:      ${work root}/wps/src
-#   WPS build:       ${work root}/wps/build
-#
-# These derived paths remain overridable through advanced environment variables
-# for development and diagnostics, but they are not normal site configuration.
+#   install bin:     ${install.root}/bin
+#   obs2ioda source: ${project work}/obs2ioda/src
+#   WPS source:      ${project work}/wps/src
 #
 # GENERAL RULES
 # -------------
-#   * ${NAME} expressions are expanded from the invoking process environment.
-#   * A non-empty corresponding environment variable overrides a YAML value.
-#   * Empty environment variables do not mask YAML values or documented defaults.
-#   * YAML booleans are written as true/false.
-#   * CMake values such as ON/OFF must remain quoted so YAML does not coerce them.
-#   * Paths used by PBS jobs must be visible from JACI compute nodes, normally
-#     below /p or /lustre.
-#   * External component refs must be tested full commit SHAs. Moving branches
-#     such as main/master are intentionally rejected by configuration validation.
-#   * Every user-facing key must keep explanatory comments immediately above it.
-#     CI enforces this documentation contract.
+#   * config/template.yaml documents every public option, including path, URL,
+#     repository and auxiliary-component overrides intentionally omitted here.
+#   * Empty optional values use their documented defaults or derived paths.
+#   * Non-empty environment variables override YAML values for one-off changes.
+#   * ON/OFF CMake strings remain quoted; YAML booleans use true/false.
+#   * External source revisions remain pinned to tested full commit SHAs.
+#   * CI verifies both configuration behavior and documentation completeness.
 #
-# OPTIONAL SETTINGS NOT REPEATED IN THIS JACI FILE
-# ------------------------------------------------
-# The public schema also supports controlled overrides that JACI normally leaves
-# at automatic/default behavior. Examples include data.local_mirror_dir,
-# obs2ioda BUFR/CMake discovery settings, and WPS dependency roots/build type.
-# See config/template.yaml for every public key and
-# docs/configuration-reference.md for the complete reference.
-#
-# Typical use:
-#   bash scripts/monan-jedi.sh <command> --config config/jaci.yaml
-#
-# Validate this file without executing the workflow:
+# Validate this file without executing the build:
 #   python3 scripts/lib/read_config.py --check config/jaci.yaml
 #   python3 scripts/check_config_documentation.py
 #
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# Site identity
+# Site and user workspace
 # -----------------------------------------------------------------------------
 
-# Human-readable identifier for the site represented by this file.
-# It is metadata today; workflow behavior does not currently branch on it.
+# Human-readable identifier for this maintained configuration.
+# It records which site the explicit settings below describe.
 site: jaci
 
-# -----------------------------------------------------------------------------
-# User-owned workspace and shared spack-stack
-# -----------------------------------------------------------------------------
-
 project:
-  # Writable MONAN-JEDI workspace root shared by login and compute nodes.
-  # ${USER} is expanded from the environment of the process invoking the tool.
+  # Writable MONAN-JEDI workspace visible from JACI login and compute nodes.
+  # Derived work, logs, caches and installation paths start from this root.
   root: /p/projetos/monan_das/${USER}
 
+# -----------------------------------------------------------------------------
+# Validated shared spack-stack
+# -----------------------------------------------------------------------------
+
 stack:
-  # Unix account that owns the validated spack-stack instance consumed here.
-  # It may intentionally differ from the user who runs the MONAN-JEDI workflow.
+  # Unix account that owns the validated shared spack-stack installation.
+  # It may intentionally differ from the user executing MONAN-JEDI.
   owner: joao.gerd
 
   # Identifier of the validated spack-stack-inpe installation used on JACI.
-  # Together with stack.owner it is used to derive the private stack location.
+  # Default stack paths are derived from this value and stack.owner.
   instance: spack-stack-inpe-overlay-20260515T181917Z
 
-  # Name of the concretized spack-stack environment below stack.root/envs/.
-  # This also participates in the derived MODULEPATH used before module loading.
+  # Name of the concretized JACI environment below the selected spack-stack.
+  # It determines the module tree used before loading the JEDI environment.
   env_name: jaci-mpas-jedi-gcc12-craympich
 
-  # Site initialization script relative to the derived stack.root directory.
-  # This file belongs to spack-stack; it is not the former MONAN-JEDI configs/.
+  # JACI site initialization script interpreted relative to stack.root.
+  # This belongs to spack-stack and is unrelated to this repository's config/.
   site_setup: configs/sites/tier2/jaci/setup.sh
 
   # Exact environment module generated by the validated JACI spack-stack.
-  # Loading it selects the compiler, MPI implementation and JEDI dependencies.
+  # It selects the compiler, MPI implementation and JEDI dependencies.
   env_module: cray-mpich/8.1.31/none/none/jedi-mpas-env/1.0.0
 
 # -----------------------------------------------------------------------------
-# Build identity and compilation parallelism
+# Build and model choices worth keeping explicit on JACI
 # -----------------------------------------------------------------------------
 
 build:
-  # Stable identifier used to derive independent work, log and install trees.
-  # Change it when a separate build/install generation is intentionally needed.
+  # Stable build/install generation name used by the derived filesystem layout.
+  # Keep it explicit because changing it creates an independent installation.
   id: monan-jedi
 
-  # Maximum number of parallel jobs used by CMake/ecbuild compilation.
-  # This is compilation parallelism; it is independent from PBS CPU requests.
+  # Parallel compilation jobs used by the main bundle and auxiliary builds.
+  # This is build concurrency and is independent from the PBS CPU request.
   jobs: 64
 
-# -----------------------------------------------------------------------------
-# MPAS build options
-# -----------------------------------------------------------------------------
-
 model:
-  # Precision mode passed to the MONAN/MPAS build as MPAS_DOUBLE_PRECISION.
-  # Keep ON/OFF quoted; ON is the validation mode used with upstream CTest data.
+  # MPAS precision mode used for the maintained validation build on JACI.
+  # Keep ON/OFF quoted; ON matches the double-precision upstream test references.
   double_precision: 'ON'
 
-# -----------------------------------------------------------------------------
-# External data policy
-# -----------------------------------------------------------------------------
-
 data:
-  # Permit network download when a required archive is absent from cache/mirror.
-  # Set false only when all required external data are pre-populated locally.
+  # Permit download of required external archives when cache/mirror lookup fails.
+  # JACI normally has network access, so the maintained configuration allows it.
   download_missing: true
 
 # -----------------------------------------------------------------------------
-# Auxiliary component: obs2ioda
+# Auxiliary components enabled by the maintained JACI installation
 # -----------------------------------------------------------------------------
-#
-# obs2ioda is built outside the main ecbuild bundle with the same loaded stack
-# and publishes its stable executable into the common MONAN-JEDI installation.
 
 obs2ioda:
-  # Enable obs2ioda integration and include its build in the aggregate workflow.
-  # Disable only when the installation intentionally does not require converters.
+  # Include obs2ioda in the maintained MONAN-JEDI installation and aggregate build.
+  # Repository URL, paths and build details use documented template defaults.
   enabled: true
 
-  # Exact tested upstream revision used for reproducible obs2ioda builds.
-  # The validator requires a full 40-character SHA and rejects moving branches.
+  # Exact tested source revision for reproducible JACI builds.
+  # Keeping this explicit makes the validated upstream revision visible in-site.
   ref: 11b9e60522d63bc03b0b104a52f3dd22127fb828
 
-# -----------------------------------------------------------------------------
-# Auxiliary component: WPS / UNGRIB
-# -----------------------------------------------------------------------------
-#
-# The integration builds the WPS tools required by this project without exposing
-# WPS internal source/build/install directories as normal YAML configuration.
-
 wps:
-  # Enable the WPS/UNGRIB integration and include it in the aggregate workflow.
-  # Dependency roots are normally discovered from the loaded spack-stack.
+  # Include the supported WPS/UNGRIB tools in the maintained JACI installation.
+  # Repository, directories, dependency roots and published names use defaults.
   enabled: true
 
-  # Exact tested WPS revision. Source selection is controlled by this SHA;
-  # wps.version below is a human-readable release label, not a Git selector.
+  # Exact tested WPS revision against which the local compatibility patches apply.
+  # The human-readable version and other WPS settings use template defaults.
   ref: 335c76a111f84503e8b963abaf273ea8053645bb
 
-  # Human-readable WPS release label recorded in derived paths and manifests.
-  # Keep this synchronized with the tested integration represented by wps.ref.
-  version: 4.6.0
-
-  # Variable table published through the stable share/wps/Vtable interface.
-  # The value must be a filename present under WPS ungrib/Variable_Tables.
-  default_vtable: Vtable.GFS
-
 # -----------------------------------------------------------------------------
-# Compiler and MPI wrappers
+# JACI compiler and MPI wrappers
 # -----------------------------------------------------------------------------
 
 compilers:
-  # C compiler command resolved after the configured stack module is loaded.
-  # On JACI CrayPE, lowercase cc is the validated compiler wrapper.
+  # JACI CrayPE C compiler wrapper after the configured stack module is loaded.
+  # This site-specific command is intentionally explicit rather than implicit.
   cc: cc
 
-  # C++ compiler command resolved after stack activation.
-  # On JACI CrayPE, uppercase CC is the case-sensitive C++ wrapper.
+  # JACI CrayPE C++ wrapper; uppercase CC is case-sensitive on this platform.
+  # Keep this explicit so a generic-site default cannot silently replace it.
   cxx: CC
 
-  # Canonical Fortran compiler wrapper for this site.
-  # The loader also exports compatibility aliases FC, F77 and F90 from it.
+  # Canonical JACI Fortran compiler wrapper from the loaded Cray environment.
+  # FC/F77/F90 compatibility aliases are generated automatically from this value.
   fortran: ftn
 
 mpi:
-  # MPI-aware C compiler wrapper passed to build systems where needed.
-  # Under the loaded JACI environment, cc carries the required MPI integration.
+  # MPI-aware C wrapper exposed by the loaded JACI Cray environment.
+  # JACI uses cc rather than a separate mpicc command in this stack.
   cc: cc
 
-  # MPI-aware C++ wrapper selected by the validated JACI stack.
-  # Uppercase CC remains case-sensitive and must not be changed casually.
+  # MPI-aware C++ wrapper exposed by the loaded JACI Cray environment.
+  # Uppercase CC remains significant and is therefore explicit here.
   cxx: CC
 
-  # Canonical MPI Fortran wrapper for this site.
-  # MPIFC, MPIF77 and MPIF90 compatibility aliases are generated from it.
+  # Canonical MPI Fortran wrapper used on JACI after stack activation.
+  # MPIFC/MPIF77/MPIF90 aliases are generated automatically from this value.
   fortran: ftn
 
 # -----------------------------------------------------------------------------
-# CTest selection and safety
+# Test selections and PBS resources that encode JACI operating policy
 # -----------------------------------------------------------------------------
 
 ctest:
-  # Extended regular expression passed to ctest -R for login-node validation.
-  # Keep this restricted to tests known to be safe without compute-node MPI.
-  login_regex: "^mpasjedi_coding_norms$"
-
-  # Optional inclusion regex reserved for PBS-side CTest selection.
-  # Empty means no additional inclusion filter beyond the PBS test workflow.
-  pbs_regex: ""
-
-  # Extended regular expression passed to ctest -E in compute-node validation.
-  # These tests are excluded from the current validated complete JACI suite.
+  # Tests currently excluded from the complete JACI compute-node validation.
+  # The login-node inclusion regex and CTest concurrency use schema defaults.
   exclude_regex: "^(ioda_bufr_python_encoder|ioda_bufr_python_parallel|mpasjedi_lgetkf_height_vloc)$"
 
-  # Number of CTest cases allowed to execute concurrently.
-  # This is test-level concurrency and is not the MPI rank count of each test.
-  jobs: 1
-
-  # Explicit safety flag for MPI tests on login nodes.
-  # false preserves the project policy that login-node testing stays non-MPI.
-  allow_login_node_mpi_tests: false
-
-# -----------------------------------------------------------------------------
-# PBS resources for complete compute-node validation
-# -----------------------------------------------------------------------------
-
 pbs:
-  # JACI PBS queue used by the test-pbs workflow.
-  # Queue policy and placement are additionally validated by repository tests.
+  # JACI queue used by the compute-node validation workflow.
+  # Keep the queue visible because it is an operational site policy choice.
   queue: pesqmidi
 
-  # CPUs requested from PBS on the selected node.
-  # This resource request is deliberately independent from build.jobs above.
+  # CPUs requested from one JACI node for the complete validation suite.
+  # This scheduler resource is independent from build.jobs above.
   ncpus: 64
 
-  # Wall-clock limit for the PBS validation job, using HH:MM:SS syntax.
-  # Increase only when the validated test suite genuinely requires more time.
+  # Wall-clock limit requested for the maintained JACI validation job.
+  # The value uses PBS HH:MM:SS syntax and may be adjusted from operating history.
   walltime: "02:00:00"
 
-  # true submits the generated PBS script immediately; false only prepares it.
-  # Keep true for the maintained JACI configuration used for normal validation.
+  # Submit the generated validation job automatically in the maintained JACI flow.
+  # Generic templates default to false so new sites do not submit accidentally.
   submit_job: true

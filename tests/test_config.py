@@ -8,6 +8,7 @@ import importlib.util
 import os
 import shlex
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -101,8 +102,10 @@ class ConfigurationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "model.double_precision must be one of"):
             READER_MODULE.validate_configuration(data)
 
-    def test_public_yaml_does_not_expose_derived_paths(self) -> None:
-        forbidden = {
+    def test_public_yaml_exposes_legitimate_path_and_source_overrides(self) -> None:
+        expected = {
+            "project.work_root",
+            "project.log_root",
             "stack.work_root",
             "stack.root",
             "stack.module_root",
@@ -110,17 +113,68 @@ class ConfigurationTests(unittest.TestCase):
             "install.root",
             "install.bin_dir",
             "data.root",
+            "data.crtm_coeffs_url",
             "data.crtm_coeffs_tgz",
+            "obs2ioda.repo",
             "obs2ioda.source_dir",
             "obs2ioda.build_dir",
             "obs2ioda.install_dir",
+            "obs2ioda.executable_name",
+            "wps.repo",
             "wps.source_dir",
             "wps.build_dir",
             "wps.releases_dir",
             "wps.install_dir",
             "wps.patch_dir",
+            "wps.ungrib_name",
+            "wps.link_grib_name",
         }
-        self.assertTrue(forbidden.isdisjoint(set(READER_MODULE.supported_yaml_paths())))
+        self.assertTrue(expected.issubset(set(READER_MODULE.supported_yaml_paths())))
+
+    def test_jaci_relies_on_defaults_for_optional_paths_and_sources(self) -> None:
+        data = load_yaml(JACI)
+        self.assertNotIn("install", data)
+        self.assertNotIn("work_root", data["project"])
+        self.assertNotIn("root", data["stack"])
+        self.assertNotIn("repo", data["obs2ioda"])
+        self.assertNotIn("repo", data["wps"])
+
+        values = read_exports(JACI)
+        self.assertEqual(values["MONAN_JEDI_INSTALL_ROOT"], "")
+        self.assertEqual(values["MONAN_JEDI_DATA_ROOT"], "")
+        self.assertEqual(values["MONAN_JEDI_OBS2IODA_SOURCE_DIR"], "")
+        self.assertEqual(values["MONAN_JEDI_WPS_SOURCE_DIR"], "")
+        self.assertEqual(values["MONAN_JEDI_OBS2IODA_REPO"], "https://github.com/NCAR/obs2ioda.git")
+        self.assertEqual(values["MONAN_JEDI_WPS_REPO"], "https://github.com/wrf-model/WPS.git")
+
+    def test_template_user_overrides_are_exported(self) -> None:
+        data = load_yaml(TEMPLATE)
+        data["install"]["root"] = "/custom/install"
+        data["data"]["crtm_coeffs_url"] = "https://mirror.example/crtm.tgz"
+        data["obs2ioda"]["repo"] = "https://example.org/obs2ioda.git"
+        data["wps"]["source_dir"] = "/custom/wps/src"
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".yaml", encoding="utf-8", delete=False
+        ) as stream:
+            yaml.safe_dump(data, stream, sort_keys=False)
+            temp_path = Path(stream.name)
+
+        try:
+            values = read_exports(temp_path)
+        finally:
+            temp_path.unlink()
+
+        self.assertEqual(values["MONAN_JEDI_INSTALL_ROOT"], "/custom/install")
+        self.assertEqual(
+            values["MONAN_JEDI_CRTM_COEFFS_URL"],
+            "https://mirror.example/crtm.tgz",
+        )
+        self.assertEqual(
+            values["MONAN_JEDI_OBS2IODA_REPO"],
+            "https://example.org/obs2ioda.git",
+        )
+        self.assertEqual(values["MONAN_JEDI_WPS_SOURCE_DIR"], "/custom/wps/src")
 
     def test_fortran_config_fans_out_to_compatibility_aliases(self) -> None:
         values = read_exports(JACI)

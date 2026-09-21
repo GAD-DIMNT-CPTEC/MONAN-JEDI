@@ -42,9 +42,9 @@ load_monan_jedi_config() {
     exit 1
   }
 
-  # Derived paths are intentionally not part of the public YAML interface.
-  # Advanced diagnostics may override them through non-empty environment
-  # variables before invoking scripts/monan-jedi.sh.
+  # User-facing path overrides may come from YAML or non-empty environment
+  # variables. Empty YAML values intentionally arrive here as empty strings, so
+  # the expressions below derive the documented defaults in one central place.
   export STACK_WORK_ROOT="${STACK_WORK_ROOT:-/p/projetos/monan_das/${STACK_OWNER}/work/${STACK_INSTANCE}}"
   export STACK_ROOT="${STACK_ROOT:-${STACK_WORK_ROOT}/spack-stack}"
   export STACK_MODULE_ROOT="${STACK_MODULE_ROOT:-${STACK_ROOT}/envs/${STACK_ENV_NAME}/modules}"

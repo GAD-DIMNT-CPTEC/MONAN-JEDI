@@ -54,58 +54,87 @@ WPS_PIN = "335c76a111f84503e8b963abaf273ea8053645bb"
 CONFIG_FIELDS = (
     {"path": "site", "envs": (), "kind": "str", "required": True},
     {"path": "project.root", "envs": ("PROJECT_ROOT",), "kind": "str", "required": True},
+    {"path": "project.work_root", "envs": ("MONAN_JEDI_WORK_ROOT",), "kind": "str", "default": ""},
+    {"path": "project.log_root", "envs": ("MONAN_JEDI_LOG_ROOT",), "kind": "str", "default": ""},
+
     {"path": "stack.owner", "envs": ("STACK_OWNER",), "kind": "str", "default": lambda: os.environ.get("USER", "unknown")},
     {"path": "stack.instance", "envs": ("STACK_INSTANCE",), "kind": "str", "required": True},
+    {"path": "stack.work_root", "envs": ("STACK_WORK_ROOT",), "kind": "str", "default": ""},
+    {"path": "stack.root", "envs": ("STACK_ROOT",), "kind": "str", "default": ""},
     {"path": "stack.env_name", "envs": ("STACK_ENV_NAME",), "kind": "str", "required": True},
+    {"path": "stack.module_root", "envs": ("STACK_MODULE_ROOT",), "kind": "str", "default": ""},
     {"path": "stack.site_setup", "envs": ("STACK_SITE_SETUP",), "kind": "str", "default": "configs/sites/tier2/jaci/setup.sh"},
     {"path": "stack.env_module", "envs": ("STACK_ENV_MODULE",), "kind": "str", "required": True},
-    {"path": "build.id", "envs": ("MONAN_JEDI_BUILD_ID",), "kind": "str", "required": True},
+
+    {"path": "build.id", "envs": ("MONAN_JEDI_BUILD_ID",), "kind": "str", "default": "monan-jedi"},
+    {"path": "build.dir", "envs": ("MONAN_JEDI_BUILD_DIR",), "kind": "str", "default": ""},
     {"path": "build.jobs", "envs": ("MONAN_JEDI_BUILD_JOBS",), "kind": "int", "default": 8, "minimum": 1},
+
+    {"path": "install.root", "envs": ("MONAN_JEDI_INSTALL_ROOT",), "kind": "str", "default": ""},
+    {"path": "install.bin_dir", "envs": ("MONAN_JEDI_INSTALL_BIN_DIR",), "kind": "str", "default": ""},
+
     {"path": "model.double_precision", "envs": ("MONAN_JEDI_MODEL_DOUBLE_PRECISION",), "kind": "str", "default": "ON", "choices": ("ON", "OFF")},
+
+    {"path": "data.root", "envs": ("MONAN_JEDI_DATA_ROOT",), "kind": "str", "default": ""},
     {"path": "data.local_mirror_dir", "envs": ("MONAN_JEDI_DATA_LOCAL_ROOT",), "kind": "str", "default": ""},
     {"path": "data.download_missing", "envs": ("MONAN_JEDI_DATA_DOWNLOAD_MISSING",), "kind": "bool", "default": True},
+    {"path": "data.crtm_coeffs_url", "envs": ("MONAN_JEDI_CRTM_COEFFS_URL",), "kind": "str", "default": "https://bin.ssec.wisc.edu/pub/s4/CRTM/fix_REL-3.1.2.0.tgz"},
+    {"path": "data.crtm_coeffs_tgz", "envs": ("MONAN_JEDI_CRTM_COEFFS_TGZ",), "kind": "str", "default": ""},
+
     {"path": "obs2ioda.enabled", "envs": ("MONAN_JEDI_OBS2IODA_ENABLED",), "kind": "bool", "default": False},
+    {"path": "obs2ioda.repo", "envs": ("MONAN_JEDI_OBS2IODA_REPO",), "kind": "str", "default": "https://github.com/NCAR/obs2ioda.git"},
     {"path": "obs2ioda.ref", "envs": ("MONAN_JEDI_OBS2IODA_REF",), "kind": "str", "default": OBS2IODA_PIN, "pattern": r"^[0-9a-f]{40}$"},
+    {"path": "obs2ioda.source_dir", "envs": ("MONAN_JEDI_OBS2IODA_SOURCE_DIR",), "kind": "str", "default": ""},
+    {"path": "obs2ioda.build_dir", "envs": ("MONAN_JEDI_OBS2IODA_BUILD_DIR",), "kind": "str", "default": ""},
+    {"path": "obs2ioda.install_dir", "envs": ("MONAN_JEDI_OBS2IODA_INSTALL_DIR",), "kind": "str", "default": ""},
+    {"path": "obs2ioda.executable_name", "envs": ("MONAN_JEDI_OBS2IODA_EXECUTABLE_NAME",), "kind": "str", "default": "obs2ioda_v3"},
     {"path": "obs2ioda.bufr_root", "envs": ("MONAN_JEDI_OBS2IODA_BUFR_ROOT",), "kind": "str", "default": ""},
     {"path": "obs2ioda.bufr_lib", "envs": ("MONAN_JEDI_OBS2IODA_BUFR_LIB",), "kind": "str", "default": ""},
     {"path": "obs2ioda.cmake_prefix_path", "envs": ("MONAN_JEDI_OBS2IODA_CMAKE_PREFIX_PATH",), "kind": "str", "default": ""},
     {"path": "obs2ioda.build_type", "envs": ("MONAN_JEDI_OBS2IODA_BUILD_TYPE",), "kind": "str", "default": "Release", "choices": ("Release", "Debug", "RelWithDebInfo", "MinSizeRel")},
     {"path": "obs2ioda.build_goes_abi_converter", "envs": ("MONAN_JEDI_OBS2IODA_BUILD_GOES_ABI_CONVERTER",), "kind": "str", "default": "OFF", "choices": ("ON", "OFF")},
+
     {"path": "wps.enabled", "envs": ("MONAN_JEDI_WPS_ENABLED",), "kind": "bool", "default": False},
+    {"path": "wps.repo", "envs": ("MONAN_JEDI_WPS_REPO",), "kind": "str", "default": "https://github.com/wrf-model/WPS.git"},
     {"path": "wps.ref", "envs": ("MONAN_JEDI_WPS_REF",), "kind": "str", "default": WPS_PIN, "pattern": r"^[0-9a-f]{40}$"},
     {"path": "wps.version", "envs": ("MONAN_JEDI_WPS_VERSION",), "kind": "str", "default": "4.6.0"},
+    {"path": "wps.source_dir", "envs": ("MONAN_JEDI_WPS_SOURCE_DIR",), "kind": "str", "default": ""},
+    {"path": "wps.build_dir", "envs": ("MONAN_JEDI_WPS_BUILD_DIR",), "kind": "str", "default": ""},
+    {"path": "wps.releases_dir", "envs": ("MONAN_JEDI_WPS_RELEASES_DIR",), "kind": "str", "default": ""},
+    {"path": "wps.install_dir", "envs": ("MONAN_JEDI_WPS_INSTALL_DIR",), "kind": "str", "default": ""},
+    {"path": "wps.patch_dir", "envs": ("MONAN_JEDI_WPS_PATCH_DIR",), "kind": "str", "default": ""},
     {"path": "wps.jasper_root", "envs": ("MONAN_JEDI_WPS_JASPER_ROOT",), "kind": "str", "default": ""},
     {"path": "wps.png_root", "envs": ("MONAN_JEDI_WPS_PNG_ROOT",), "kind": "str", "default": ""},
     {"path": "wps.zlib_root", "envs": ("MONAN_JEDI_WPS_ZLIB_ROOT",), "kind": "str", "default": ""},
     {"path": "wps.cmake_prefix_path", "envs": ("MONAN_JEDI_WPS_CMAKE_PREFIX_PATH",), "kind": "str", "default": ""},
     {"path": "wps.build_type", "envs": ("MONAN_JEDI_WPS_BUILD_TYPE",), "kind": "str", "default": "Release", "choices": ("Release", "Debug", "RelWithDebInfo", "MinSizeRel")},
+    {"path": "wps.ungrib_name", "envs": ("MONAN_JEDI_WPS_UNGRIB_NAME",), "kind": "str", "default": "ungrib.exe"},
+    {"path": "wps.link_grib_name", "envs": ("MONAN_JEDI_WPS_LINK_GRIB_NAME",), "kind": "str", "default": "link_grib.csh"},
     {"path": "wps.default_vtable", "envs": ("MONAN_JEDI_WPS_DEFAULT_VTABLE",), "kind": "str", "default": "Vtable.GFS", "pattern": r"^[A-Za-z0-9._-]+$"},
+
     {"path": "compilers.cc", "envs": ("MONAN_JEDI_CC",), "kind": "str", "default": "cc"},
     {"path": "compilers.cxx", "envs": ("MONAN_JEDI_CXX",), "kind": "str", "default": "CC"},
     {"path": "compilers.fortran", "envs": ("MONAN_JEDI_FC", "MONAN_JEDI_F77", "MONAN_JEDI_F90"), "kind": "str", "default": "ftn"},
     {"path": "mpi.cc", "envs": ("MONAN_JEDI_MPICC",), "kind": "str", "default": "cc"},
     {"path": "mpi.cxx", "envs": ("MONAN_JEDI_MPICXX",), "kind": "str", "default": "CC"},
     {"path": "mpi.fortran", "envs": ("MONAN_JEDI_MPIFC", "MONAN_JEDI_MPIF77", "MONAN_JEDI_MPIF90"), "kind": "str", "default": "ftn"},
+
     {"path": "ctest.login_regex", "envs": ("MONAN_JEDI_CTEST_REGEX",), "kind": "str", "default": "^mpasjedi_coding_norms$"},
     {"path": "ctest.pbs_regex", "envs": ("MONAN_JEDI_CTEST_PBS_REGEX",), "kind": "str", "default": ""},
     {"path": "ctest.exclude_regex", "envs": ("MONAN_JEDI_CTEST_EXCLUDE_REGEX",), "kind": "str", "default": ""},
     {"path": "ctest.jobs", "envs": ("MONAN_JEDI_CTEST_JOBS",), "kind": "int", "default": 1, "minimum": 1},
     {"path": "ctest.allow_login_node_mpi_tests", "envs": ("ALLOW_LOGIN_NODE_MPI_TESTS",), "kind": "bool", "default": False},
+
     {"path": "pbs.queue", "envs": ("MONAN_JEDI_PBS_QUEUE",), "kind": "str", "default": "pesqmidi"},
     {"path": "pbs.ncpus", "envs": ("MONAN_JEDI_PBS_NCPUS",), "kind": "int", "default": 64, "minimum": 1},
     {"path": "pbs.walltime", "envs": ("MONAN_JEDI_PBS_WALLTIME",), "kind": "str", "default": "02:00:00", "pattern": r"^\d{2,3}:[0-5]\d:[0-5]\d$"},
     {"path": "pbs.submit_job", "envs": ("MONAN_JEDI_SUBMIT_JOB",), "kind": "bool", "default": False},
 )
 
-# Fixed implementation defaults. They remain overridable through non-empty
-# environment variables, but they are deliberately not part of the YAML API.
+# Internal-only values are limited to implementation details that are not useful
+# as persistent site configuration. User-facing paths, URLs, repositories and
+# published names belong in CONFIG_FIELDS and therefore can be set in YAML.
 INTERNAL_DEFAULTS = (
-    ("MONAN_JEDI_CRTM_COEFFS_URL", "https://bin.ssec.wisc.edu/pub/s4/CRTM/fix_REL-3.1.2.0.tgz"),
-    ("MONAN_JEDI_OBS2IODA_REPO", "https://github.com/NCAR/obs2ioda.git"),
-    ("MONAN_JEDI_OBS2IODA_EXECUTABLE_NAME", "obs2ioda_v3"),
-    ("MONAN_JEDI_WPS_REPO", "https://github.com/wrf-model/WPS.git"),
-    ("MONAN_JEDI_WPS_UNGRIB_NAME", "ungrib.exe"),
-    ("MONAN_JEDI_WPS_LINK_GRIB_NAME", "link_grib.csh"),
 )
 
 

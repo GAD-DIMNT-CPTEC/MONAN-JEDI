@@ -14,7 +14,8 @@ Complete this section when the PR changes configuration behavior, defaults,
 settings, or related documentation.
 
 - [ ] Public schema/type/default/environment mappings are synchronized.
-- [ ] `config/template.yaml` still documents every public key in context.
+- [ ] `config/template.yaml` still documents every legitimate public override in context.
+- [ ] No configurable path/source option was hidden in code merely because a default exists.
 - [ ] Maintained site YAMLs retain self-explanatory comments near changed values.
 - [ ] `docs/configuration-reference.md` contains/updates the detailed key sections.
 - [ ] `python3 scripts/check_config_documentation.py` passes.

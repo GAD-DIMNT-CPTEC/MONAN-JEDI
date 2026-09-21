@@ -114,10 +114,11 @@ config/jaci.yaml      maintained INPE/JACI settings
 config/template.yaml  starting point for another site
 ```
 
-The public YAML interface contains only values a site or operator reasonably
-chooses. Work/build/install paths and other implementation details are derived
-by the workflow. JEDI application inputs are separate and live under
-`examples/`.
+The public YAML interface contains the legitimate choices a site or operator
+may need, including optional path/source overrides. `config/template.yaml`
+documents the complete interface, while `config/jaci.yaml` stays concise and
+lets documented defaults derive standard paths. JEDI application inputs are
+separate and live under `examples/`.
 
 Configuration is strictly validated; unknown keys and invalid types fail early.
 The YAML files are also intentionally self-documenting: explanatory comments are

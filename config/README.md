@@ -32,18 +32,28 @@ The quality baseline is:
 - meaningful comments immediately above every user-facing YAML value;
 - a detailed reference section for every public key.
 
-## Public versus derived settings
+## Complete template, concise site files
 
-The public YAML interface exposes only decisions a site or user can reasonably
-make. Paths that follow the repository installation contract are derived by
-`scripts/lib/config.sh` rather than duplicated in YAML.
+`config/template.yaml` is the complete public interface. It must expose every
+legitimate user/site choice, including configurable paths, caches, download
+URLs, upstream repository locations, component directories and published names.
 
-Examples of derived/private values include work, log, build and install
-directories, `install/bin`, obs2ioda source/build/install directories, WPS
-source/build/release/install/patch directories and the CRTM cache archive path.
+A maintained site file such as `config/jaci.yaml` should be shorter. It records
+only values that are operationally important to keep explicit or that differ
+from defaults. Omitting an optional key is not the same as removing user
+autonomy: the user can copy/add that key from the complete template whenever an
+override is required.
 
-Advanced diagnostics may still override those shell variables through the
-environment before calling `scripts/monan-jedi.sh`.
+For configurable derived paths, the preferred contract is:
+
+```text
+empty/omitted YAML value  -> derive the documented default
+explicit YAML value       -> use the persistent user/site override
+non-empty environment var -> temporary override of the YAML value
+```
+
+Do not remove a legitimate path/source option merely because the project has a
+good default for it. Simplify duplicate values, not operator autonomy.
 
 ## Automated documentation contract
 

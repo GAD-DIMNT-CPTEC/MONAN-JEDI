@@ -61,6 +61,8 @@ class ConfigurationDocumentationTests(unittest.TestCase):
             "operator-facing documentation",
             "documentation contract",
             "JEDI experiment",
+            "Complete template, concise site files",
+            "Simplify duplicate values, not operator autonomy",
             "Do not create a second `configs/` directory",
         ):
             self.assertIn(marker, text)
@@ -71,6 +73,8 @@ class ConfigurationDocumentationTests(unittest.TestCase):
         self.assertIn("scripts/check_config_documentation.py", contributing)
         self.assertIn("Configuration documentation is mandatory", agents)
         self.assertIn("never replace the self-documenting YAML", agents)
+        self.assertIn("do not hide paths, URLs, repositories", agents)
+        self.assertIn("must not remove legitimate user/site overrides", contributing)
 
     def test_template_points_to_canonical_reference(self) -> None:
         text = TEMPLATE.read_text(encoding="utf-8")

@@ -53,10 +53,12 @@ python3 scripts/lib/read_config.py --check config/jaci.yaml
 python3 scripts/check_config_documentation.py
 ```
 
-## Derived filesystem model
+## Configurable defaults and derived filesystem model
 
-Private implementation paths are intentionally absent from the public YAML
-interface. The normal layout is derived from `project.root` and `build.id`:
+The standard layout is derived from `project.root` and `build.id`, but
+legitimate site/user path choices remain part of the public YAML interface.
+Leaving an optional path empty selects the documented derived default; filling
+it in records a persistent, reviewable override in the configuration:
 
 ```text
 work root       ${project.root}/work/${build.id}
@@ -72,10 +74,11 @@ WPS build       ${work root}/wps/build
 WPS releases    ${install root}/libexec/monan-jedi/wps
 ```
 
-The public runtime contract is `MONAN_JEDI_INSTALL_ROOT`. Downstream workflows
-should consume the installation rather than private work/build trees. Advanced
-environment overrides for derived paths remain available for controlled
-development and diagnostics, but they are intentionally not normal YAML keys.
+The public runtime contract remains `MONAN_JEDI_INSTALL_ROOT`. Downstream
+workflows should consume the installation rather than assuming the default
+private work/build layout. The important distinction is that a default path is
+not a prohibition: users may override supported paths persistently in YAML or
+temporarily with the corresponding non-empty environment variable.
 
 ## Quick index
 
@@ -83,38 +86,62 @@ development and diagnostics, but they are intentionally not normal YAML keys.
 | --- | --- | --- |
 | `site` | string; required | — |
 | `project.root` | string; required | `PROJECT_ROOT` |
+| `project.work_root` | string; default derived | `MONAN_JEDI_WORK_ROOT` |
+| `project.log_root` | string; default derived | `MONAN_JEDI_LOG_ROOT` |
 | `stack.owner` | string; default invoking user | `STACK_OWNER` |
 | `stack.instance` | string; required | `STACK_INSTANCE` |
+| `stack.work_root` | string; default derived | `STACK_WORK_ROOT` |
+| `stack.root` | string; default derived | `STACK_ROOT` |
 | `stack.env_name` | string; required | `STACK_ENV_NAME` |
+| `stack.module_root` | string; default derived | `STACK_MODULE_ROOT` |
 | `stack.site_setup` | string; default JACI site setup path | `STACK_SITE_SETUP` |
 | `stack.env_module` | string; required | `STACK_ENV_MODULE` |
-| `build.id` | string; required | `MONAN_JEDI_BUILD_ID` |
+| `build.id` | string; default monan-jedi | `MONAN_JEDI_BUILD_ID` |
+| `build.dir` | string; default derived | `MONAN_JEDI_BUILD_DIR` |
 | `build.jobs` | integer >= 1; default 8 | `MONAN_JEDI_BUILD_JOBS` |
+| `install.root` | string; default derived | `MONAN_JEDI_INSTALL_ROOT` |
+| `install.bin_dir` | string; default derived | `MONAN_JEDI_INSTALL_BIN_DIR` |
 | `model.double_precision` | ON or OFF; default ON | `MONAN_JEDI_MODEL_DOUBLE_PRECISION` |
+| `data.root` | string; default derived | `MONAN_JEDI_DATA_ROOT` |
 | `data.local_mirror_dir` | string; default empty | `MONAN_JEDI_DATA_LOCAL_ROOT` |
 | `data.download_missing` | boolean; default true | `MONAN_JEDI_DATA_DOWNLOAD_MISSING` |
+| `data.crtm_coeffs_url` | URL string; validated project default | `MONAN_JEDI_CRTM_COEFFS_URL` |
+| `data.crtm_coeffs_tgz` | string; default derived | `MONAN_JEDI_CRTM_COEFFS_TGZ` |
 | `obs2ioda.enabled` | boolean; default false | `MONAN_JEDI_OBS2IODA_ENABLED` |
+| `obs2ioda.repo` | URL/string; default NCAR repository | `MONAN_JEDI_OBS2IODA_REPO` |
 | `obs2ioda.ref` | full 40-character commit SHA | `MONAN_JEDI_OBS2IODA_REF` |
+| `obs2ioda.source_dir` | string; default derived | `MONAN_JEDI_OBS2IODA_SOURCE_DIR` |
+| `obs2ioda.build_dir` | string; default derived | `MONAN_JEDI_OBS2IODA_BUILD_DIR` |
+| `obs2ioda.install_dir` | string; default install.root | `MONAN_JEDI_OBS2IODA_INSTALL_DIR` |
+| `obs2ioda.executable_name` | string; default obs2ioda_v3 | `MONAN_JEDI_OBS2IODA_EXECUTABLE_NAME` |
 | `obs2ioda.bufr_root` | string; default empty | `MONAN_JEDI_OBS2IODA_BUFR_ROOT` |
 | `obs2ioda.bufr_lib` | string; default empty | `MONAN_JEDI_OBS2IODA_BUFR_LIB` |
 | `obs2ioda.cmake_prefix_path` | string; default empty | `MONAN_JEDI_OBS2IODA_CMAKE_PREFIX_PATH` |
-| `obs2ioda.build_type` | Release, Debug, RelWithDebInfo or MinSizeRel; default Release | `MONAN_JEDI_OBS2IODA_BUILD_TYPE` |
+| `obs2ioda.build_type` | CMake build type; default Release | `MONAN_JEDI_OBS2IODA_BUILD_TYPE` |
 | `obs2ioda.build_goes_abi_converter` | ON or OFF; default OFF | `MONAN_JEDI_OBS2IODA_BUILD_GOES_ABI_CONVERTER` |
 | `wps.enabled` | boolean; default false | `MONAN_JEDI_WPS_ENABLED` |
+| `wps.repo` | URL/string; default wrf-model repository | `MONAN_JEDI_WPS_REPO` |
 | `wps.ref` | full 40-character commit SHA | `MONAN_JEDI_WPS_REF` |
 | `wps.version` | string; default 4.6.0 | `MONAN_JEDI_WPS_VERSION` |
+| `wps.source_dir` | string; default derived | `MONAN_JEDI_WPS_SOURCE_DIR` |
+| `wps.build_dir` | string; default derived | `MONAN_JEDI_WPS_BUILD_DIR` |
+| `wps.releases_dir` | string; default derived | `MONAN_JEDI_WPS_RELEASES_DIR` |
+| `wps.install_dir` | string; default derived | `MONAN_JEDI_WPS_INSTALL_DIR` |
+| `wps.patch_dir` | string; default repository patches/wps | `MONAN_JEDI_WPS_PATCH_DIR` |
 | `wps.jasper_root` | string; default empty | `MONAN_JEDI_WPS_JASPER_ROOT` |
 | `wps.png_root` | string; default empty | `MONAN_JEDI_WPS_PNG_ROOT` |
 | `wps.zlib_root` | string; default empty | `MONAN_JEDI_WPS_ZLIB_ROOT` |
 | `wps.cmake_prefix_path` | string; default empty | `MONAN_JEDI_WPS_CMAKE_PREFIX_PATH` |
-| `wps.build_type` | Release, Debug, RelWithDebInfo or MinSizeRel; default Release | `MONAN_JEDI_WPS_BUILD_TYPE` |
+| `wps.build_type` | CMake build type; default Release | `MONAN_JEDI_WPS_BUILD_TYPE` |
+| `wps.ungrib_name` | string; default ungrib.exe | `MONAN_JEDI_WPS_UNGRIB_NAME` |
+| `wps.link_grib_name` | string; default link_grib.csh | `MONAN_JEDI_WPS_LINK_GRIB_NAME` |
 | `wps.default_vtable` | filename; default Vtable.GFS | `MONAN_JEDI_WPS_DEFAULT_VTABLE` |
 | `compilers.cc` | string; default cc | `MONAN_JEDI_CC` |
 | `compilers.cxx` | string; default CC | `MONAN_JEDI_CXX` |
-| `compilers.fortran` | string; default ftn | `MONAN_JEDI_FC / MONAN_JEDI_F77 / MONAN_JEDI_F90` |
+| `compilers.fortran` | string; default ftn | `MONAN_JEDI_FC / F77 / F90` |
 | `mpi.cc` | string; default cc | `MONAN_JEDI_MPICC` |
 | `mpi.cxx` | string; default CC | `MONAN_JEDI_MPICXX` |
-| `mpi.fortran` | string; default ftn | `MONAN_JEDI_MPIFC / MONAN_JEDI_MPIF77 / MONAN_JEDI_MPIF90` |
+| `mpi.fortran` | string; default ftn | `MONAN_JEDI_MPIFC / MPIF77 / MPIF90` |
 | `ctest.login_regex` | string regex; default coding-norms test | `MONAN_JEDI_CTEST_REGEX` |
 | `ctest.pbs_regex` | string regex; default empty | `MONAN_JEDI_CTEST_PBS_REGEX` |
 | `ctest.exclude_regex` | string regex; default empty | `MONAN_JEDI_CTEST_EXCLUDE_REGEX` |
@@ -178,7 +205,7 @@ Exact environment module loaded after the site setup has prepared MODULEPATH. Th
 
 ### `build.id`
 
-**Type/default:** string; required  
+**Type/default:** string; default `monan-jedi`  
 **Environment override:** `MONAN_JEDI_BUILD_ID`
 
 Stable identifier used to derive independent work, log and installation directories. Changing it intentionally creates another build generation without overwriting the previous one. Prefer a filesystem-safe value without spaces so paths and scheduler scripts remain predictable.
@@ -428,13 +455,186 @@ Wall-clock limit requested for the PBS validation job. The parser validates the 
 
 Controls whether the PBS helper submits the generated job immediately or only prepares it for review/manual submission. Generic templates default to false to avoid accidental scheduler work, while the maintained JACI configuration may enable automatic submission as part of its normal validation workflow.
 
-## Fixed implementation values
+### `project.work_root`
 
-Some values are deliberately implementation-owned rather than site choices:
-the CRTM coefficient archive URL, the obs2ioda repository URL and published
-executable name, and the WPS repository/public helper names. They have internal
-defaults and can be overridden through advanced environment variables for
-development, but they are not part of the public site YAML contract.
+**Type/default:** string; empty means derived  
+**Environment override:** `MONAN_JEDI_WORK_ROOT`
+
+Optional private/rebuildable work root for MONAN-JEDI. When empty, `config.sh` derives `${project.root}/work/${build.id}`. Set it when a site needs work files on a different filesystem, scratch area or project allocation while keeping the rest of the configuration unchanged.
+
+### `project.log_root`
+
+**Type/default:** string; empty means derived  
+**Environment override:** `MONAN_JEDI_LOG_ROOT`
+
+Optional root for MONAN-JEDI logs. When empty, the workflow uses `${project.root}/logs/${build.id}`. Making this configurable is useful when logs need a persistent filesystem independent from a disposable work tree, while the default keeps the normal layout predictable.
+
+### `stack.work_root`
+
+**Type/default:** string; empty means derived  
+**Environment override:** `STACK_WORK_ROOT`
+
+Optional directory containing the selected stack instance. When empty, JACI derives `/p/projetos/monan_das/${stack.owner}/work/${stack.instance}`. Other sites or users may point directly to a shared stack area without changing project.root or copying the stack into their own workspace.
+
+### `stack.root`
+
+**Type/default:** string; empty means derived  
+**Environment override:** `STACK_ROOT`
+
+Optional root of the actual spack-stack checkout/installation. When empty it is derived as `${stack.work_root}/spack-stack`. This is a legitimate site override because stack layouts can differ, but leaving it empty preserves the validated conventional structure.
+
+### `stack.module_root`
+
+**Type/default:** string; empty means derived  
+**Environment override:** `STACK_MODULE_ROOT`
+
+Optional module directory added to MODULEPATH before loading the configured environment module. The default is `${stack.root}/envs/${stack.env_name}/modules`. Override it only when a stack publishes modules in a nonstandard location.
+
+### `build.dir`
+
+**Type/default:** string; empty means derived  
+**Environment override:** `MONAN_JEDI_BUILD_DIR`
+
+Optional ecbuild/CMake build directory for the main MONAN-JEDI bundle. The default is `${project.work_root}/build`. Because configuration/build commands may recreate this tree, the chosen path should be considered disposable and separate from the published installation.
+
+### `install.root`
+
+**Type/default:** string; empty means derived  
+**Environment override:** `MONAN_JEDI_INSTALL_ROOT`
+
+Optional public installation prefix consumed by downstream workflows. The default is `${project.root}/build/${build.id}`. This is an important user/site choice: the default provides consistency, while an explicit value supports shared software prefixes or alternate project filesystems.
+
+### `install.bin_dir`
+
+**Type/default:** string; empty means derived  
+**Environment override:** `MONAN_JEDI_INSTALL_BIN_DIR`
+
+Optional directory used for stable published executable paths. The default is `${install.root}/bin`. Most users should leave it empty, but keeping the override public preserves compatibility with sites that separate executable publication from the installation prefix.
+
+### `data.root`
+
+**Type/default:** string; empty means derived  
+**Environment override:** `MONAN_JEDI_DATA_ROOT`
+
+Optional persistent cache root for external archives used during configuration and auxiliary builds. The default is `${project.work_root}/cache/data`. Sites with shared read-mostly caches or dedicated data filesystems can point this elsewhere without changing the project work tree.
+
+### `data.crtm_coeffs_url`
+
+**Type/default:** URL/string; validated SSEC CRTM archive URL  
+**Environment override:** `MONAN_JEDI_CRTM_COEFFS_URL`
+
+Source URL used when the required CRTM coefficient archive is not available from the local mirror/cache. It remains configurable so disconnected sites can use an institutional mirror and so upstream hosting changes do not require editing workflow code.
+
+### `data.crtm_coeffs_tgz`
+
+**Type/default:** string; empty means derived  
+**Environment override:** `MONAN_JEDI_CRTM_COEFFS_TGZ`
+
+Optional exact local path for the CRTM coefficient archive. The default is `${data.root}/crtm/fix_REL-3.1.2.0.tgz`. An explicit value supports pre-staged datasets and unusual cache layouts while keeping download policy independently configurable.
+
+### `obs2ioda.repo`
+
+**Type/default:** URL/string; `https://github.com/NCAR/obs2ioda.git`  
+**Environment override:** `MONAN_JEDI_OBS2IODA_REPO`
+
+Repository cloned for the standalone obs2ioda build. The official NCAR repository is the default, but a site may use a controlled mirror or development fork while still keeping the exact revision pinned by `obs2ioda.ref`.
+
+### `obs2ioda.source_dir`
+
+**Type/default:** string; empty means derived  
+**Environment override:** `MONAN_JEDI_OBS2IODA_SOURCE_DIR`
+
+Optional obs2ioda source checkout directory. The default is `${project.work_root}/obs2ioda/src`. This override is useful for development checkouts or filesystem policies that separate source trees from build scratch space.
+
+### `obs2ioda.build_dir`
+
+**Type/default:** string; empty means derived  
+**Environment override:** `MONAN_JEDI_OBS2IODA_BUILD_DIR`
+
+Optional out-of-source obs2ioda CMake build directory. The default is `${project.work_root}/obs2ioda/build`. The helper treats this as rebuildable state, so an override should point to writable scratch/work storage rather than a protected installation prefix.
+
+### `obs2ioda.install_dir`
+
+**Type/default:** string; empty means `install.root`  
+**Environment override:** `MONAN_JEDI_OBS2IODA_INSTALL_DIR`
+
+Optional CMAKE_INSTALL_PREFIX for obs2ioda. The normal default is the common MONAN-JEDI installation root so consumers see one coherent product, but the override supports controlled component staging or site packaging workflows.
+
+### `obs2ioda.executable_name`
+
+**Type/default:** string; `obs2ioda_v3`  
+**Environment override:** `MONAN_JEDI_OBS2IODA_EXECUTABLE_NAME`
+
+Stable filename published for the obs2ioda converter in the common executable directory. This changes the user-facing published name rather than the upstream target identity, allowing compatibility with downstream workflows that expect a specific executable name.
+
+### `wps.repo`
+
+**Type/default:** URL/string; `https://github.com/wrf-model/WPS.git`  
+**Environment override:** `MONAN_JEDI_WPS_REPO`
+
+Repository cloned for the supported WPS integration. The official upstream repository is the default; controlled mirrors or forks may be configured while `wps.ref` continues to pin the exact source revision used for reproducibility.
+
+### `wps.source_dir`
+
+**Type/default:** string; empty means derived  
+**Environment override:** `MONAN_JEDI_WPS_SOURCE_DIR`
+
+Optional WPS source checkout directory. The default is `${project.work_root}/wps/src`. Keeping it configurable supports development trees and site-specific filesystem placement without forcing users to modify the WPS helper scripts.
+
+### `wps.build_dir`
+
+**Type/default:** string; empty means derived  
+**Environment override:** `MONAN_JEDI_WPS_BUILD_DIR`
+
+Optional WPS out-of-source CMake build directory. The default is `${project.work_root}/wps/build`. This directory is private/rebuildable state and can be redirected to fast scratch storage independently from the public installation.
+
+### `wps.releases_dir`
+
+**Type/default:** string; empty means derived  
+**Environment override:** `MONAN_JEDI_WPS_RELEASES_DIR`
+
+Optional parent directory containing validated/versioned WPS releases. The default is `${install.root}/libexec/monan-jedi/wps`. An explicit value lets a site relocate private versioned WPS payloads while stable public links remain under the MONAN-JEDI installation.
+
+### `wps.install_dir`
+
+**Type/default:** string; empty means derived  
+**Environment override:** `MONAN_JEDI_WPS_INSTALL_DIR`
+
+Optional final validated WPS release directory. The default is `${wps.releases_dir}/WPS-${wps.version}`. The build helper validates staging before promotion, so this override controls where that validated versioned release is ultimately stored.
+
+### `wps.patch_dir`
+
+**Type/default:** string; empty means repository `patches/wps`  
+**Environment override:** `MONAN_JEDI_WPS_PATCH_DIR`
+
+Optional directory containing ordered local WPS compatibility patches. The normal default points at this repository's maintained patch set. Exposing the path supports controlled development/testing of alternate patch sets without editing the helper implementation.
+
+### `wps.ungrib_name`
+
+**Type/default:** string; `ungrib.exe`  
+**Environment override:** `MONAN_JEDI_WPS_UNGRIB_NAME`
+
+Stable executable/link name published for UNGRIB in the common installation bin directory. Most sites should retain the default, but the public option supports downstream naming conventions without changing upstream WPS source code.
+
+### `wps.link_grib_name`
+
+**Type/default:** string; `link_grib.csh`  
+**Environment override:** `MONAN_JEDI_WPS_LINK_GRIB_NAME`
+
+Stable published name for the WPS link_grib helper. The default matches upstream convention. A configurable name preserves compatibility for sites or workflows that require a different stable command name while the validated WPS payload remains unchanged.
+
+## Default-versus-override policy
+
+Paths, download URLs, upstream repository locations and published helper names
+that a site may legitimately need to change are part of the public YAML
+interface. They still have project defaults; exposing them does not make them
+mandatory. The maintained JACI file intentionally omits most of these options
+and relies on defaults, while `config/template.yaml` shows the complete
+interface.
+
+Pure implementation details that have no meaningful user/site decision remain
+internal. The guiding rule is to simplify duplicate values, not to remove
+reasonable operator autonomy.
 
 ## Maintaining this reference
 
