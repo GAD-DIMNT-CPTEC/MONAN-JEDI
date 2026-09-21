@@ -7,7 +7,7 @@ examples belong under `examples/`.
 
 ## Files
 
-- `jaci.yaml`: maintained INPE/JACI configuration and operator-facing explanation.
+- `jaci.yaml`: maintained INPE/JACI configuration and operator-facing documentation.
 - `template.yaml`: complete, fully documented public configuration interface.
 - `../docs/configuration-reference.md`: detailed reference for every public key.
 
