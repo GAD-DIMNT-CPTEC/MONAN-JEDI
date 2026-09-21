@@ -71,13 +71,3 @@ load_monan_jedi_config() {
   export MONAN_JEDI_WPS_PATCH_DIR="${MONAN_JEDI_WPS_PATCH_DIR:-${MONAN_JEDI_SOURCE_DIR}/patches/wps}"
 }
 
-prepare_monan_jedi_directories() {
-  mkdir -p \
-    "${MONAN_JEDI_WORK_ROOT}" \
-    "${MONAN_JEDI_LOG_ROOT}" \
-    "${MONAN_JEDI_BUILD_DIR}" \
-    "${MONAN_JEDI_INSTALL_BIN_DIR}" \
-    "${MONAN_JEDI_DATA_ROOT}" \
-    "${MONAN_JEDI_WPS_RELEASES_DIR}" \
-    "$(dirname "${MONAN_JEDI_CRTM_COEFFS_TGZ}")"
-}
