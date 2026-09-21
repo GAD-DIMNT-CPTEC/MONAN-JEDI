@@ -1,84 +1,276 @@
-# MONAN-JEDI — site configuration template
+# =============================================================================
+# MONAN-JEDI site configuration template
+# =============================================================================
 #
-# Copy to config/<site>.yaml and change only values that describe the target
-# site or desired build. Private work paths are derived automatically.
+# PURPOSE
+# -------
+# Copy this file to config/<site>.yaml when adding another supported machine or
+# installation context. It documents the complete public YAML interface exposed
+# by MONAN-JEDI. Site files may omit keys that intentionally use defaults, but
+# this template must remain complete and explanatory.
 #
-# Derived layout:
-#   ${project.root}/work/${build.id}   private/rebuildable work
-#   ${project.root}/logs/${build.id}   logs
-#   ${project.root}/build/${build.id}  public runtime installation
+# This file configures how MONAN-JEDI is prepared, built, installed and tested.
+# It is not an MPAS-JEDI experiment/cycling configuration.
 #
-# Empty optional values below mean automatic discovery or no local override.
-# See docs/configuration-reference.md for types, defaults and environment
-# overrides.
+# IMPORTANT FILESYSTEM MODEL
+# --------------------------
+# MONAN-JEDI separates the user-owned project area from the pre-existing
+# spack-stack installation. The stack may be owned by another account and may be
+# read-only to the user performing the MONAN-JEDI build.
+#
+# MAIN DERIVED PATHS
+# ------------------
+# The public YAML no longer exposes private implementation paths. From
+# project.root and build.id the workflow derives:
+#
+#   work root:       ${project.root}/work/${build.id}
+#   log root:        ${project.root}/logs/${build.id}
+#   bundle build:    ${project.root}/work/${build.id}/build
+#   data cache:      ${project.root}/work/${build.id}/cache/data
+#   install root:    ${project.root}/build/${build.id}
+#   install bin:     ${project.root}/build/${build.id}/bin
+#   obs2ioda source: ${work root}/obs2ioda/src
+#   obs2ioda build:  ${work root}/obs2ioda/build
+#   WPS source:      ${work root}/wps/src
+#   WPS build:       ${work root}/wps/build
+#
+# GENERAL RULES
+# -------------
+#   * Empty optional values mean automatic discovery or no local override.
+#   * ${NAME} expressions are expanded from the invoking process environment.
+#   * A non-empty corresponding environment variable overrides the YAML value.
+#   * YAML true/false values are booleans; CMake ON/OFF values must stay quoted.
+#   * Full 40-character commit SHAs are required for external source revisions.
+#   * Every public key in this template must keep meaningful explanatory comments
+#     immediately above it. The CI documentation contract enforces this.
+#
+# Validate configuration and documentation:
+#   python3 scripts/lib/read_config.py --check config/template.yaml
+#   python3 scripts/check_config_documentation.py
+#
+# See docs/configuration-reference.md for the authoritative detailed reference.
+#
+# =============================================================================
 
+# -----------------------------------------------------------------------------
+# Site identity
+# -----------------------------------------------------------------------------
+
+# Human-readable name for the machine/site represented by this configuration.
+# It is metadata today but provides an explicit identity for logs and operators.
 site: site-name
 
+# -----------------------------------------------------------------------------
+# User-owned workspace and shared spack-stack
+# -----------------------------------------------------------------------------
+
 project:
+  # Writable root used to derive all MONAN-JEDI work, logs and installation data.
+  # It must be visible from every node that will compile, test or run the bundle.
   root: /path/to/user/workspace
 
 stack:
+  # Unix account that owns the stack installation consumed by this site.
+  # Defaults to the invoking user when omitted from a site-specific YAML.
   owner: ${USER}
+
+  # Identifier of the existing spack-stack instance selected for this site.
+  # This is required and participates in deriving the private stack path.
   instance: stack-instance-name
+
+  # Name of the concretized environment under the selected spack-stack instance.
+  # This is required and participates in deriving the module search path.
   env_name: stack-environment-name
-  # Relative to stack.root and owned by spack-stack.
+
+  # Site setup script relative to stack.root, not relative to this repository.
+  # The default is JACI-specific; replace it when defining another supported site.
   site_setup: configs/sites/<tier>/<site>/setup.sh
+
+  # Exact module produced by the selected stack environment and loaded by the tool.
+  # It must provide the validated compiler, MPI and JEDI dependency environment.
   env_module: module/name
 
+# -----------------------------------------------------------------------------
+# Build identity and compilation parallelism
+# -----------------------------------------------------------------------------
+
 build:
+  # Stable name used in all derived work/log/install directories for this build.
+  # Change it to create an independent build generation without overwriting one.
   id: monan-jedi
+
+  # Maximum parallel build jobs used by CMake/ecbuild and auxiliary components.
+  # This controls compilation only and is separate from PBS resource requests.
   jobs: 8
 
+# -----------------------------------------------------------------------------
+# MPAS build options
+# -----------------------------------------------------------------------------
+
 model:
-  # Keep ON/OFF quoted so YAML does not coerce it to a boolean.
+  # Precision mode forwarded as MPAS_DOUBLE_PRECISION to the bundle build.
+  # Keep ON/OFF quoted; validation normally uses ON because references are double.
   double_precision: 'ON'
 
+# -----------------------------------------------------------------------------
+# External data and local/offline discovery
+# -----------------------------------------------------------------------------
+
 data:
-  # Optional directory searched before downloading external archives.
+  # Optional local mirror searched before any external archive is downloaded.
+  # Leave empty when network/cache behavior is sufficient for the target site.
   local_mirror_dir:
+
+  # Permit downloading required archives when they cannot be found locally.
+  # Set false on isolated systems only after required data have been pre-staged.
   download_missing: true
 
+# -----------------------------------------------------------------------------
+# Auxiliary component: obs2ioda
+# -----------------------------------------------------------------------------
+
 obs2ioda:
+  # Enable building and publishing obs2ioda alongside the MONAN-JEDI bundle.
+  # false leaves the converter out of aggregate build/install operations.
   enabled: false
-  # Full 40-character commit SHA required.
+
+  # Exact upstream source revision used for a reproducible build.
+  # Only a tested full 40-character commit SHA is accepted by validation.
   ref: 11b9e60522d63bc03b0b104a52f3dd22127fb828
+
+  # Optional BUFR installation root used before automatic dependency discovery.
+  # Leave empty to resolve BUFR from the loaded stack and known stack locations.
   bufr_root:
+
+  # Optional exact BUFR library path, taking precedence over bufr_root discovery.
+  # When supplied, the referenced library must exist at configuration/build time.
   bufr_lib:
+
+  # Extra semicolon-separated CMake package prefixes for obs2ioda dependency lookup.
+  # Leave empty unless the target site requires packages outside the loaded stack.
   cmake_prefix_path:
+
+  # Standard CMake build type for the auxiliary obs2ioda build.
+  # Accepted values are Release, Debug, RelWithDebInfo and MinSizeRel.
   build_type: Release
+
+  # Forwarded to obs2ioda's optional GOES ABI converter build switch.
+  # Keep the CMake ON/OFF token quoted so YAML preserves it as a string.
   build_goes_abi_converter: 'OFF'
 
+# -----------------------------------------------------------------------------
+# Auxiliary component: WPS / UNGRIB
+# -----------------------------------------------------------------------------
+
 wps:
+  # Enable building and publishing the supported WPS/UNGRIB tools.
+  # false omits WPS from aggregate MONAN-JEDI build/install operations.
   enabled: false
-  # Full 40-character commit SHA required.
+
+  # Exact tested WPS source revision; moving branches are intentionally rejected.
+  # Keep this as a full 40-character SHA to preserve build reproducibility.
   ref: 335c76a111f84503e8b963abaf273ea8053645bb
+
+  # Human-readable release label used in derived release paths and manifests.
+  # Git source selection is controlled only by wps.ref, not by this value.
   version: 4.6.0
+
+  # Optional JasPer installation prefix used before automatic stack discovery.
+  # Leave empty when the selected stack already exposes a valid JasPer package.
   jasper_root:
+
+  # Optional libpng installation prefix used before automatic stack discovery.
+  # Leave empty when the selected stack already exposes a valid libpng package.
   png_root:
+
+  # Optional zlib installation prefix used before automatic stack discovery.
+  # Leave empty when the selected stack already exposes a valid zlib package.
   zlib_root:
+
+  # Extra semicolon-separated CMake prefixes appended during WPS configuration.
+  # Use only when site dependencies cannot be resolved from the loaded stack.
   cmake_prefix_path:
+
+  # CMake build type used for the WPS helper build.
+  # Accepted values are Release, Debug, RelWithDebInfo and MinSizeRel.
   build_type: Release
+
+  # Variable table exposed through the stable MONAN-JEDI WPS data interface.
+  # It must be a simple filename available in WPS ungrib/Variable_Tables.
   default_vtable: Vtable.GFS
 
+# -----------------------------------------------------------------------------
+# Compiler and MPI wrappers
+# -----------------------------------------------------------------------------
+
 compilers:
+  # C compiler command used after the selected stack environment is activated.
+  # Use the site wrapper rather than a host compiler when the stack requires it.
   cc: cc
+
+  # C++ compiler command used after stack activation.
+  # Replace with the wrapper validated for the target compiler toolchain.
   cxx: c++
+
+  # Canonical Fortran compiler for the site configuration.
+  # The loader derives FC, F77 and F90 compatibility aliases from this one value.
   fortran: gfortran
 
 mpi:
+  # MPI-aware C compiler wrapper provided by the selected site environment.
+  # Keep it distinct from compilers.cc because some systems use separate commands.
   cc: mpicc
+
+  # MPI-aware C++ compiler wrapper provided by the selected site environment.
+  # Keep it distinct from compilers.cxx for sites with explicit MPI wrappers.
   cxx: mpicxx
+
+  # Canonical MPI Fortran wrapper for the site.
+  # MPIFC, MPIF77 and MPIF90 compatibility aliases are derived from this value.
   fortran: mpifort
 
+# -----------------------------------------------------------------------------
+# CTest selection and safety
+# -----------------------------------------------------------------------------
+
 ctest:
+  # Extended regular expression used by ctest -R for login-node-safe validation.
+  # Restrict this to tests that do not require compute-node MPI execution.
   login_regex: "^mpasjedi_coding_norms$"
+
+  # Optional regular expression available for PBS-side CTest selection.
+  # Leave empty when the PBS workflow should not apply an inclusion filter.
   pbs_regex: ""
+
+  # Extended regular expression passed to ctest -E to exclude known cases.
+  # Empty means no exclusions; site files may list validated site-specific skips.
   exclude_regex: ""
+
+  # Maximum number of CTest cases executed concurrently by the test driver.
+  # This is independent from MPI ranks and from the PBS CPU request.
   jobs: 1
+
+  # Explicit opt-in for permitting MPI tests on a login node.
+  # Keep false unless site policy and the test workflow explicitly support it.
   allow_login_node_mpi_tests: false
 
+# -----------------------------------------------------------------------------
+# PBS resources for compute-node validation
+# -----------------------------------------------------------------------------
+
 pbs:
+  # PBS queue used by MONAN-JEDI when generating/submitting compute-node tests.
+  # Replace with a queue valid for the target site and its placement policy.
   queue: queue-name
+
+  # Number of CPUs requested for the PBS validation allocation.
+  # This resource request is separate from compilation parallelism in build.jobs.
   ncpus: 64
+
+  # PBS wall-clock limit in HH:MM:SS format.
+  # Choose enough time for the target site's validated compute-node test suite.
   walltime: "02:00:00"
+
+  # true submits the generated job immediately; false only prepares it for review.
+  # Keep false in generic templates so a new site is not submitted accidentally.
   submit_job: false
