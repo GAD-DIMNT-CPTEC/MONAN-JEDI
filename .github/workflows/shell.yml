@@ -50,6 +50,7 @@ jobs:
         run: |
           python scripts/lib/read_config.py --check config/jaci.yaml
           python scripts/lib/read_config.py --check config/template.yaml
+          python scripts/check_config_documentation.py
           python -m compileall -q scripts tests
           python -m unittest discover -s tests -p 'test_*.py' -v
       - name: Validate pinned obs2ioda source
