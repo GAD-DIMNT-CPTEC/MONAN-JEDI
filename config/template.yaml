@@ -143,8 +143,8 @@ install:
   # Empty default: ${project.root}/build/${build.id}
   root:
 
-  # Optional stable user-facing executable directory.
-  # Empty default: ${install.root}/bin
+  # Optional stable user-facing executable directory used by downstream workflows.
+  # Empty default: ${install.root}/bin; override only when executables must be published elsewhere.
   bin_dir:
 
 # -----------------------------------------------------------------------------
@@ -255,8 +255,8 @@ wps:
   # Default 4.6.0; source selection is controlled by wps.ref, not this label.
   version: 4.6.0
 
-  # Optional WPS source checkout directory.
-  # Empty default: ${project.work_root}/wps/src
+  # Optional WPS source checkout directory used for the validated upstream tree.
+  # Empty default: ${project.work_root}/wps/src; override for development trees or site-specific storage.
   source_dir:
 
   # Optional WPS out-of-source CMake build directory.
