@@ -20,7 +20,10 @@ require_text "${configure_script}" '04_ecbuild_materialize.log'
 require_text "${configure_script}" 'mpasjedi_unbalance_ensemble.x'
 require_text "${configure_script}" 'monan_jedi_validate_unbalance_patch_markers'
 require_text "${configure_script}" 'target_help="$(cmake --build'
-require_text "${configure_script}" 'CMAKE_RUNTIME_OUTPUT_DIRECTORY=${MONAN_JEDI_INSTALL_BIN_DIR}'
+if grep -Fq 'CMAKE_RUNTIME_OUTPUT_DIRECTORY=${MONAN_JEDI_INSTALL_BIN_DIR}' "${configure_script}"; then
+  echo "ERROR: configure.sh must not publish build artifacts directly into install/bin" >&2
+  exit 1
+fi
 require_text "${build_script}" 'mpasjedi_process_perts.x'
 require_text "${build_script}" 'mpasjedi_unbalance_ensemble.x'
 require_text "${build_script}" 'MONAN_JEDI_BUILD_DIR}/bin'
