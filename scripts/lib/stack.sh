@@ -143,7 +143,7 @@ monan_jedi_report_stack_environment() {
 
   log_info "MONAN-JEDI stack environment ${state}"
   log_info "  STACK_INSTANCE=${STACK_INSTANCE}"
-  log_info "  MONAN_JEDI_RUN_ID=${MONAN_JEDI_RUN_ID}"
+  log_info "  MONAN_JEDI_BUILD_ID=${MONAN_JEDI_BUILD_ID}"
   log_info "  STACK_ROOT=${STACK_ROOT}"
   log_info "  STACK_SITE_SETUP=${STACK_SITE_SETUP}"
   log_info "  STACK_ENV_MODULE=${STACK_ENV_MODULE}"
@@ -261,7 +261,7 @@ monan_jedi_record_environment_snapshot() {
     echo "STACK_ENV_NAME=${STACK_ENV_NAME}"
     echo "STACK_SITE_SETUP=${STACK_SITE_SETUP}"
     echo "STACK_ENV_MODULE=${STACK_ENV_MODULE}"
-    echo "MONAN_JEDI_RUN_ID=${MONAN_JEDI_RUN_ID}"
+    echo "MONAN_JEDI_BUILD_ID=${MONAN_JEDI_BUILD_ID}"
     echo "MONAN_JEDI_WORK_ROOT=${MONAN_JEDI_WORK_ROOT}"
     echo "MONAN_JEDI_LOG_ROOT=${MONAN_JEDI_LOG_ROOT}"
     echo "MONAN_JEDI_SOURCE_DIR=${MONAN_JEDI_SOURCE_DIR}"
