@@ -57,6 +57,8 @@
 #   * Paths used by PBS jobs must be visible from the target compute nodes.
 #   * The template must keep every public schema key documented; CI enforces it.
 #
+# Full per-key reference: docs/configuration-reference.md
+#
 # Validate a copied/edited configuration with:
 #   python3 scripts/lib/read_config.py --check config/<site>.yaml
 #   python3 scripts/check_config_documentation.py
