@@ -133,6 +133,26 @@ python3 scripts/check_config_documentation.py
 See [the configuration reference](docs/configuration-reference.md) and
 [the contribution guidelines](CONTRIBUTING.md).
 
+### Switching spack-stack installations safely
+
+The stack is identified by its canonical stack root, canonical module tree and
+configured environment-module name together. If any of those change, MONAN-JEDI
+rejects the previously identified environment and performs a clean module reload.
+This also protects migrations between two spack-stack installations that publish
+the same `jedi-mpas-env/...` module name.
+
+Before testing a new stack, remember that non-empty shell variables override
+YAML. If you want the values from the file to win, unset any temporary
+`STACK_ROOT`, `STACK_MODULE_ROOT`, `STACK_ENV_NAME` or `STACK_ENV_MODULE`
+overrides and run:
+
+```bash
+bash scripts/monan-jedi.sh load --config config/jaci.yaml
+```
+
+The command and `01_stack_environment.log` report the configured and active stack
+identity so the selected dependency environment can be checked before building.
+
 ## Workflow
 
 Primary entry point:
