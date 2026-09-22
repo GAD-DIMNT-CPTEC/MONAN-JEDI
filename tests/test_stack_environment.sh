@@ -178,4 +178,17 @@ done
 
 grep -A20 -F 'test-pbs)' "${repo_root}/scripts/monan-jedi.sh" | grep -Fq 'monan_jedi_load_stack'
 
+# PBS compute nodes must not trust provenance markers created in the submission
+# shell; they establish the selected stack identity again on the compute node.
+for marker in \
+  MONAN_JEDI_ACTIVE_STACK_ROOT \
+  MONAN_JEDI_ACTIVE_STACK_MODULE_ROOT \
+  MONAN_JEDI_ACTIVE_STACK_ENV_MODULE
+do
+  grep -Fq "unset ${marker}" "${repo_root}/scripts/lib/pbs.sh" || {
+    echo "ERROR: PBS bootstrap does not clear inherited stack marker: ${marker}" >&2
+    exit 1
+  }
+done
+
 echo 'Stack environment bootstrap contract checks passed.'
