@@ -152,6 +152,13 @@ export STACK_ROOT=${STACK_ROOT}
 export STACK_MODULE_ROOT=${STACK_MODULE_ROOT}
 export STACK_SITE_SETUP=${STACK_SITE_SETUP}
 export STACK_ENV_MODULE=${STACK_ENV_MODULE}
+
+# Stack identity markers are intentionally not inherited from the submission
+# shell. The compute node must establish and validate its own module provenance.
+unset MONAN_JEDI_ACTIVE_STACK_ROOT
+unset MONAN_JEDI_ACTIVE_STACK_MODULE_ROOT
+unset MONAN_JEDI_ACTIVE_STACK_ENV_MODULE
+
 export MONAN_JEDI_BUILD_ID=${MONAN_JEDI_BUILD_ID}
 export MONAN_JEDI_WORK_ROOT=${MONAN_JEDI_WORK_ROOT}
 export MONAN_JEDI_LOG_ROOT=${MONAN_JEDI_LOG_ROOT}

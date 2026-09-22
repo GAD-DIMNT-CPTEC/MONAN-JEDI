@@ -28,6 +28,79 @@ if grep -Fq 'reset called' "${reuse_log}"; then
   exit 1
 fi
 
+# A same-named module from another stack root must never be reused. This is the
+# regression case that protects stack migrations where module names stay stable.
+old_stack_root="${test_dir}/old-stack"
+new_stack_root="${test_dir}/new-stack"
+old_module_root="${old_stack_root}/envs/shared/modules"
+new_module_root="${new_stack_root}/envs/shared/modules"
+mkdir -p "${old_module_root}" "${new_module_root}" \
+  "${new_stack_root}/configs/sites/tier2/jaci" "${new_stack_root}/spack/bin"
+printf ':\n' > "${new_stack_root}/configs/sites/tier2/jaci/setup.sh"
+printf '#!/usr/bin/env bash\nexit 0\n' > "${new_stack_root}/spack/bin/spack"
+chmod +x "${new_stack_root}/spack/bin/spack"
+
+provenance_log="${test_dir}/provenance.log"
+(
+  export STACK_ROOT="${new_stack_root}"
+  export STACK_MODULE_ROOT="${new_module_root}"
+  export STACK_SITE_SETUP='configs/sites/tier2/jaci/setup.sh'
+  export STACK_ENV_MODULE='same/jedi-mpas-env/1.0.0'
+  export STACK_INSTANCE='new-stack'
+  export MONAN_JEDI_BUILD_ID='test'
+  export MONAN_JEDI_CONFIG='config/test.yaml'
+
+  export MONAN_JEDI_ACTIVE_STACK_ROOT="$(readlink -f "${old_stack_root}")"
+  export MONAN_JEDI_ACTIVE_STACK_MODULE_ROOT="$(readlink -f "${old_module_root}")"
+  export MONAN_JEDI_ACTIVE_STACK_ENV_MODULE='same/jedi-mpas-env/1.0.0'
+
+  export CMAKE_PREFIX_PATH="${test_dir}"
+  export jedi_cmake_ROOT="${test_dir}"
+
+  export MONAN_JEDI_CC='cc'
+  export MONAN_JEDI_CXX='CC'
+  export MONAN_JEDI_FC='ftn'
+  export MONAN_JEDI_F77='ftn'
+  export MONAN_JEDI_F90='ftn'
+  export MONAN_JEDI_MPICC='cc'
+  export MONAN_JEDI_MPICXX='CC'
+  export MONAN_JEDI_MPIFC='ftn'
+  export MONAN_JEDI_MPIF77='ftn'
+  export MONAN_JEDI_MPIF90='ftn'
+
+  reset_calls=0
+  monan_jedi_module_is_loaded() { return 0; }
+  monan_jedi_command_in_cmake_prefix() { return 0; }
+  monan_jedi_compiler_binding_is_valid() { return 0; }
+  monan_jedi_reset_modules() {
+    reset_calls=$((reset_calls + 1))
+    unset MONAN_JEDI_ACTIVE_STACK_ROOT
+    unset MONAN_JEDI_ACTIVE_STACK_MODULE_ROOT
+    unset MONAN_JEDI_ACTIVE_STACK_ENV_MODULE
+  }
+  monan_jedi_expose_spack_cli() { :; }
+  monan_jedi_report_stack_environment() { :; }
+  module() { printf 'module:%s\n' "$*"; }
+  resolve_cmd() { printf '/bin/true\n'; }
+
+  monan_jedi_load_stack
+
+  [[ "${reset_calls}" -eq 1 ]] || {
+    echo "ERROR: changed stack root with same module name was reused" >&2
+    exit 1
+  }
+  [[ "${MONAN_JEDI_ACTIVE_STACK_ROOT}" == "$(readlink -f "${new_stack_root}")" ]] || {
+    echo 'ERROR: active stack root marker was not updated to the configured stack' >&2
+    exit 1
+  }
+  [[ "${MONAN_JEDI_ACTIVE_STACK_MODULE_ROOT}" == "$(readlink -f "${new_module_root}")" ]] || {
+    echo 'ERROR: active module root marker was not updated to the configured stack' >&2
+    exit 1
+  }
+) >"${provenance_log}" 2>&1
+grep -Fq 'module:use ' "${provenance_log}"
+grep -Fq 'module:load same/jedi-mpas-env/1.0.0' "${provenance_log}"
+
 # An incomplete environment must be rebuilt, validated and leave the caller in
 # the same working directory. Mock site/module operations so this runs in CI.
 stack_root="${test_dir}/stack"
@@ -104,5 +177,18 @@ do
 done
 
 grep -A20 -F 'test-pbs)' "${repo_root}/scripts/monan-jedi.sh" | grep -Fq 'monan_jedi_load_stack'
+
+# PBS compute nodes must not trust provenance markers created in the submission
+# shell; they establish the selected stack identity again on the compute node.
+for marker in \
+  MONAN_JEDI_ACTIVE_STACK_ROOT \
+  MONAN_JEDI_ACTIVE_STACK_MODULE_ROOT \
+  MONAN_JEDI_ACTIVE_STACK_ENV_MODULE
+do
+  grep -Fq "unset ${marker}" "${repo_root}/scripts/lib/pbs.sh" || {
+    echo "ERROR: PBS bootstrap does not clear inherited stack marker: ${marker}" >&2
+    exit 1
+  }
+done
 
 echo 'Stack environment bootstrap contract checks passed.'

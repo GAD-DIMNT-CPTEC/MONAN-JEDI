@@ -152,6 +152,43 @@ temporarily with the corresponding non-empty environment variable.
 | `pbs.walltime` | HH:MM:SS; default 02:00:00 | `MONAN_JEDI_PBS_WALLTIME` |
 | `pbs.submit_job` | boolean; default false | `MONAN_JEDI_SUBMIT_JOB` |
 
+## Safe spack-stack and module switching
+
+MONAN-JEDI treats the dependency stack as a three-part identity:
+
+```text
+canonical stack.root
++ canonical stack.module_root
++ stack.env_module
+```
+
+After a successful `module use` and `module load`, the loader records that identity
+for the current process. A later command in the same process may reuse the loaded
+environment only when all three values still match and the existing toolchain checks
+also pass. This closes an important ambiguity: two spack-stack installations may
+publish the same module name, so the module name alone is not evidence that the
+correct stack is active.
+
+If the configured stack path, module tree or module name changes, or if an inherited
+module environment has no MONAN-JEDI provenance record, the loader takes the safe
+path: it purges the module environment, sources the configured site setup, adds the
+configured module tree, loads the requested module again, resolves compiler/MPI
+wrappers, and revalidates the complete environment. PBS compute jobs intentionally
+discard any submission-shell provenance markers and establish their own identity on
+the compute node.
+
+Configuration precedence still applies before this identity check:
+
+```text
+non-empty environment variable > YAML value > schema/default derivation
+```
+
+Consequently, changing `stack.root` in YAML does not override an already exported
+non-empty `STACK_ROOT`. For a persistent YAML change, either start from a clean shell
+or unset the corresponding one-off overrides first. The `load` command and
+`01_stack_environment.log` report both the configured stack information and the
+active stack identity so operators can confirm exactly what was used.
+
 ## Detailed public-key reference
 
 ### `site`
@@ -180,14 +217,14 @@ Unix account that owns the validated spack-stack instance consumed by MONAN-JEDI
 **Type/default:** string; required  
 **Environment override:** `STACK_INSTANCE`
 
-Identifier of the existing spack-stack installation selected for the site. It is combined with stack.owner when deriving the private stack work path. Treat this as infrastructure identity: changing it points the workflow at a different dependency stack and should be reviewed accordingly.
+Identifier of the existing spack-stack installation selected for the site. It is combined with stack.owner when deriving the default stack work path. Treat this as infrastructure identity: changing it normally changes the derived stack root and invalidates the recorded loaded-stack identity, forcing a clean module reload. A non-empty STACK_WORK_ROOT or STACK_ROOT environment override still takes precedence over the YAML-derived path.
 
 ### `stack.env_name`
 
 **Type/default:** string; required  
 **Environment override:** `STACK_ENV_NAME`
 
-Name of the concretized environment under the selected spack-stack instance. The value participates in the derived module search path and therefore determines which JEDI dependency environment is made available. It must match a real environment in the validated stack.
+Name of the concretized environment under the selected spack-stack instance. The value participates in the derived module search path and therefore determines which JEDI dependency environment is made available. Changing it changes the default module tree and invalidates the previously recorded stack identity, so the loader purges and rebuilds the module environment before continuing.
 
 ### `stack.site_setup`
 
@@ -201,7 +238,7 @@ Site initialization script interpreted relative to stack.root, not relative to t
 **Type/default:** string; required  
 **Environment override:** `STACK_ENV_MODULE`
 
-Exact environment module loaded after the site setup has prepared MODULEPATH. This module selects the validated compiler, MPI implementation and dependency set used for MONAN-JEDI. A module change is therefore an infrastructure change, not merely a cosmetic configuration edit.
+Exact environment module loaded after the site setup has prepared MODULEPATH. This module selects the validated compiler, MPI implementation and dependency set used for MONAN-JEDI. Reuse requires both this module name and the recorded canonical stack/module-tree paths to match the current configuration. Changing the module name forces reload; changing only the stack path also forces reload even when the module name stays identical.
 
 ### `build.id`
 
@@ -481,14 +518,14 @@ Optional directory containing the selected stack instance. When empty, JACI deri
 **Type/default:** string; empty means derived  
 **Environment override:** `STACK_ROOT`
 
-Optional root of the actual spack-stack checkout/installation. When empty it is derived as `${stack.work_root}/spack-stack`. This is a legitimate site override because stack layouts can differ, but leaving it empty preserves the validated conventional structure.
+Optional root of the actual spack-stack checkout/installation. When empty it is derived as `${stack.work_root}/spack-stack`. Changing this path is treated as an infrastructure change: MONAN-JEDI will not reuse an environment identified with another stack root, even if both installations publish exactly the same `stack.env_module` name. A non-empty `STACK_ROOT` already exported in the invoking shell overrides this YAML value by design.
 
 ### `stack.module_root`
 
 **Type/default:** string; empty means derived  
 **Environment override:** `STACK_MODULE_ROOT`
 
-Optional module directory added to MODULEPATH before loading the configured environment module. The default is `${stack.root}/envs/${stack.env_name}/modules`. Override it only when a stack publishes modules in a nonstandard location.
+Optional module directory added to MODULEPATH before loading the configured environment module. The default is `${stack.root}/envs/${stack.env_name}/modules`. Its canonical path is part of the loaded-stack identity. Changing it therefore forces reload even when `stack.env_module` itself is unchanged. Override it only when a stack publishes modules in a nonstandard location.
 
 ### `build.dir`
 

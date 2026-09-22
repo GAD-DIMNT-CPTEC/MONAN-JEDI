@@ -21,7 +21,9 @@ When editing configuration behavior:
 5. update the detailed reference section for every key whose meaning, default,
    allowed values or environment override changes;
 6. run `python3 scripts/check_config_documentation.py`;
-7. run the configuration/unit test suite and do not merge failing CI.
+7. preserve stack provenance checks when editing module/bootstrap logic: a same-named
+   module from another stack root must never be accepted as equivalent;
+8. run the configuration/unit test suite and do not merge failing CI.
 
 The inline comments intentionally repeat some information from the reference.
 That duplication is by design: operators should understand the configuration
