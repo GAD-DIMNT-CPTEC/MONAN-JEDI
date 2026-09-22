@@ -7,7 +7,47 @@
 #   login session, so no command is allowed to assume that a previous command
 #   left modules, compiler wrappers or stack tools active in the caller shell.
 
+monan_jedi_normalize_path() {
+  local path="$1"
+  local resolved=""
+
+  resolved="$(readlink -f "${path}" 2>/dev/null || true)"
+  if [[ -n "${resolved}" ]]; then
+    printf '%s\n' "${resolved}"
+  else
+    printf '%s\n' "${path%/}"
+  fi
+}
+
+monan_jedi_stack_identity_matches() {
+  local expected_root=""
+  local expected_module_root=""
+
+  expected_root="$(monan_jedi_normalize_path "${STACK_ROOT}")"
+  expected_module_root="$(monan_jedi_normalize_path "${STACK_MODULE_ROOT}")"
+
+  [[ -n "${MONAN_JEDI_ACTIVE_STACK_ROOT:-}" ]] || return 1
+  [[ -n "${MONAN_JEDI_ACTIVE_STACK_MODULE_ROOT:-}" ]] || return 1
+  [[ -n "${MONAN_JEDI_ACTIVE_STACK_ENV_MODULE:-}" ]] || return 1
+
+  [[ "${MONAN_JEDI_ACTIVE_STACK_ROOT}" == "${expected_root}" ]] || return 1
+  [[ "${MONAN_JEDI_ACTIVE_STACK_MODULE_ROOT}" == "${expected_module_root}" ]] || return 1
+  [[ "${MONAN_JEDI_ACTIVE_STACK_ENV_MODULE}" == "${STACK_ENV_MODULE}" ]] || return 1
+
+  return 0
+}
+
+monan_jedi_mark_active_stack() {
+  export MONAN_JEDI_ACTIVE_STACK_ROOT="$(monan_jedi_normalize_path "${STACK_ROOT}")"
+  export MONAN_JEDI_ACTIVE_STACK_MODULE_ROOT="$(monan_jedi_normalize_path "${STACK_MODULE_ROOT}")"
+  export MONAN_JEDI_ACTIVE_STACK_ENV_MODULE="${STACK_ENV_MODULE}"
+}
+
 monan_jedi_reset_modules() {
+  unset MONAN_JEDI_ACTIVE_STACK_ROOT
+  unset MONAN_JEDI_ACTIVE_STACK_MODULE_ROOT
+  unset MONAN_JEDI_ACTIVE_STACK_ENV_MODULE
+
   module --force purge 2>/dev/null || module purge 2>/dev/null || true
 
   module unload gcc/12.3.0/zstd/1.5.7 2>/dev/null || true
@@ -110,6 +150,13 @@ monan_jedi_stack_environment_ready() {
   [[ -d "${STACK_MODULE_ROOT}" ]] || return 1
   monan_jedi_module_is_loaded "${STACK_ENV_MODULE}" || return 1
 
+  # A module name is not enough to identify an environment. Two spack-stack
+  # installations can legitimately publish the same module name. Reuse is
+  # therefore allowed only when this process can prove that the loaded module
+  # came from the exact stack root/module tree requested by the current
+  # configuration. A missing or stale identity forces a clean reload.
+  monan_jedi_stack_identity_matches || return 1
+
   # The JEDI module must have populated the package prefix used by downstream
   # CMake discovery. This catches partially loaded or stale module sessions.
   [[ -n "${CMAKE_PREFIX_PATH:-}" ]] || return 1
@@ -147,6 +194,9 @@ monan_jedi_report_stack_environment() {
   log_info "  STACK_ROOT=${STACK_ROOT}"
   log_info "  STACK_SITE_SETUP=${STACK_SITE_SETUP}"
   log_info "  STACK_ENV_MODULE=${STACK_ENV_MODULE}"
+  log_info "  ACTIVE_STACK_ROOT=${MONAN_JEDI_ACTIVE_STACK_ROOT:-unverified}"
+  log_info "  ACTIVE_STACK_MODULE_ROOT=${MONAN_JEDI_ACTIVE_STACK_MODULE_ROOT:-unverified}"
+  log_info "  ACTIVE_STACK_ENV_MODULE=${MONAN_JEDI_ACTIVE_STACK_ENV_MODULE:-unverified}"
   log_info "  SPACK=$(command -v spack 2>/dev/null || echo unavailable)"
   log_info "  ECBUILD=$(command -v ecbuild 2>/dev/null || echo unavailable)"
   log_info "  CMAKE=$(command -v cmake 2>/dev/null || echo unavailable)"
@@ -164,8 +214,10 @@ monan_jedi_load_stack() {
   local setup_status=0
 
   # Individual workflow commands are frequently executed in fresh login
-  # sessions. Reuse a fully valid inherited environment, but never assume that
-  # a loaded module alone means all tools/compiler variables are correct.
+  # sessions. Reuse is deliberately conservative: the module name, toolchain
+  # checks and an explicit identity for the stack root/module tree must all
+  # match the current configuration. An inherited manually loaded module without
+  # a MONAN-JEDI identity is reloaded rather than trusted implicitly.
   if monan_jedi_stack_environment_ready; then
     monan_jedi_expose_spack_cli
     monan_jedi_report_stack_environment "already loaded and valid; reusing"
@@ -221,6 +273,11 @@ monan_jedi_load_stack() {
   module use "${STACK_MODULE_ROOT}"
   module load "${STACK_ENV_MODULE}"
 
+  # Record the exact stack identity only after module use/load succeeded. This
+  # prevents a same-named module inherited from another spack-stack from being
+  # mistaken for the environment requested by the current YAML.
+  monan_jedi_mark_active_stack
+
   # The generated environment module provides compilers and libraries, but it
   # does not necessarily place the Spack CLI itself in PATH. Auxiliary builds
   # use `spack location -i` only for dependency discovery, so expose the CLI
@@ -263,6 +320,9 @@ monan_jedi_record_environment_snapshot() {
     echo "STACK_ENV_NAME=${STACK_ENV_NAME}"
     echo "STACK_SITE_SETUP=${STACK_SITE_SETUP}"
     echo "STACK_ENV_MODULE=${STACK_ENV_MODULE}"
+    echo "MONAN_JEDI_ACTIVE_STACK_ROOT=${MONAN_JEDI_ACTIVE_STACK_ROOT:-}"
+    echo "MONAN_JEDI_ACTIVE_STACK_MODULE_ROOT=${MONAN_JEDI_ACTIVE_STACK_MODULE_ROOT:-}"
+    echo "MONAN_JEDI_ACTIVE_STACK_ENV_MODULE=${MONAN_JEDI_ACTIVE_STACK_ENV_MODULE:-}"
     echo "MONAN_JEDI_BUILD_ID=${MONAN_JEDI_BUILD_ID}"
     echo "MONAN_JEDI_WORK_ROOT=${MONAN_JEDI_WORK_ROOT}"
     echo "MONAN_JEDI_LOG_ROOT=${MONAN_JEDI_LOG_ROOT}"
