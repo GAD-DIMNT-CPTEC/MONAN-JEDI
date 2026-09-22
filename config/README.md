@@ -55,6 +55,21 @@ non-empty environment var -> temporary override of the YAML value
 Do not remove a legitimate path/source option merely because the project has a
 good default for it. Simplify duplicate values, not operator autonomy.
 
+## Changing spack-stack or modules
+
+Changing the stack is treated as an infrastructure change, not as a cosmetic
+edit. MONAN-JEDI identifies a loaded environment by the canonical `stack.root`,
+canonical `stack.module_root`, and `stack.env_module` together. If any of these
+change, the previous environment is rejected and the configured stack is loaded
+from a clean module state. This remains true when two different stacks publish
+the same module name.
+
+Remember that non-empty environment variables override YAML. If `STACK_ROOT`,
+`STACK_MODULE_ROOT` or `STACK_ENV_MODULE` was exported manually, unset it when
+you intend the YAML value to take effect. Use `bash scripts/monan-jedi.sh load
+--config <file>` and inspect the resulting stack report/snapshot before a build
+when migrating to another stack.
+
 ## Automated documentation contract
 
 Run:
