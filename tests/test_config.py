@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 READER = ROOT / "scripts" / "lib" / "read_config.py"
 CONFIG_SH = ROOT / "scripts" / "lib" / "config.sh"
 CONFIGURE_SH = ROOT / "scripts" / "lib" / "configure.sh"
+PBS_SH = ROOT / "scripts" / "lib" / "pbs.sh"
 JACI = ROOT / "config" / "jaci.yaml"
 TEMPLATE = ROOT / "config" / "template.yaml"
 
@@ -209,6 +210,14 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(values["MONAN_JEDI_OBS2IODA_ENABLED"], "0")
         self.assertEqual(values["MONAN_JEDI_WPS_ENABLED"], "0")
         self.assertEqual(values["MONAN_JEDI_SUBMIT_JOB"], "0")
+
+    def test_pbs_helper_fallbacks_match_public_config_defaults(self) -> None:
+        source = PBS_SH.read_text(encoding="utf-8")
+        self.assertIn('MONAN_JEDI_PBS_QUEUE:-pesqmidi', source)
+        self.assertIn('MONAN_JEDI_PBS_WALLTIME:-02:00:00', source)
+        self.assertIn('MONAN_JEDI_SUBMIT_JOB:-0', source)
+        self.assertNotIn('MONAN_JEDI_PBS_QUEUE:-pesqmini', source)
+        self.assertNotIn('MONAN_JEDI_PBS_WALLTIME:-06:00:00', source)
 
     def test_config_sh_derives_private_paths_from_build_id(self) -> None:
         source = CONFIG_SH.read_text(encoding="utf-8")
