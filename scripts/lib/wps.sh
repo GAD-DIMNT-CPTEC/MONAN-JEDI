@@ -204,12 +204,25 @@ monan_jedi_promote_wps_release() {
     exit 1
   fi
 
+  # Canonical cross-repository names are stable under install.root/bin.
   monan_jedi_atomic_symlink \
     "${final_dir}/bin/ungrib.exe" \
-    "${MONAN_JEDI_INSTALL_BIN_DIR}/${MONAN_JEDI_WPS_UNGRIB_NAME}"
+    "${MONAN_JEDI_INSTALL_ROOT}/bin/ungrib.exe"
   monan_jedi_atomic_symlink \
     "${final_dir}/bin/link_grib.csh" \
-    "${MONAN_JEDI_INSTALL_BIN_DIR}/${MONAN_JEDI_WPS_LINK_GRIB_NAME}"
+    "${MONAN_JEDI_INSTALL_ROOT}/bin/link_grib.csh"
+
+  # install.bin_dir and configurable names remain optional secondary aliases.
+  if [[ "${MONAN_JEDI_INSTALL_BIN_DIR}/${MONAN_JEDI_WPS_UNGRIB_NAME}" != "${MONAN_JEDI_INSTALL_ROOT}/bin/ungrib.exe" ]]; then
+    monan_jedi_atomic_symlink \
+      "${MONAN_JEDI_INSTALL_ROOT}/bin/ungrib.exe" \
+      "${MONAN_JEDI_INSTALL_BIN_DIR}/${MONAN_JEDI_WPS_UNGRIB_NAME}"
+  fi
+  if [[ "${MONAN_JEDI_INSTALL_BIN_DIR}/${MONAN_JEDI_WPS_LINK_GRIB_NAME}" != "${MONAN_JEDI_INSTALL_ROOT}/bin/link_grib.csh" ]]; then
+    monan_jedi_atomic_symlink \
+      "${MONAN_JEDI_INSTALL_ROOT}/bin/link_grib.csh" \
+      "${MONAN_JEDI_INSTALL_BIN_DIR}/${MONAN_JEDI_WPS_LINK_GRIB_NAME}"
+  fi
   monan_jedi_atomic_symlink \
     "${final_dir}/share/wps/Variable_Tables" \
     "${MONAN_JEDI_INSTALL_ROOT}/share/wps/Variable_Tables"
@@ -287,7 +300,7 @@ monan_jedi_build_wps() {
   monan_jedi_promote_wps_release "${stage_dir}"
 
   log_info "WPS release published=${MONAN_JEDI_WPS_INSTALL_DIR}"
-  log_info "ungrib=${MONAN_JEDI_INSTALL_BIN_DIR}/${MONAN_JEDI_WPS_UNGRIB_NAME}"
+  log_info "ungrib=${MONAN_JEDI_INSTALL_ROOT}/bin/ungrib.exe"
   log_info "Vtable=${MONAN_JEDI_INSTALL_ROOT}/share/wps/Vtable"
 }
 

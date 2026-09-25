@@ -149,7 +149,9 @@ install:
   root:
 
   # Optional stable user-facing executable directory used by downstream workflows.
-  # Empty default: ${install.root}/bin; override only when executables must be published elsewhere.
+  # Empty default: ${install.root}/bin.
+  # Optional secondary alias directory; canonical consumer executables remain
+  # under ${install.root}/bin even when this is overridden.
   bin_dir:
 
 # -----------------------------------------------------------------------------
@@ -215,7 +217,7 @@ obs2ioda:
   # Empty default: ${install.root}
   install_dir:
 
-  # Stable filename published for the converter in the common installation bin.
+  # Optional secondary converter alias name published in install.bin_dir.
   # Default: obs2ioda_v3; changing it affects the published user-facing name.
   executable_name: obs2ioda_v3
 
@@ -300,11 +302,11 @@ wps:
   # Default Release; allowed values: Release, Debug, RelWithDebInfo, MinSizeRel.
   build_type: Release
 
-  # Stable UNGRIB executable link name published in install.bin_dir after validation.
+  # Optional secondary UNGRIB alias name published in install.bin_dir after validation.
   # Default: ungrib.exe; change only when a site/workflow requires another public name.
   ungrib_name: ungrib.exe
 
-  # Stable link_grib helper name published in install.bin_dir after validation.
+  # Optional secondary link_grib alias name published in install.bin_dir after validation.
   # Default: link_grib.csh; change only when a site requires another public name.
   link_grib_name: link_grib.csh
 

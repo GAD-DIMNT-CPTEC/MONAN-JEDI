@@ -63,7 +63,8 @@ ${MONAN_JEDI_INSTALL_ROOT}/
 ```
 
 See [the runtime install contract](docs/runtime-install-contract.md) for the
-producer/consumer rules.
+public filesystem layout and [the ecosystem configuration contract](docs/ecosystem-configuration-contract.md)
+for the shared `MONAN_JEDI_INSTALL_ROOT` / `STACK_ROOT` interface.
 
 ## WPS
 
@@ -272,6 +273,7 @@ See:
 - [JEDI test data and Git LFS](docs/jedi-test-data.md)
 - [WPS build on JACI](docs/wps-build-jaci.md)
 - [YAML configuration](docs/configuration-reference.md)
+- [Ecosystem configuration contract](docs/ecosystem-configuration-contract.md)
 
 ## Design principles
 

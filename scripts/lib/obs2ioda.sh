@@ -66,7 +66,7 @@ monan_jedi_build_obs2ioda() {
   mkdir -p "${MONAN_JEDI_LOG_ROOT}" "${MONAN_JEDI_INSTALL_BIN_DIR}"
   monan_jedi_prepare_obs2ioda_source
 
-  local bufr_lib cmake_prefix_path built_exe installed_exe published_exe
+  local bufr_lib cmake_prefix_path built_exe installed_exe canonical_exe published_exe
   bufr_lib="$(monan_jedi_find_obs2ioda_bufr_lib)"
   cmake_prefix_path="$(nc-config --prefix);$(nf-config --prefix);$(ncxx4-config --prefix)"
   if [[ -n "${MONAN_JEDI_OBS2IODA_CMAKE_PREFIX_PATH:-}" ]]; then
@@ -111,21 +111,28 @@ monan_jedi_build_obs2ioda() {
 
   built_exe="${MONAN_JEDI_OBS2IODA_BUILD_DIR}/bin/obs2ioda_v3"
   installed_exe="${MONAN_JEDI_OBS2IODA_INSTALL_DIR}/bin/obs2ioda_v3"
+  canonical_exe="${MONAN_JEDI_INSTALL_ROOT}/bin/obs2ioda_v3"
   published_exe="${MONAN_JEDI_INSTALL_BIN_DIR}/${MONAN_JEDI_OBS2IODA_EXECUTABLE_NAME}"
 
   if [[ -x "${installed_exe}" ]]; then
-    install -D -m 755 "${installed_exe}" "${published_exe}"
+    install -D -m 755 "${installed_exe}" "${canonical_exe}"
   elif [[ -x "${built_exe}" ]]; then
-    install -D -m 755 "${built_exe}" "${published_exe}"
+    install -D -m 755 "${built_exe}" "${canonical_exe}"
   else
     log_error "obs2ioda_v3 was not created in expected locations: ${installed_exe} or ${built_exe}"
     exit 1
   fi
 
-  if ldd "${published_exe}" 2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/08_obs2ioda_ldd.log" | grep -q 'not found'; then
-    log_error "Missing runtime library for ${published_exe}"
+  if [[ "${published_exe}" != "${canonical_exe}" ]]; then
+    mkdir -p "$(dirname "${published_exe}")"
+    ln -sfn "${canonical_exe}" "${published_exe}"
+  fi
+
+  if ldd "${canonical_exe}" 2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/08_obs2ioda_ldd.log" | grep -q 'not found'; then
+    log_error "Missing runtime library for ${canonical_exe}"
     exit 1
   fi
 
-  log_info "obs2ioda published=${published_exe}"
+  log_info "obs2ioda published=${canonical_exe}"
+  [[ "${published_exe}" == "${canonical_exe}" ]] || log_info "obs2ioda secondary_alias=${published_exe}"
 }

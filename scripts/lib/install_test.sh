@@ -91,7 +91,7 @@ monan_jedi_install_check_dynamic_dependencies() {
 
 monan_jedi_install_check_executable() {
   local name="$1"
-  local path="${MONAN_JEDI_INSTALL_BIN_DIR}/${name}"
+  local path="${MONAN_JEDI_INSTALL_ROOT}/bin/${name}"
 
   if [[ ! -x "${path}" ]]; then
     monan_jedi_install_record_fail "executable ${name}: missing or not executable at ${path}"
@@ -288,7 +288,7 @@ monan_jedi_validate_install_tree() {
     monan_jedi_install_check_executable "${MONAN_JEDI_WPS_UNGRIB_NAME:-ungrib.exe}"
     monan_jedi_install_check_file \
       "WPS link_grib helper" \
-      "${MONAN_JEDI_INSTALL_BIN_DIR}/${MONAN_JEDI_WPS_LINK_GRIB_NAME:-link_grib.csh}"
+      "${MONAN_JEDI_INSTALL_ROOT}/bin/link_grib.csh"
     monan_jedi_install_check_file \
       "WPS default Vtable" \
       "${MONAN_JEDI_INSTALL_ROOT}/share/wps/Variable_Tables/${MONAN_JEDI_WPS_DEFAULT_VTABLE:-Vtable.GFS}"
@@ -297,7 +297,7 @@ monan_jedi_validate_install_tree() {
       "${MONAN_JEDI_WPS_INSTALL_DIR}/build-manifest.json"
     monan_jedi_install_check_path_resolves_inside_root \
       "WPS public ungrib" \
-      "${MONAN_JEDI_INSTALL_BIN_DIR}/${MONAN_JEDI_WPS_UNGRIB_NAME:-ungrib.exe}"
+      "${MONAN_JEDI_INSTALL_ROOT}/bin/ungrib.exe"
     monan_jedi_install_check_path_resolves_inside_root \
       "WPS public Variable_Tables" \
       "${MONAN_JEDI_INSTALL_ROOT}/share/wps/Variable_Tables"
@@ -306,7 +306,7 @@ monan_jedi_validate_install_tree() {
   fi
 
   if monan_jedi_install_feature_enabled "${MONAN_JEDI_OBS2IODA_ENABLED:-0}"; then
-    monan_jedi_install_check_executable "${MONAN_JEDI_OBS2IODA_EXECUTABLE_NAME:-obs2ioda_v3}"
+    monan_jedi_install_check_executable "obs2ioda_v3"
   else
     printf '[SKIP] obs2ioda checks: obs2ioda.enabled is false\n'
   fi

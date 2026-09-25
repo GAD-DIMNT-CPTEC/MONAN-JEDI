@@ -18,6 +18,11 @@ ROOT = Path(__file__).resolve().parents[1]
 READER = ROOT / "scripts" / "lib" / "read_config.py"
 CONFIG_SH = ROOT / "scripts" / "lib" / "config.sh"
 CONFIGURE_SH = ROOT / "scripts" / "lib" / "configure.sh"
+PBS_SH = ROOT / "scripts" / "lib" / "pbs.sh"
+BUILD_SH = ROOT / "scripts" / "lib" / "build.sh"
+WPS_SH = ROOT / "scripts" / "lib" / "wps.sh"
+OBS2IODA_SH = ROOT / "scripts" / "lib" / "obs2ioda.sh"
+INSTALL_TEST_SH = ROOT / "scripts" / "lib" / "install_test.sh"
 JACI = ROOT / "config" / "jaci.yaml"
 TEMPLATE = ROOT / "config" / "template.yaml"
 
@@ -210,12 +215,32 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(values["MONAN_JEDI_WPS_ENABLED"], "0")
         self.assertEqual(values["MONAN_JEDI_SUBMIT_JOB"], "0")
 
+    def test_pbs_helper_fallbacks_match_public_config_defaults(self) -> None:
+        source = PBS_SH.read_text(encoding="utf-8")
+        self.assertIn('MONAN_JEDI_PBS_QUEUE:-pesqmidi', source)
+        self.assertIn('MONAN_JEDI_PBS_WALLTIME:-02:00:00', source)
+        self.assertIn('MONAN_JEDI_SUBMIT_JOB:-0', source)
+        self.assertNotIn('MONAN_JEDI_PBS_QUEUE:-pesqmini', source)
+        self.assertNotIn('MONAN_JEDI_PBS_WALLTIME:-06:00:00', source)
+
     def test_config_sh_derives_private_paths_from_build_id(self) -> None:
         source = CONFIG_SH.read_text(encoding="utf-8")
         self.assertIn("MONAN_JEDI_BUILD_ID", source)
         self.assertNotIn("MONAN_JEDI_RUN_ID", source)
         self.assertIn('${PROJECT_ROOT}/work/${MONAN_JEDI_BUILD_ID}', source)
         self.assertIn('${PROJECT_ROOT}/build/${MONAN_JEDI_BUILD_ID}', source)
+
+    def test_public_runtime_bin_is_stable_when_secondary_alias_dir_changes(self) -> None:
+        build = BUILD_SH.read_text(encoding="utf-8")
+        wps = WPS_SH.read_text(encoding="utf-8")
+        obs2ioda = OBS2IODA_SH.read_text(encoding="utf-8")
+        install_test = INSTALL_TEST_SH.read_text(encoding="utf-8")
+
+        self.assertIn('MONAN_JEDI_INSTALL_ROOT}/bin" "install"', build)
+        self.assertIn('MONAN_JEDI_INSTALL_ROOT}/bin/ungrib.exe', wps)
+        self.assertIn('MONAN_JEDI_INSTALL_ROOT}/bin/link_grib.csh', wps)
+        self.assertIn('canonical_exe="${MONAN_JEDI_INSTALL_ROOT}/bin/obs2ioda_v3"', obs2ioda)
+        self.assertIn('MONAN_JEDI_INSTALL_ROOT}/bin/${name}', install_test)
 
     def test_configure_does_not_publish_build_outputs_directly(self) -> None:
         source = CONFIGURE_SH.read_text(encoding="utf-8")
