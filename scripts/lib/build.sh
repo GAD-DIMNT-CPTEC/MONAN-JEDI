@@ -61,8 +61,6 @@ monan_jedi_publish_runtime_support() {
   local target_namelists="${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/mpas-jedi/namelists"
   local source_testinput="${MONAN_JEDI_SOURCE_DIR}/mpas-jedi/test/testinput"
   local target_testinput="${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/mpas-jedi/testinput"
-  local source_ufo="${MONAN_JEDI_SOURCE_DIR}/ufo-data/testinput_tier_1"
-  local target_ufo="${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/ufo/testinput_tier_1"
   local manifest="${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/install-manifest.json"
   local name
   local -a namelist_files=(
@@ -73,13 +71,8 @@ monan_jedi_publish_runtime_support() {
     "stream_list.atmosphere.control"
     "stream_list.atmosphere.ensemble"
   )
-  local -a baseline_obs_files=(
-    "sondes_obs_2018041500_m.nc4"
-    "gnssro_obs_2018041500_s.nc4"
-    "sfc_obs_2018041500_m.nc4"
-  )
 
-  mkdir -p "${target_namelists}" "${target_testinput}" "${target_ufo}" "$(dirname "${manifest}")"
+  mkdir -p "${target_namelists}" "${target_testinput}" "$(dirname "${manifest}")"
 
   # These files are runtime inputs used by downstream workflows. They are part
   # of the public installation contract and must not be read from source-tree
@@ -97,14 +90,6 @@ monan_jedi_publish_runtime_support() {
     exit 1
   fi
   install -m 644 "${source_testinput}/obsop_name_map.yaml" "${target_testinput}/obsop_name_map.yaml"
-
-  for name in "${baseline_obs_files[@]}"; do
-    if [[ ! -f "${source_ufo}/${name}" ]]; then
-      log_error "Required UFO baseline observation file is missing: ${source_ufo}/${name}"
-      exit 1
-    fi
-    install -m 644 "${source_ufo}/${name}" "${target_ufo}/${name}"
-  done
 
   require_cmd python3
   python3 - "${manifest}" <<'PY'
@@ -148,7 +133,6 @@ PY
   log_info "Published MONAN-JEDI runtime support"
   log_info "  namelists=${target_namelists}"
   log_info "  testinput=${target_testinput}"
-  log_info "  ufo_testinput=${target_ufo}"
   log_info "  manifest=${manifest}"
 }
 
