@@ -18,7 +18,9 @@ ${project.root}/build/${build.id}
 ```
 
 Source trees and work/build trees are private implementation details and are not
-part of this contract.
+part of this contract. Producer-specific executable alias settings may add
+secondary entry points, but they do not replace the canonical `bin/` names in
+this tree.
 
 The cross-repository configuration semantics for this root and `STACK_ROOT` are
 defined in [the ecosystem configuration contract](ecosystem-configuration-contract.md).
