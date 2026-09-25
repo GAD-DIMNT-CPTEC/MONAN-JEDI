@@ -543,8 +543,13 @@ Optional public installation prefix consumed by downstream workflows. The defaul
 
 ### `install.bin_dir`
 
-**Type/default:** string; empty means derived  
+**Type/default:** string; empty means `${install.root}/bin`  
 **Environment override:** `MONAN_JEDI_INSTALL_BIN_DIR`
+
+Optional **secondary executable-alias directory** for producer/site workflows.
+The cross-repository runtime contract is always
+`${MONAN_JEDI_INSTALL_ROOT}/bin`; changing `install.bin_dir` must not move or
+rename the canonical executables consumed by downstream applications.
 
 Optional directory used for stable published executable paths. The default is `${install.root}/bin`. Most users should leave it empty, but keeping the override public preserves compatibility with sites that separate executable publication from the installation prefix.
 
