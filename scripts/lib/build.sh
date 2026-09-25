@@ -31,6 +31,31 @@ monan_jedi_validate_required_mpas_executables() {
   log_info "  unbalance=${bin_dir}/mpasjedi_unbalance_ensemble.x"
 }
 
+monan_jedi_publish_secondary_bin_aliases() {
+  local canonical_bin="${MONAN_JEDI_INSTALL_ROOT}/bin"
+  local secondary_bin="${MONAN_JEDI_INSTALL_BIN_DIR}"
+  local name
+
+  [[ "${secondary_bin}" != "${canonical_bin}" ]] || return 0
+
+  mkdir -p "${secondary_bin}"
+  for name in \
+    mpas_init_atmosphere \
+    mpas_atmosphere \
+    mpasjedi_variational.x \
+    mpasjedi_error_covariance_toolbox.x \
+    mpasjedi_process_perts.x \
+    mpasjedi_unbalance_ensemble.x
+  do
+    [[ -e "${canonical_bin}/${name}" ]] || continue
+    ln -sfn "${canonical_bin}/${name}" "${secondary_bin}/${name}"
+  done
+
+  log_info "Published optional secondary executable aliases"
+  log_info "  canonical=${canonical_bin}"
+  log_info "  secondary=${secondary_bin}"
+}
+
 monan_jedi_publish_runtime_support() {
   local source_dir="${MONAN_JEDI_SOURCE_DIR}/mpas-jedi/test/testinput/namelists"
   local target_dir="${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/mpas-jedi/namelists"
@@ -136,6 +161,7 @@ monan_jedi_install_bundle() {
   log_info "  install_bin=${MONAN_JEDI_INSTALL_BIN_DIR}"
 
   make install 2>&1 | tee "${MONAN_JEDI_LOG_ROOT}/06_make_install.log"
-  monan_jedi_validate_required_mpas_executables "${MONAN_JEDI_INSTALL_BIN_DIR}" "install"
+  monan_jedi_validate_required_mpas_executables "${MONAN_JEDI_INSTALL_ROOT}/bin" "install"
+  monan_jedi_publish_secondary_bin_aliases
   monan_jedi_publish_runtime_support
 }
