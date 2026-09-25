@@ -163,6 +163,8 @@ expected_contract = {
     "mpas_atmosphere_share": "share/MPAS/core_atmosphere",
     "wps_variable_tables": "share/wps/Variable_Tables",
     "mpas_jedi_namelists": "share/monan-jedi/mpas-jedi/namelists",
+    "mpas_jedi_testinput": "share/monan-jedi/mpas-jedi/testinput",
+    "ufo_testinput_tier_1": "share/monan-jedi/ufo/testinput_tier_1",
 }
 contract = record.get("public_contract", {})
 for key, value in expected_contract.items():
@@ -281,6 +283,31 @@ monan_jedi_validate_install_tree() {
   monan_jedi_install_check_file \
     "MPAS-JEDI keptvars" \
     "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/mpas-jedi/namelists/keptvars.yaml"
+
+  for name in \
+    stream_list.atmosphere.background \
+    stream_list.atmosphere.analysis \
+    stream_list.atmosphere.control \
+    stream_list.atmosphere.ensemble
+  do
+    monan_jedi_install_check_file \
+      "MPAS-JEDI ${name}" \
+      "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/mpas-jedi/namelists/${name}"
+  done
+
+  monan_jedi_install_check_file \
+    "MPAS-JEDI observation alias map" \
+    "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/mpas-jedi/testinput/obsop_name_map.yaml"
+
+  for name in \
+    sondes_obs_2018041500_m.nc4 \
+    gnssro_obs_2018041500_s.nc4 \
+    sfc_obs_2018041500_m.nc4
+  do
+    monan_jedi_install_check_file \
+      "UFO baseline observation ${name}" \
+      "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/ufo/testinput_tier_1/${name}"
+  done
 
   monan_jedi_install_check_manifest
 
