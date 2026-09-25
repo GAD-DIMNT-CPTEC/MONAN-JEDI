@@ -11,7 +11,7 @@ trap 'rm -rf "${tmp_root}"' EXIT
 
 export MONAN_JEDI_CONFIG="test-config.yaml"
 export MONAN_JEDI_INSTALL_ROOT="${tmp_root}/install"
-export MONAN_JEDI_INSTALL_BIN_DIR="${MONAN_JEDI_INSTALL_ROOT}/bin"
+export MONAN_JEDI_INSTALL_BIN_DIR="${tmp_root}/secondary-bin"
 export MONAN_JEDI_WPS_ENABLED=1
 export MONAN_JEDI_WPS_UNGRIB_NAME="ungrib.exe"
 export MONAN_JEDI_WPS_LINK_GRIB_NAME="link_grib.csh"
@@ -21,6 +21,7 @@ export MONAN_JEDI_OBS2IODA_ENABLED=1
 export MONAN_JEDI_OBS2IODA_EXECUTABLE_NAME="obs2ioda_v3"
 
 mkdir -p \
+  "${MONAN_JEDI_INSTALL_ROOT}/bin" \
   "${MONAN_JEDI_INSTALL_BIN_DIR}" \
   "${MONAN_JEDI_INSTALL_ROOT}/lib" \
   "${MONAN_JEDI_INSTALL_ROOT}/include" \
@@ -38,8 +39,8 @@ for name in \
   mpasjedi_unbalance_ensemble.x \
   obs2ioda_v3
  do
-  printf '#!/usr/bin/env bash\nexit 0\n' > "${MONAN_JEDI_INSTALL_BIN_DIR}/${name}"
-  chmod 775 "${MONAN_JEDI_INSTALL_BIN_DIR}/${name}"
+  printf '#!/usr/bin/env bash\nexit 0\n' > "${MONAN_JEDI_INSTALL_ROOT}/bin/${name}"
+  chmod 775 "${MONAN_JEDI_INSTALL_ROOT}/bin/${name}"
 done
 
 printf '#!/usr/bin/env bash\nexit 0\n' > "${MONAN_JEDI_WPS_INSTALL_DIR}/bin/ungrib.exe"
@@ -50,8 +51,8 @@ printf 'Vtable fixture\n' > "${MONAN_JEDI_WPS_INSTALL_DIR}/share/wps/Variable_Ta
 printf '{}\n' > "${MONAN_JEDI_WPS_INSTALL_DIR}/build-manifest.json"
 
 mkdir -p "${MONAN_JEDI_INSTALL_ROOT}/share/wps"
-ln -s "${MONAN_JEDI_WPS_INSTALL_DIR}/bin/ungrib.exe" "${MONAN_JEDI_INSTALL_BIN_DIR}/ungrib.exe"
-ln -s "${MONAN_JEDI_WPS_INSTALL_DIR}/bin/link_grib.csh" "${MONAN_JEDI_INSTALL_BIN_DIR}/link_grib.csh"
+ln -s "${MONAN_JEDI_WPS_INSTALL_DIR}/bin/ungrib.exe" "${MONAN_JEDI_INSTALL_ROOT}/bin/ungrib.exe"
+ln -s "${MONAN_JEDI_WPS_INSTALL_DIR}/bin/link_grib.csh" "${MONAN_JEDI_INSTALL_ROOT}/bin/link_grib.csh"
 ln -s "${MONAN_JEDI_WPS_INSTALL_DIR}/share/wps/Variable_Tables" "${MONAN_JEDI_INSTALL_ROOT}/share/wps/Variable_Tables"
 ln -s "${MONAN_JEDI_WPS_INSTALL_DIR}/share/wps/Variable_Tables/Vtable.GFS" "${MONAN_JEDI_INSTALL_ROOT}/share/wps/Vtable"
 
