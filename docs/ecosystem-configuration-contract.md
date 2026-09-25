@@ -118,6 +118,12 @@ share/monan-jedi/mpas-jedi/namelists
 A consumer must not require the producer checkout or build tree when an
 equivalent installed resource exists.
 
+Producer-side overrides such as `install.bin_dir`, `wps.ungrib_name`,
+`wps.link_grib_name` and `obs2ioda.executable_name` are not additional
+consumer anchors. They may create secondary aliases, but MONAN-JEDI must always
+publish the canonical cross-repository names below
+`${MONAN_JEDI_INSTALL_ROOT}/bin`.
+
 ## HPC/PBS rule
 
 A scientific PBS job must reproduce the runtime environment explicitly on the
