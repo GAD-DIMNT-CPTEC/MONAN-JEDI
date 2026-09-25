@@ -26,6 +26,7 @@ Usage:
 
 Commands:
   load             Load and validate the spack-stack environment
+  env              Print the two public ecosystem anchor exports
   configure        Configure the MONAN-JEDI bundle with ecbuild
   build            Build the configured bundle
   install          Install the configured bundle into install.root
@@ -63,6 +64,10 @@ done
 
 load_monan_jedi_config
 case "${command_name}" in
+  env)
+    printf 'export MONAN_JEDI_INSTALL_ROOT=%q\n' "${MONAN_JEDI_INSTALL_ROOT}"
+    printf 'export STACK_ROOT=%q\n' "${STACK_ROOT}"
+    ;;
   load)
     monan_jedi_load_stack
     monan_jedi_report_git_lfs_status
