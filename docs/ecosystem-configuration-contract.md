@@ -1,208 +1,230 @@
-# MONAN-JEDI ecosystem configuration contract
+# MONAN-JEDI ecosystem runtime standard
 
-This document defines the small cross-repository configuration interface shared
-by MONAN-JEDI runtime consumers. It complements the producer-side configuration
-reference; it does not make every MONAN-JEDI build variable a public ecosystem
-API.
+This document is the normative configuration contract for the MONAN-JEDI
+ecosystem. It applies to MONAN-JEDI, mpaswf, monan-jedi-workflow and
+MPAS-BMatrix.
 
-## Public anchors
+The purpose of the standard is to keep the ecosystem predictable as it grows:
+software ownership, site/runtime ownership, scientific case data and scheduler
+policy must not be mixed.
 
-The ecosystem has two cross-repository anchors:
+## 1. The only cross-repository environment anchors
 
-```bash
+Normal users and downstream applications share exactly two environment
+variables:
+
+\`\`\`bash
 export MONAN_JEDI_INSTALL_ROOT=/path/to/monan-jedi-install
-export STACK_ROOT=/path/to/spack-stack
-```
+export STACK_ROOT=/path/to/validated/spack-stack
+\`\`\`
 
-They have deliberately different responsibilities.
+Their meanings are fixed.
 
-| Variable | Meaning | Owner | Consumers |
-| --- | --- | --- | --- |
-| `MONAN_JEDI_INSTALL_ROOT` | Public installed MONAN/MPAS/JEDI runtime prefix | MONAN-JEDI | mpaswf, MPAS-BMatrix, monan-jedi-workflow |
-| `STACK_ROOT` | Actual spack-stack checkout/environment root used to provide compiler, MPI and external libraries | site/operator | MONAN-JEDI and HPC consumers |
+| Anchor | Meaning | Must never mean |
+| --- | --- | --- |
+| \`MONAN_JEDI_INSTALL_ROOT\` | Public installed MONAN/MPAS/JEDI runtime prefix | source checkout, CMake/ecbuild tree, experiment data |
+| \`STACK_ROOT\` | Actual spack-stack checkout selected for compiler/MPI/dependencies | MONAN-JEDI work tree, case root |
 
-`MONAN_JEDI_INSTALL_ROOT` must name the installed product tree containing
-stable `bin/`, `lib/`, `include/` and `share/` interfaces. It must never
-mean the MONAN-JEDI source checkout, ecbuild/CMake build directory or private
-work tree.
+No additional global environment variable is required by the ecosystem
+contract. Site/module details are carried by the installed runtime manifest,
+while application-specific data remain in YAML.
 
-`STACK_ROOT` must name the actual spack-stack checkout used by the runtime.
-Consumers must not silently replace it with a user-specific hard-coded path.
+MONAN-JEDI keeps producer-only variables such as \`PROJECT_ROOT\`,
+\`MONAN_JEDI_SOURCE_DIR\`, \`MONAN_JEDI_WORK_ROOT\`,
+\`MONAN_JEDI_BUILD_DIR\`, \`MONAN_JEDI_LOG_ROOT\` and
+\`MONAN_JEDI_BUILD_ID\`. Downstream repositories must not depend on them.
 
-## Private producer roots
+## 2. Authoritative installed contract
 
-The following MONAN-JEDI concepts are producer implementation details and are
-not cross-repository configuration interfaces:
+Every supported MONAN-JEDI installation publishes:
 
-```text
-PROJECT_ROOT
-MONAN_JEDI_SOURCE_DIR
-MONAN_JEDI_WORK_ROOT
-MONAN_JEDI_BUILD_DIR
-MONAN_JEDI_LOG_ROOT
-MONAN_JEDI_BUILD_ID
-```
+\`\`\`text
+\${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/install-manifest.json
+\`\`\`
 
-A downstream workflow may have its own repository root, work root, case root or
-run directory, but it must not infer MONAN-JEDI source/build paths from them.
+Schema version 2 is the machine-readable source of truth for the installed
+runtime. Consumers must read this manifest instead of duplicating the stack
+environment name, module name or site setup path.
 
-In particular, `PROJECT_ROOT` is not an ecosystem-wide variable. MONAN-JEDI
-keeps that name for backward compatibility with its own build workflow only.
-Documentation in downstream repositories should use local names such as
-`REPOS_ROOT` when it merely needs a parent directory for source checkouts.
+The v2 document contains:
 
-## Consumer resolution rule
+- stable relative install layout;
+- canonical executable names;
+- required runtime-support files;
+- stack compatibility metadata;
+- enabled capabilities;
+- producer provenance.
 
-A maintained consumer configuration should bind the public anchors explicitly,
-for example:
+The manifest is relocatable: it intentionally does not record the absolute
+installation root or the absolute \`STACK_ROOT\`.
 
-```yaml
-software:
-  monan_jedi_install_root: ${MONAN_JEDI_INSTALL_ROOT}
+The operator chooses \`STACK_ROOT\`; the manifest describes which environment
+inside that stack is compatible with the installation.
 
-stack:
-  root: ${STACK_ROOT}
-```
+## 3. Ownership boundaries
 
-The exact YAML section names may remain application-specific, but their
-semantics must not change.
+### MONAN-JEDI owns software
 
-After configuration has been resolved, application code should use the resolved
-configuration object rather than read the same environment variable again.
-This prevents two simultaneous sources of truth.
+The install prefix may contain:
 
-## Configuration precedence
+\`\`\`text
+bin/
+lib/
+include/
+share/MPAS/core_atmosphere/
+share/wps/
+share/monan-jedi/mpas-jedi/namelists/
+share/monan-jedi/mpas-jedi/testinput/obsop_name_map.yaml
+\`\`\`
 
-Consumer applications should prefer explicit, inspectable configuration. The
-recommended precedence is:
+Runtime-support YAML/stream files that are version-coupled to MPAS-JEDI may be
+published with the installation.
 
-```text
-explicit CLI option
-    ↓
-case/platform YAML
-    ↓
-included/base YAML
-    ↓
-environment references explicitly present in YAML
-    ↓
-derived values
-    ↓
-internal defaults
-```
+### Experiment repositories own scientific data
 
-MONAN-JEDI retains its historical producer-side `non-empty environment > YAML >
-default` precedence for compatibility. Consumers do not need to reproduce that
-behavior.
+Case-specific fields are not software. Examples include backgrounds,
+analysis/reference states, mesh/case inputs, date-specific IODA/UFO
+observations, NMC ensembles and B-matrix products.
 
-An unresolved `${VARIABLE}` reference in maintained configuration must fail
-during preflight/config loading rather than survive as a literal path.
+In particular, observations such as \`sondes_obs_2018041500_m.nc4\` belong to a
+case/reference-data root, not to the MONAN-JEDI installation.
 
-## Installed-runtime derivation
+### Site/profile configuration owns machine policy
 
-Consumers should derive runtime products from
-`MONAN_JEDI_INSTALL_ROOT`, including paths such as:
+The site layer owns \`STACK_ROOT\` selection, PBS queues/resources, MPI launcher
+policy, site filesystem roots and job-local runtime settings.
 
-```text
-bin/mpas_atmosphere
-bin/mpas_init_atmosphere
-bin/mpasjedi_variational.x
-bin/mpasjedi_error_covariance_toolbox.x
-bin/ungrib.exe
-bin/link_grib.csh
-bin/obs2ioda_v3
-share/MPAS/core_atmosphere
-share/wps
-share/monan-jedi/mpas-jedi/namelists
-```
+Variables such as \`OMP_NUM_THREADS\`, \`FI_CXI_RX_MATCH_MODE\`,
+\`F_UFMTENDIAN\` and \`GFORTRAN_CONVERT_UNIT\` are not global ecosystem
+anchors. A site may provide defaults, and a validated historical case may
+override them explicitly with documentation.
 
-A consumer must not require the producer checkout or build tree when an
-equivalent installed resource exists.
+## 4. Standard stack bootstrap
 
-Producer-side overrides such as `install.bin_dir`, `wps.ungrib_name`,
-`wps.link_grib_name` and `obs2ioda.executable_name` are not additional
-consumer anchors. They may create secondary aliases, but MONAN-JEDI must always
-publish the canonical cross-repository names below
-`${MONAN_JEDI_INSTALL_ROOT}/bin`.
+Every compute-node job that uses the MONAN-JEDI runtime must reconstruct the
+selected stack explicitly. It must not rely on the login shell or \`qsub -V\`.
 
-## HPC/PBS rule
+The canonical sequence is:
 
-A scientific PBS job must reproduce the runtime environment explicitly on the
-compute node. It must not rely on modules that happened to be loaded in the
-submitting login shell.
-
-The rendered job should carry enough information to establish the selected
-stack and runtime, conceptually:
-
-```text
-PBS directives
+\`\`\`text
 set -euo pipefail
-
-export STACK_ROOT=...
 export MONAN_JEDI_INSTALL_ROOT=...
+export STACK_ROOT=...
 
-load/validate configured stack
+validate install manifest
+read stack.env_name / stack.env_module / stack.site_setup
+derive module root from STACK_ROOT + env_name
+
+purge modules
+remember whether nounset was active
+temporarily disable nounset
+cd STACK_ROOT
+source stack.site_setup
+restore nounset state
+module use derived module root
+module load stack.env_module
+
 validate required executable
-export job-specific runtime variables
-cd run_directory
+export job-local runtime variables
+cd run directory
 mpiexec ...
-```
+\`\`\`
 
-Stack reuse must validate the identity of the stack root, module tree and
-environment module together. A matching module name alone is not sufficient
-when two different stacks publish the same module name.
+The temporary \`set +u\` around the spack-stack site setup is mandatory because
+site setup scripts are not required to be nounset-safe. The caller's nounset
+state must be restored immediately afterwards.
 
-## What is not a global ecosystem API
+A same-named module from another stack is not sufficient proof of provenance.
+Interactive loaders that reuse an already-loaded module must validate stack
+root, module root and module name together.
 
-The following are examples of application-local or job-local settings and
-should not become shared integration variables merely because tutorials use
-them:
+## 5. Configuration precedence
 
-```text
-WORK_ROOT
-BMATRIX_ROOT
-MPASWF_ROOT
-MPASWF_WORK
-MPASWF_CONFIG
-MANIFEST
-BFLOW
-PATH
-LD_LIBRARY_PATH
-PYTHONPATH
-OMP_NUM_THREADS
-FI_CXI_RX_MATCH_MODE
-F_UFMTENDIAN
-GFORTRAN_CONVERT_UNIT
-```
+### MONAN-JEDI producer
 
-Applications may still use these locally where appropriate.
+For backward compatibility:
 
-## Backward compatibility
+\`\`\`text
+non-empty environment override
+        ↓
+site YAML
+        ↓
+derived/default value
+\`\`\`
 
-When a consumer renames an existing public setting, migration should follow:
+### Consumers
 
-```text
-new setting
-    ↓ when absent
-legacy setting
-    ↓
-deprecation warning
-```
+Consumers use explicit, reproducible configuration:
 
-Do not reinterpret an existing name with a different semantic meaning.
+\`\`\`text
+explicit CLI override
+        ↓
+case/platform YAML
+        ↓
+included/base YAML
+        ↓
+environment anchors explicitly referenced by YAML
+        ↓
+values derived from install-manifest.json
+        ↓
+internal defaults
+\`\`\`
 
-## Required regression checks
+Consumers must not read \`MONAN_JEDI_INSTALL_ROOT\` a second time after a
+resolved configuration object already owns that value.
 
-Cross-repository work should preserve these invariants:
+An unresolved \`\${VARIABLE}\` in a configuration-time field is an error.
+Shell expressions intentionally deferred to PBS must remain literal.
 
-1. every maintained consumer can resolve the same
-   `MONAN_JEDI_INSTALL_ROOT`;
-2. every JACI PBS renderer uses the selected `STACK_ROOT` rather than a
-   user-specific hard-coded stack path;
-3. maintained consumers do not introduce dependencies on MONAN-JEDI source or
-   build roots;
-4. unresolved environment references fail during configuration/preflight;
-5. changing to another stack with the same module name does not silently reuse
-   the old stack identity.
+## 6. Canonical executable derivation
 
-The producer-side public filesystem contract remains defined in
+Consumers derive executables below \`MONAN_JEDI_INSTALL_ROOT/bin\`, for example
+\`mpas_atmosphere\`, \`mpas_init_atmosphere\`,
+\`mpasjedi_variational.x\`, \`mpasjedi_error_covariance_toolbox.x\`,
+\`ungrib.exe\`, \`link_grib.csh\` and \`obs2ioda_v3\`.
+
+A downstream application must never search the MONAN-JEDI build tree for these
+programs.
+
+## 7. User workflow
+
+MONAN-JEDI can print the two official shell anchors resolved from a site
+configuration:
+
+\`\`\`bash
+bash scripts/monan-jedi.sh env --config config/jaci.yaml
+\`\`\`
+
+Use the output with \`eval\` when desired:
+
+\`\`\`bash
+eval "$(bash scripts/monan-jedi.sh env --config config/jaci.yaml)"
+\`\`\`
+
+This is a convenience hand-off; it does not add new public variables.
+
+## 8. Backward compatibility
+
+Legacy aliases may remain temporarily, but every compatibility path must prefer
+the new setting, use the legacy setting only when the new one is absent, emit a
+deprecation warning and never reinterpret the old name with a new meaning.
+
+## 9. Mandatory regression rules
+
+Maintained code and CI must enforce all of the following:
+
+1. downstream consumers use one \`MONAN_JEDI_INSTALL_ROOT\`;
+2. downstream consumers use the operator-selected \`STACK_ROOT\`;
+3. stack module/site details come from the v2 installed manifest rather than
+   copied independently into every repository;
+4. consumers do not depend on MONAN-JEDI source/build roots;
+5. scientific observations are not installed as generic runtime software;
+6. PBS jobs reconstruct their compute-node environment explicitly;
+7. spack-stack setup is protected from Bash \`nounset\`;
+8. unresolved configuration-time environment references fail early;
+9. PBS-only shell variables are not accidentally expanded at configuration time;
+10. maintained cases have no personal user path unless the file is explicitly
+    marked as immutable historical provenance.
+
+The public filesystem layout is described in
 [Runtime install contract](runtime-install-contract.md).
