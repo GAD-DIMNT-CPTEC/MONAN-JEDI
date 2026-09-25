@@ -256,10 +256,23 @@ monan_jedi_load_stack() {
     log_error "Failed to enter stack root: ${STACK_ROOT}"
     exit 1
   }
+  # spack-stack site setup scripts are not required to be Bash nounset-safe.
+  # Preserve the caller state, disable nounset only while sourcing the site
+  # setup, then restore it immediately.
+  local monan_had_nounset=0
+  case "$-" in
+    *u*) monan_had_nounset=1 ;;
+  esac
+  set +u
   if source "${setup_script}"; then
     setup_status=0
   else
     setup_status=$?
+  fi
+  if [[ "${monan_had_nounset}" -eq 1 ]]; then
+    set -u
+  else
+    set +u
   fi
   cd "${original_dir}" || {
     log_error "Failed to restore working directory after stack setup: ${original_dir}"
