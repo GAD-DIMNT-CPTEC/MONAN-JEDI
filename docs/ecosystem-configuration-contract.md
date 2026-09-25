@@ -42,9 +42,7 @@ Every supported MONAN-JEDI installation publishes:
 \${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/install-manifest.json
 \`\`\`
 
-Schema version 2 is the machine-readable source of truth for the installed
-runtime. Consumers must read this manifest instead of duplicating the stack
-environment name, module name or site setup path.
+The manifest currently retains `schema_version: 1` as a producer-side compatibility envelope, while `ecosystem_contract_version: 2` is the normative cross-repository API. Consumers must select the ecosystem contract version and read its `layout`, `stack`, `capabilities` and `public_anchors` fields instead of duplicating stack settings.
 
 The v2 document contains:
 
@@ -218,7 +216,7 @@ Maintained code and CI must enforce all of the following:
 3. stack module/site details come from the v2 installed manifest rather than
    copied independently into every repository;
 4. consumers do not depend on MONAN-JEDI source/build roots;
-5. scientific observations are not installed as generic runtime software;
+5. scientific observations are not exposed or consumed as generic v2 runtime software;
 6. PBS jobs reconstruct their compute-node environment explicitly;
 7. spack-stack setup is protected from Bash \`nounset\`;
 8. unresolved configuration-time environment references fail early;
