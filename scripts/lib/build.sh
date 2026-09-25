@@ -57,22 +57,53 @@ monan_jedi_publish_secondary_bin_aliases() {
 }
 
 monan_jedi_publish_runtime_support() {
-  local source_dir="${MONAN_JEDI_SOURCE_DIR}/mpas-jedi/test/testinput/namelists"
-  local target_dir="${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/mpas-jedi/namelists"
+  local source_namelists="${MONAN_JEDI_SOURCE_DIR}/mpas-jedi/test/testinput/namelists"
+  local target_namelists="${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/mpas-jedi/namelists"
+  local source_testinput="${MONAN_JEDI_SOURCE_DIR}/mpas-jedi/test/testinput"
+  local target_testinput="${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/mpas-jedi/testinput"
+  local source_ufo="${MONAN_JEDI_SOURCE_DIR}/ufo-data/testinput_tier_1"
+  local target_ufo="${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/ufo/testinput_tier_1"
   local manifest="${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/install-manifest.json"
   local name
+  local -a namelist_files=(
+    "geovars.yaml"
+    "keptvars.yaml"
+    "stream_list.atmosphere.background"
+    "stream_list.atmosphere.analysis"
+    "stream_list.atmosphere.control"
+    "stream_list.atmosphere.ensemble"
+  )
+  local -a baseline_obs_files=(
+    "sondes_obs_2018041500_m.nc4"
+    "gnssro_obs_2018041500_s.nc4"
+    "sfc_obs_2018041500_m.nc4"
+  )
 
-  mkdir -p "${target_dir}" "$(dirname "${manifest}")"
+  mkdir -p "${target_namelists}" "${target_testinput}" "${target_ufo}" "$(dirname "${manifest}")"
 
-  # These YAMLs are runtime inputs used by downstream workflows. They are part
-  # of the public installation contract and must not be read from the ecbuild
-  # source/materialization tree by consumers.
-  for name in geovars.yaml keptvars.yaml; do
-    if [[ ! -f "${source_dir}/${name}" ]]; then
-      log_error "Required MPAS-JEDI runtime support file is missing: ${source_dir}/${name}"
+  # These files are runtime inputs used by downstream workflows. They are part
+  # of the public installation contract and must not be read from source-tree
+  # test directories by consumers.
+  for name in "${namelist_files[@]}"; do
+    if [[ ! -f "${source_namelists}/${name}" ]]; then
+      log_error "Required MPAS-JEDI runtime support file is missing: ${source_namelists}/${name}"
       exit 1
     fi
-    install -m 644 "${source_dir}/${name}" "${target_dir}/${name}"
+    install -m 644 "${source_namelists}/${name}" "${target_namelists}/${name}"
+  done
+
+  if [[ ! -f "${source_testinput}/obsop_name_map.yaml" ]]; then
+    log_error "Required MPAS-JEDI observation alias map is missing: ${source_testinput}/obsop_name_map.yaml"
+    exit 1
+  fi
+  install -m 644 "${source_testinput}/obsop_name_map.yaml" "${target_testinput}/obsop_name_map.yaml"
+
+  for name in "${baseline_obs_files[@]}"; do
+    if [[ ! -f "${source_ufo}/${name}" ]]; then
+      log_error "Required UFO baseline observation file is missing: ${source_ufo}/${name}"
+      exit 1
+    fi
+    install -m 644 "${source_ufo}/${name}" "${target_ufo}/${name}"
   done
 
   require_cmd python3
@@ -95,17 +126,29 @@ record = {
         "mpas_atmosphere_share": "share/MPAS/core_atmosphere",
         "wps_variable_tables": "share/wps/Variable_Tables",
         "mpas_jedi_namelists": "share/monan-jedi/mpas-jedi/namelists",
+        "mpas_jedi_testinput": "share/monan-jedi/mpas-jedi/testinput",
+        "ufo_testinput_tier_1": "share/monan-jedi/ufo/testinput_tier_1",
     },
     "required_runtime_support": [
         "share/monan-jedi/mpas-jedi/namelists/geovars.yaml",
         "share/monan-jedi/mpas-jedi/namelists/keptvars.yaml",
+        "share/monan-jedi/mpas-jedi/namelists/stream_list.atmosphere.background",
+        "share/monan-jedi/mpas-jedi/namelists/stream_list.atmosphere.analysis",
+        "share/monan-jedi/mpas-jedi/namelists/stream_list.atmosphere.control",
+        "share/monan-jedi/mpas-jedi/namelists/stream_list.atmosphere.ensemble",
+        "share/monan-jedi/mpas-jedi/testinput/obsop_name_map.yaml",
+        "share/monan-jedi/ufo/testinput_tier_1/sondes_obs_2018041500_m.nc4",
+        "share/monan-jedi/ufo/testinput_tier_1/gnssro_obs_2018041500_s.nc4",
+        "share/monan-jedi/ufo/testinput_tier_1/sfc_obs_2018041500_m.nc4",
     ],
 }
 manifest.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 PY
 
   log_info "Published MONAN-JEDI runtime support"
-  log_info "  namelists=${target_dir}"
+  log_info "  namelists=${target_namelists}"
+  log_info "  testinput=${target_testinput}"
+  log_info "  ufo_testinput=${target_ufo}"
   log_info "  manifest=${manifest}"
 }
 

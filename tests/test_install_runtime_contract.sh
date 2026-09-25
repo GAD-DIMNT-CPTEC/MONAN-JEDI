@@ -27,6 +27,8 @@ mkdir -p \
   "${MONAN_JEDI_INSTALL_ROOT}/include" \
   "${MONAN_JEDI_INSTALL_ROOT}/share/MPAS/core_atmosphere" \
   "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/mpas-jedi/namelists" \
+  "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/mpas-jedi/testinput" \
+  "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/ufo/testinput_tier_1" \
   "${MONAN_JEDI_WPS_INSTALL_DIR}/bin" \
   "${MONAN_JEDI_WPS_INSTALL_DIR}/share/wps/Variable_Tables"
 
@@ -60,6 +62,22 @@ printf 'streams fixture\n' > "${MONAN_JEDI_INSTALL_ROOT}/share/MPAS/core_atmosph
 printf 'namelist fixture\n' > "${MONAN_JEDI_INSTALL_ROOT}/share/MPAS/core_atmosphere/namelist.atmosphere"
 printf 'geovars fixture\n' > "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/mpas-jedi/namelists/geovars.yaml"
 printf 'keptvars fixture\n' > "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/mpas-jedi/namelists/keptvars.yaml"
+for name in \
+  stream_list.atmosphere.background \
+  stream_list.atmosphere.analysis \
+  stream_list.atmosphere.control \
+  stream_list.atmosphere.ensemble
+do
+  printf 'stream list fixture\n' > "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/mpas-jedi/namelists/${name}"
+done
+printf 'obs alias fixture\n' > "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/mpas-jedi/testinput/obsop_name_map.yaml"
+for name in \
+  sondes_obs_2018041500_m.nc4 \
+  gnssro_obs_2018041500_s.nc4 \
+  sfc_obs_2018041500_m.nc4
+do
+  printf 'obs fixture\n' > "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/ufo/testinput_tier_1/${name}"
+done
 
 python3 - "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/install-manifest.json" "${MONAN_JEDI_INSTALL_ROOT}" <<'PY'
 import json
@@ -81,10 +99,20 @@ manifest.write_text(
                 "mpas_atmosphere_share": "share/MPAS/core_atmosphere",
                 "wps_variable_tables": "share/wps/Variable_Tables",
                 "mpas_jedi_namelists": "share/monan-jedi/mpas-jedi/namelists",
+                "mpas_jedi_testinput": "share/monan-jedi/mpas-jedi/testinput",
+                "ufo_testinput_tier_1": "share/monan-jedi/ufo/testinput_tier_1",
             },
             "required_runtime_support": [
                 "share/monan-jedi/mpas-jedi/namelists/geovars.yaml",
                 "share/monan-jedi/mpas-jedi/namelists/keptvars.yaml",
+                "share/monan-jedi/mpas-jedi/namelists/stream_list.atmosphere.background",
+                "share/monan-jedi/mpas-jedi/namelists/stream_list.atmosphere.analysis",
+                "share/monan-jedi/mpas-jedi/namelists/stream_list.atmosphere.control",
+                "share/monan-jedi/mpas-jedi/namelists/stream_list.atmosphere.ensemble",
+                "share/monan-jedi/mpas-jedi/testinput/obsop_name_map.yaml",
+                "share/monan-jedi/ufo/testinput_tier_1/sondes_obs_2018041500_m.nc4",
+                "share/monan-jedi/ufo/testinput_tier_1/gnssro_obs_2018041500_s.nc4",
+                "share/monan-jedi/ufo/testinput_tier_1/sfc_obs_2018041500_m.nc4",
             ],
         },
         indent=2,

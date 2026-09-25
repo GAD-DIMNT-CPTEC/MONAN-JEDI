@@ -52,10 +52,18 @@ ${MONAN_JEDI_INSTALL_ROOT}/
 │   │       └── Vtable.GFS
 │   └── monan-jedi/
 │       ├── install-manifest.json
-│       └── mpas-jedi/
-│           └── namelists/
-│               ├── geovars.yaml
-│               └── keptvars.yaml
+│       ├── mpas-jedi/
+│       │   ├── namelists/
+│       │   │   ├── geovars.yaml
+│       │   │   ├── keptvars.yaml
+│       │   │   └── stream_list.atmosphere.{background,analysis,control,ensemble}
+│       │   └── testinput/
+│       │       └── obsop_name_map.yaml
+│       └── ufo/
+│           └── testinput_tier_1/
+│               ├── sondes_obs_2018041500_m.nc4
+│               ├── gnssro_obs_2018041500_s.nc4
+│               └── sfc_obs_2018041500_m.nc4
 └── libexec/
     └── monan-jedi/
         └── wps/
@@ -107,18 +115,26 @@ restrictive source permissions. Runtime files are published with project-group
 access so other members of the shared MONAN-DAS project can consume the same
 installation.
 
-## MPAS-JEDI runtime YAMLs
+## MPAS-JEDI and baseline workflow runtime support
 
-`geovars.yaml` and `keptvars.yaml` are runtime inputs, not development-only test
-files from the point of view of downstream workflows. During installation they
-are copied from the pinned MPAS-JEDI source into:
+Files consumed by downstream workflows are runtime inputs even when their
+upstream source happens to live below a component's test tree. During
+installation MONAN-JEDI therefore publishes the stable copies required by the
+maintained MPAS-JEDI baseline:
 
 ```text
 share/monan-jedi/mpas-jedi/namelists/
+share/monan-jedi/mpas-jedi/testinput/obsop_name_map.yaml
+share/monan-jedi/ufo/testinput_tier_1/
 ```
 
-`MPAS-BMatrix` should use those installed copies and must not require a
-`MONAN_JEDI_SOURCE` variable.
+The namelist directory includes `geovars.yaml`, `keptvars.yaml` and the
+background/analysis/control/ensemble stream lists. The UFO directory publishes
+the three 2018-04-15 observation files required by the maintained static
+baseline.
+
+Consumers must use these installed copies and must not require a
+`MONAN_JEDI_SOURCE` variable or a MONAN-JEDI checkout path.
 
 ## Separation from spack-stack
 
