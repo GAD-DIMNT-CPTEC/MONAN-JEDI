@@ -63,8 +63,17 @@ ${MONAN_JEDI_INSTALL_ROOT}/
 ```
 
 See [the runtime install contract](docs/runtime-install-contract.md) for the
-public filesystem layout and [the ecosystem configuration contract](docs/ecosystem-configuration-contract.md)
-for the shared `MONAN_JEDI_INSTALL_ROOT` / `STACK_ROOT` interface.
+public filesystem layout and [the ecosystem runtime standard](docs/ecosystem-configuration-contract.md)
+for the shared `MONAN_JEDI_INSTALL_ROOT` / `STACK_ROOT` interface and the
+installed ecosystem contract v2.
+
+For a downstream repository, the supported hand-off is:
+
+```bash
+eval "$(bash scripts/monan-jedi.sh env --config config/jaci.yaml)"
+```
+
+The command prints only the two public ecosystem anchors.
 
 ## WPS
 
@@ -165,6 +174,7 @@ bash scripts/monan-jedi.sh <command> --config config/jaci.yaml
 Available commands include:
 
 ```text
+env
 load
 configure
 build
