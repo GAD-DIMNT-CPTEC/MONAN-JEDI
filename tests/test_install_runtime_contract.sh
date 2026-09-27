@@ -150,9 +150,12 @@ assert payload["ecosystem_contract_version"] == 2
 assert payload["contract"] == "monan-jedi-runtime-v2"
 assert payload["public_anchors"] == ["MONAN_JEDI_INSTALL_ROOT", "STACK_ROOT"]
 assert payload["stack"]["module_root_template"] == "envs/{env_name}/modules"
+assert payload["capabilities"]["mpas"] is True
+assert payload["capabilities"]["mpas_jedi"] is True
 assert payload["capabilities"]["wps"] is True
 assert payload["capabilities"]["obs2ioda"] is True
 assert "ufo_testinput_tier_1" not in payload["layout"]
+assert not any("ufo/testinput_tier_1" in path for path in payload["runtime_support"])
 PY
 
 fake_bin="${tmp_root}/fake-bin"
