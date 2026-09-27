@@ -56,6 +56,27 @@ monan_jedi_publish_secondary_bin_aliases() {
   log_info "  secondary=${secondary_bin}"
 }
 
+monan_jedi_write_runtime_manifest() {
+  local manifest="${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/install-manifest.json"
+
+  require_cmd python3
+  python3 "${MONAN_JEDI_SOURCE_DIR}/scripts/write_runtime_manifest.py" \
+    --output "${manifest}" \
+    --install-root "${MONAN_JEDI_INSTALL_ROOT}" \
+    --stack-env-name "${STACK_ENV_NAME}" \
+    --stack-env-module "${STACK_ENV_MODULE}" \
+    --stack-site-setup "${STACK_SITE_SETUP}" \
+    --build-id "${MONAN_JEDI_BUILD_ID}" \
+    --config "${MONAN_JEDI_CONFIG:-}" \
+    --wps-enabled "${MONAN_JEDI_WPS_ENABLED:-0}" \
+    --obs2ioda-enabled "${MONAN_JEDI_OBS2IODA_ENABLED:-0}" \
+    --wps-ref "${MONAN_JEDI_WPS_REF:-}" \
+    --obs2ioda-ref "${MONAN_JEDI_OBS2IODA_REF:-}"
+
+  log_info "Published MONAN-JEDI runtime manifest"
+  log_info "  manifest=${manifest}"
+}
+
 monan_jedi_publish_runtime_support() {
   local source_namelists="${MONAN_JEDI_SOURCE_DIR}/mpas-jedi/test/testinput/namelists"
   local target_namelists="${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/mpas-jedi/namelists"
@@ -108,24 +129,11 @@ monan_jedi_publish_runtime_support() {
     install -m 644 "${source_ufo}/${name}" "${target_ufo}/${name}"
   done
 
-  require_cmd python3
-  python3 "${MONAN_JEDI_SOURCE_DIR}/scripts/write_runtime_manifest.py" \
-    --output "${manifest}" \
-    --install-root "${MONAN_JEDI_INSTALL_ROOT}" \
-    --stack-env-name "${STACK_ENV_NAME}" \
-    --stack-env-module "${STACK_ENV_MODULE}" \
-    --stack-site-setup "${STACK_SITE_SETUP}" \
-    --build-id "${MONAN_JEDI_BUILD_ID}" \
-    --config "${MONAN_JEDI_CONFIG:-}" \
-    --wps-enabled "${MONAN_JEDI_WPS_ENABLED:-0}" \
-    --obs2ioda-enabled "${MONAN_JEDI_OBS2IODA_ENABLED:-0}" \
-    --wps-ref "${MONAN_JEDI_WPS_REF:-}" \
-    --obs2ioda-ref "${MONAN_JEDI_OBS2IODA_REF:-}"
+  monan_jedi_write_runtime_manifest
 
   log_info "Published MONAN-JEDI runtime support"
   log_info "  namelists=${target_namelists}"
   log_info "  testinput=${target_testinput}"
-  log_info "  manifest=${manifest}"
 }
 
 monan_jedi_build_bundle() {
