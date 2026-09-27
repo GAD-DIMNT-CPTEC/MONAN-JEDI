@@ -123,6 +123,38 @@ manifest.write_text(
 )
 PY
 
+# Replace the hand-written legacy fixture with the real producer writer. This
+# proves that one generated manifest satisfies the legacy install validator and
+# publishes the normative ecosystem v2 fields consumed by downstream repos.
+python3 "${repo_root}/scripts/write_runtime_manifest.py" \
+  --output "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/install-manifest.json" \
+  --install-root "${MONAN_JEDI_INSTALL_ROOT}" \
+  --stack-env-name "jaci-mpas-jedi-gcc12-craympich" \
+  --stack-env-module "cray-mpich/test/jedi-mpas-env/2.0.0" \
+  --stack-site-setup "configs/sites/tier2/jaci/setup.sh" \
+  --build-id "test-build" \
+  --config "test-config.yaml" \
+  --wps-enabled "true" \
+  --obs2ioda-enabled "true" \
+  --wps-ref "wps-test-ref" \
+  --obs2ioda-ref "obs-test-ref"
+
+python3 - "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/install-manifest.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+assert payload["schema_version"] == 1
+assert payload["ecosystem_contract_version"] == 2
+assert payload["contract"] == "monan-jedi-runtime-v2"
+assert payload["public_anchors"] == ["MONAN_JEDI_INSTALL_ROOT", "STACK_ROOT"]
+assert payload["stack"]["module_root_template"] == "envs/{env_name}/modules"
+assert payload["capabilities"]["wps"] is True
+assert payload["capabilities"]["obs2ioda"] is True
+assert "ufo_testinput_tier_1" not in payload["layout"]
+PY
+
 fake_bin="${tmp_root}/fake-bin"
 mkdir -p "${fake_bin}"
 cat > "${fake_bin}/ldd" <<'EOF_LDD'
