@@ -95,8 +95,14 @@ case "${command_name}" in
     )
     ;;
   test-pbs-result) monan_jedi_test_pbs_result ;;
-  obs2ioda) monan_jedi_build_obs2ioda ;;
-  wps) monan_jedi_build_wps ;;
+  obs2ioda)
+    monan_jedi_build_obs2ioda
+    monan_jedi_write_runtime_manifest
+    ;;
+  wps)
+    monan_jedi_build_wps
+    monan_jedi_write_runtime_manifest
+    ;;
   test-wps) monan_jedi_test_wps ;;
   logs) monan_jedi_collect_logs ;;
   all)
@@ -108,6 +114,9 @@ case "${command_name}" in
     monan_jedi_install_bundle
     if monan_jedi_obs2ioda_enabled; then monan_jedi_build_obs2ioda; fi
     if monan_jedi_wps_enabled; then monan_jedi_build_wps; fi
+    # Refresh capabilities after auxiliary products have actually been
+    # published into the common install prefix.
+    monan_jedi_write_runtime_manifest
     monan_jedi_test_login
 
     # Always collect the final log summary, including a failed installation
