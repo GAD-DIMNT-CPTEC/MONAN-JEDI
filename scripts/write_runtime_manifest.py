@@ -19,6 +19,14 @@ def _bool(value: str) -> bool:
 
 
 def build_contract(args: argparse.Namespace) -> dict[str, object]:
+    install_root = Path(args.install_root)
+    wps_available = (
+        (install_root / "bin" / "ungrib.exe").is_file()
+        and (install_root / "bin" / "link_grib.csh").is_file()
+        and (install_root / "share" / "wps" / "Variable_Tables").is_dir()
+    )
+    obs2ioda_available = (install_root / "bin" / "obs2ioda_v3").is_file()
+
     executables = [
         "mpas_init_atmosphere",
         "mpas_atmosphere",
@@ -27,9 +35,9 @@ def build_contract(args: argparse.Namespace) -> dict[str, object]:
         "mpasjedi_process_perts.x",
         "mpasjedi_unbalance_ensemble.x",
     ]
-    if _bool(args.wps_enabled):
+    if wps_available:
         executables.extend(["ungrib.exe", "link_grib.csh"])
-    if _bool(args.obs2ioda_enabled):
+    if obs2ioda_available:
         executables.append("obs2ioda_v3")
 
     public_layout = {
@@ -85,8 +93,8 @@ def build_contract(args: argparse.Namespace) -> dict[str, object]:
         "capabilities": {
             "mpas": True,
             "mpas_jedi": True,
-            "wps": _bool(args.wps_enabled),
-            "obs2ioda": _bool(args.obs2ioda_enabled),
+            "wps": wps_available,
+            "obs2ioda": obs2ioda_available,
         },
         "canonical_executables": sorted(executables),
         "producer": {
@@ -95,6 +103,8 @@ def build_contract(args: argparse.Namespace) -> dict[str, object]:
             "generated_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
             "obs2ioda_ref": args.obs2ioda_ref,
             "wps_ref": args.wps_ref,
+            "requested_wps": _bool(args.wps_enabled),
+            "requested_obs2ioda": _bool(args.obs2ioda_enabled),
         },
     }
 
