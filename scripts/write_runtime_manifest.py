@@ -20,6 +20,17 @@ def _bool(value: str) -> bool:
 
 def build_contract(args: argparse.Namespace) -> dict[str, object]:
     install_root = Path(args.install_root)
+    mpas_names = ["mpas_init_atmosphere", "mpas_atmosphere"]
+    mpas_jedi_names = [
+        "mpasjedi_variational.x",
+        "mpasjedi_error_covariance_toolbox.x",
+        "mpasjedi_process_perts.x",
+        "mpasjedi_unbalance_ensemble.x",
+    ]
+    mpas_available = all((install_root / "bin" / name).is_file() for name in mpas_names)
+    mpas_jedi_available = all(
+        (install_root / "bin" / name).is_file() for name in mpas_jedi_names
+    )
     wps_available = (
         (install_root / "bin" / "ungrib.exe").is_file()
         and (install_root / "bin" / "link_grib.csh").is_file()
@@ -27,18 +38,14 @@ def build_contract(args: argparse.Namespace) -> dict[str, object]:
     )
     obs2ioda_available = (install_root / "bin" / "obs2ioda_v3").is_file()
 
-    executables = [
-        "mpas_init_atmosphere",
-        "mpas_atmosphere",
-        "mpasjedi_variational.x",
-        "mpasjedi_error_covariance_toolbox.x",
-        "mpasjedi_process_perts.x",
-        "mpasjedi_unbalance_ensemble.x",
-    ]
+    known_executables = [*mpas_names, *mpas_jedi_names]
     if wps_available:
-        executables.extend(["ungrib.exe", "link_grib.csh"])
+        known_executables.extend(["ungrib.exe", "link_grib.csh"])
     if obs2ioda_available:
-        executables.append("obs2ioda_v3")
+        known_executables.append("obs2ioda_v3")
+    executables = [
+        name for name in known_executables if (install_root / "bin" / name).is_file()
+    ]
 
     public_layout = {
         "bin": "bin",
@@ -84,6 +91,7 @@ def build_contract(args: argparse.Namespace) -> dict[str, object]:
         "contract": "monan-jedi-runtime-v2",
         "public_anchors": ["MONAN_JEDI_INSTALL_ROOT", "STACK_ROOT"],
         "layout": public_layout,
+        "runtime_support": runtime_support,
         "stack": {
             "env_name": args.stack_env_name,
             "env_module": args.stack_env_module,
@@ -91,8 +99,8 @@ def build_contract(args: argparse.Namespace) -> dict[str, object]:
             "module_root_template": "envs/{env_name}/modules",
         },
         "capabilities": {
-            "mpas": True,
-            "mpas_jedi": True,
+            "mpas": mpas_available,
+            "mpas_jedi": mpas_jedi_available,
             "wps": wps_available,
             "obs2ioda": obs2ioda_available,
         },
