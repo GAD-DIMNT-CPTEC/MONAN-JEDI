@@ -1,4 +1,4 @@
-# MONAN-JEDI runtime install contract v1
+# MONAN-JEDI runtime install contract
 
 `MONAN-JEDI` is the producer of the compiled/runtime software consumed by
 `mpaswf`, `MPAS-BMatrix`, and other workflow components.
@@ -59,11 +59,7 @@ ${MONAN_JEDI_INSTALL_ROOT}/
 │       │   │   └── stream_list.atmosphere.{background,analysis,control,ensemble}
 │       │   └── testinput/
 │       │       └── obsop_name_map.yaml
-│       └── ufo/
-│           └── testinput_tier_1/
-│               ├── sondes_obs_2018041500_m.nc4
-│               ├── gnssro_obs_2018041500_s.nc4
-│               └── sfc_obs_2018041500_m.nc4
+│       └── ufo/testinput_tier_1/    # deprecated producer-validation fixtures
 └── libexec/
     └── monan-jedi/
         └── wps/
@@ -117,24 +113,23 @@ installation.
 
 ## MPAS-JEDI and baseline workflow runtime support
 
-Files consumed by downstream workflows are runtime inputs even when their
-upstream source happens to live below a component's test tree. During
-installation MONAN-JEDI therefore publishes the stable copies required by the
-maintained MPAS-JEDI baseline:
+Runtime support that is version-coupled to the software is published under:
 
 ```text
 share/monan-jedi/mpas-jedi/namelists/
 share/monan-jedi/mpas-jedi/testinput/obsop_name_map.yaml
-share/monan-jedi/ufo/testinput_tier_1/
 ```
 
 The namelist directory includes `geovars.yaml`, `keptvars.yaml` and the
-background/analysis/control/ensemble stream lists. The UFO directory publishes
-the three 2018-04-15 observation files required by the maintained static
-baseline.
+background/analysis/control/ensemble stream lists. Consumers use these
+installed copies and must not require a MONAN-JEDI source checkout.
 
-Consumers must use these installed copies and must not require a
-`MONAN_JEDI_SOURCE` variable or a MONAN-JEDI checkout path.
+Date-specific observations are scientific case data. They are not part of the
+ecosystem v2 public layout and maintained consumers must obtain them from their
+case/reference-data roots. The producer temporarily retains the three
+2018-04-15 UFO files below `share/monan-jedi/ufo/testinput_tier_1/` only
+because its historical schema-v1 installation validator still checks them.
+That directory is a deprecated compatibility fixture, not a consumer API.
 
 ## Separation from spack-stack
 
