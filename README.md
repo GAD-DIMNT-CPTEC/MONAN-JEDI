@@ -9,7 +9,131 @@ The repository has two distinct responsibilities around it:
 - `MONAN-JEDI` builds and publishes the MONAN/MPAS/JEDI runtime consumed by
   `mpaswf`, `MPAS-BMatrix`, and other workflow components.
 
-## Public runtime installation
+## Installation
+
+The recommended installation path is the repository workflow itself. Users do
+not need to load compiler/MPI modules manually before each build command:
+`scripts/monan-jedi.sh` reads the selected YAML configuration, activates the
+configured spack-stack environment and validates it before stack-dependent
+operations.
+
+### Quick start on INPE/JACI
+
+The maintained JACI configuration is `config/jaci.yaml`. From a login node:
+
+```bash
+git clone https://github.com/GAD-DIMNT-CPTEC/MONAN-JEDI.git
+cd MONAN-JEDI
+
+# Validate the site configuration and its documentation contract.
+python3 scripts/lib/read_config.py --check config/jaci.yaml
+python3 scripts/check_config_documentation.py
+
+# Verify that the configured spack-stack can be activated.
+bash scripts/monan-jedi.sh load --config config/jaci.yaml
+
+# Configure, build, install auxiliary components, run login-safe tests,
+# validate the published runtime and collect the logs.
+bash scripts/monan-jedi.sh all --config config/jaci.yaml
+```
+
+On JACI, the default writable workspace is derived from:
+
+```text
+/p/projetos/monan_das/${USER}
+```
+
+and the resulting public runtime is installed by default at:
+
+```text
+/p/projetos/monan_das/${USER}/build/monan-jedi
+```
+
+The `all` command performs the normal end-to-end installation. With the
+maintained JACI configuration it builds and publishes the main MONAN/MPAS/JEDI
+bundle plus the enabled `obs2ioda` and WPS components, runs the login-node-safe
+CTest subset, validates the installed runtime contract and collects the workflow
+logs. It does **not** run the complete compute-node CTest suite under PBS.
+
+If an installation has to be resumed or diagnosed step by step, the equivalent
+main stages can be run separately:
+
+```bash
+bash scripts/monan-jedi.sh configure    --config config/jaci.yaml
+bash scripts/monan-jedi.sh build        --config config/jaci.yaml
+bash scripts/monan-jedi.sh install      --config config/jaci.yaml
+bash scripts/monan-jedi.sh obs2ioda     --config config/jaci.yaml
+bash scripts/monan-jedi.sh wps          --config config/jaci.yaml
+bash scripts/monan-jedi.sh test         --config config/jaci.yaml
+bash scripts/monan-jedi.sh test-install --config config/jaci.yaml
+bash scripts/monan-jedi.sh logs         --config config/jaci.yaml
+```
+
+The `obs2ioda` and `wps` commands are only required when those components are
+enabled in the selected configuration. The aggregate `all` command already
+handles that decision automatically.
+
+### Installing with another site or spack-stack
+
+Do not modify build scripts to change a site installation. Start from the
+complete configuration template instead:
+
+```bash
+cp config/template.yaml config/<site>.yaml
+```
+
+At minimum, review the site workspace and stack identity under `project:` and
+`stack:`, especially `project.root`, `stack.instance`, `stack.env_name`,
+`stack.site_setup` and `stack.env_module`. Set explicit `stack.root` or
+`stack.module_root` only when the documented derived paths do not match the
+site installation.
+
+Then validate and install with the same workflow:
+
+```bash
+python3 scripts/lib/read_config.py --check config/<site>.yaml
+bash scripts/monan-jedi.sh load --config config/<site>.yaml
+bash scripts/monan-jedi.sh all  --config config/<site>.yaml
+```
+
+See [the configuration reference](docs/configuration-reference.md) before adding
+path or environment overrides. Non-empty environment variables override YAML, so
+old shell overrides should be unset when verifying a new configuration.
+
+### Full PBS validation
+
+After the installation succeeds, the complete configured CTest suite can be
+prepared/submitted to PBS according to the selected `pbs.submit_job` setting:
+
+```bash
+bash scripts/monan-jedi.sh test-pbs --config config/jaci.yaml
+```
+
+After the PBS job finishes:
+
+```bash
+bash scripts/monan-jedi.sh test-pbs-result --config config/jaci.yaml
+```
+
+This validation is intentionally separate from `all` because it requires a
+compute-node allocation.
+
+### Using the installed runtime
+
+Export the two public ecosystem anchors from the same configuration used for
+the installation:
+
+```bash
+eval "$(bash scripts/monan-jedi.sh env --config config/jaci.yaml)"
+
+echo "${MONAN_JEDI_INSTALL_ROOT}"
+echo "${STACK_ROOT}"
+```
+
+Downstream repositories should consume these public anchors rather than paths
+inside the MONAN-JEDI source or private build tree.
+
+### Installed runtime location and layout
 
 The default public prefix is:
 
