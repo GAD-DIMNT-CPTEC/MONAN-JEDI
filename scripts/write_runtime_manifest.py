@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Write the MONAN-JEDI installed runtime contract.
+"""Write the MONAN-JEDI ecosystem runtime contract v2.
 
-The JSON keeps the producer historical schema-v1 envelope for one compatibility
-window while publishing ecosystem_contract_version 2 as the normative
-cross-repository contract. New consumers must read the v2 fields.
+The manifest is the machine-readable source of truth shared by MONAN-JEDI,
+mpaswf, monan-jedi-workflow and MPAS-BMatrix.  It is relocatable: paths are
+relative to MONAN_JEDI_INSTALL_ROOT and the selected STACK_ROOT is never stored
+inside the document.
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ def _bool(value: str) -> bool:
 
 def build_contract(args: argparse.Namespace) -> dict[str, object]:
     install_root = Path(args.install_root)
+
     mpas_names = ["mpas_init_atmosphere", "mpas_atmosphere"]
     mpas_jedi_names = [
         "mpasjedi_variational.x",
@@ -43,20 +45,6 @@ def build_contract(args: argparse.Namespace) -> dict[str, object]:
         known_executables.extend(["ungrib.exe", "link_grib.csh"])
     if obs2ioda_available:
         known_executables.append("obs2ioda_v3")
-    executables = [
-        name for name in known_executables if (install_root / "bin" / name).is_file()
-    ]
-
-    public_layout = {
-        "bin": "bin",
-        "lib": "lib",
-        "include": "include",
-        "share": "share",
-        "mpas_atmosphere_share": "share/MPAS/core_atmosphere",
-        "wps_variable_tables": "share/wps/Variable_Tables",
-        "mpas_jedi_namelists": "share/monan-jedi/mpas-jedi/namelists",
-        "mpas_jedi_testinput": "share/monan-jedi/mpas-jedi/testinput",
-    }
 
     runtime_support = [
         "share/monan-jedi/mpas-jedi/namelists/geovars.yaml",
@@ -68,29 +56,21 @@ def build_contract(args: argparse.Namespace) -> dict[str, object]:
         "share/monan-jedi/mpas-jedi/testinput/obsop_name_map.yaml",
     ]
 
-    # Compatibility fixtures required only by the producer legacy validator.
-    # They are deliberately absent from the v2 public layout.
-    compatibility_observations = [
-        "share/monan-jedi/ufo/testinput_tier_1/sondes_obs_2018041500_m.nc4",
-        "share/monan-jedi/ufo/testinput_tier_1/gnssro_obs_2018041500_s.nc4",
-        "share/monan-jedi/ufo/testinput_tier_1/sfc_obs_2018041500_m.nc4",
-    ]
-
     return {
-        # Compatibility envelope consumed by the existing producer validator.
-        "schema_version": 1,
-        "install_root": args.install_root,
-        "public_contract": {
-            **public_layout,
-            "ufo_testinput_tier_1": "share/monan-jedi/ufo/testinput_tier_1",
-        },
-        "required_runtime_support": runtime_support + compatibility_observations,
-
-        # Normative ecosystem contract.
+        "schema_version": 2,
         "ecosystem_contract_version": 2,
         "contract": "monan-jedi-runtime-v2",
         "public_anchors": ["MONAN_JEDI_INSTALL_ROOT", "STACK_ROOT"],
-        "layout": public_layout,
+        "layout": {
+            "bin": "bin",
+            "lib": "lib",
+            "include": "include",
+            "share": "share",
+            "mpas_atmosphere_share": "share/MPAS/core_atmosphere",
+            "wps_variable_tables": "share/wps/Variable_Tables",
+            "mpas_jedi_namelists": "share/monan-jedi/mpas-jedi/namelists",
+            "mpas_jedi_testinput": "share/monan-jedi/mpas-jedi/testinput",
+        },
         "runtime_support": runtime_support,
         "stack": {
             "env_name": args.stack_env_name,
@@ -104,15 +84,19 @@ def build_contract(args: argparse.Namespace) -> dict[str, object]:
             "wps": wps_available,
             "obs2ioda": obs2ioda_available,
         },
-        "canonical_executables": sorted(executables),
+        "canonical_executables": sorted(
+            name
+            for name in known_executables
+            if (install_root / "bin" / name).is_file()
+        ),
         "producer": {
             "build_id": args.build_id,
             "config": args.config,
             "generated_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
-            "obs2ioda_ref": args.obs2ioda_ref,
-            "wps_ref": args.wps_ref,
             "requested_wps": _bool(args.wps_enabled),
             "requested_obs2ioda": _bool(args.obs2ioda_enabled),
+            "wps_ref": args.wps_ref,
+            "obs2ioda_ref": args.obs2ioda_ref,
         },
     }
 
