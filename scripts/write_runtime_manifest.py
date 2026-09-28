@@ -17,6 +17,16 @@ def _bool(value: str) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _portable_module_root(stack_root: str, module_root: str) -> str:
+    """Encode module_root relative to STACK_ROOT when possible."""
+    stack = Path(stack_root).expanduser().resolve(strict=False)
+    module = Path(module_root).expanduser().resolve(strict=False)
+    try:
+        return str(module.relative_to(stack))
+    except ValueError:
+        return str(module)
+
+
 def build_contract(args: argparse.Namespace) -> dict[str, object]:
     install_root = Path(args.install_root)
     mpas_names = ["mpas_init_atmosphere", "mpas_atmosphere"]
@@ -78,7 +88,10 @@ def build_contract(args: argparse.Namespace) -> dict[str, object]:
             "env_name": args.stack_env_name,
             "env_module": args.stack_env_module,
             "site_setup": args.stack_site_setup,
-            "module_root_template": "envs/{env_name}/modules",
+            "module_root": _portable_module_root(
+                args.stack_root,
+                args.stack_module_root,
+            ),
         },
         "capabilities": {
             "mpas": mpas_available,
@@ -103,6 +116,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", required=True)
     parser.add_argument("--install-root", required=True)
+    parser.add_argument("--stack-root", required=True)
+    parser.add_argument("--stack-module-root", required=True)
     parser.add_argument("--stack-env-name", required=True)
     parser.add_argument("--stack-env-module", required=True)
     parser.add_argument("--stack-site-setup", required=True)
