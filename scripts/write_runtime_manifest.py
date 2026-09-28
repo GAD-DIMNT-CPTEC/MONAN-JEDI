@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Write the MONAN-JEDI installed runtime contract.
 
-The JSON keeps the producer historical schema-v1 envelope for one compatibility
-window while publishing ecosystem_contract_version 2 as the normative
-cross-repository contract. New consumers must read the v2 fields.
+The JSON is the normative cross-repository runtime contract. It is relocatable:
+it never records an absolute install root or STACK_ROOT.
 """
 
 from __future__ import annotations
@@ -68,25 +67,8 @@ def build_contract(args: argparse.Namespace) -> dict[str, object]:
         "share/monan-jedi/mpas-jedi/testinput/obsop_name_map.yaml",
     ]
 
-    # Compatibility fixtures required only by the producer legacy validator.
-    # They are deliberately absent from the v2 public layout.
-    compatibility_observations = [
-        "share/monan-jedi/ufo/testinput_tier_1/sondes_obs_2018041500_m.nc4",
-        "share/monan-jedi/ufo/testinput_tier_1/gnssro_obs_2018041500_s.nc4",
-        "share/monan-jedi/ufo/testinput_tier_1/sfc_obs_2018041500_m.nc4",
-    ]
-
     return {
-        # Compatibility envelope consumed by the existing producer validator.
-        "schema_version": 1,
-        "install_root": args.install_root,
-        "public_contract": {
-            **public_layout,
-            "ufo_testinput_tier_1": "share/monan-jedi/ufo/testinput_tier_1",
-        },
-        "required_runtime_support": runtime_support + compatibility_observations,
-
-        # Normative ecosystem contract.
+        "schema_version": 2,
         "ecosystem_contract_version": 2,
         "contract": "monan-jedi-runtime-v2",
         "public_anchors": ["MONAN_JEDI_INSTALL_ROOT", "STACK_ROOT"],
