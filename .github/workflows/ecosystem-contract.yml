@@ -1,0 +1,68 @@
+name: Ecosystem contract audit
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/ecosystem-contract.yml"
+      - "tests/audit_ecosystem_contract.py"
+      - "scripts/write_runtime_manifest.py"
+      - "scripts/lib/install_test.sh"
+      - "docs/ecosystem-configuration-contract.md"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/ecosystem-contract.yml"
+      - "tests/audit_ecosystem_contract.py"
+      - "scripts/write_runtime_manifest.py"
+      - "scripts/lib/install_test.sh"
+      - "docs/ecosystem-configuration-contract.md"
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout MONAN-JEDI
+        uses: actions/checkout@v4
+        with:
+          path: repos/monan-jedi
+
+      - name: Checkout mpaswf main
+        uses: actions/checkout@v4
+        with:
+          repository: joaogerd/mpaswf
+          ref: main
+          path: repos/mpaswf
+
+      - name: Checkout monan-jedi-workflow main
+        uses: actions/checkout@v4
+        with:
+          repository: joaogerd/monan-jedi-workflow
+          ref: main
+          path: repos/monan-jedi-workflow
+
+      - name: Checkout MPAS-BMatrix main
+        uses: actions/checkout@v4
+        with:
+          repository: joaogerd/MPAS-BMatrix
+          ref: main
+          path: repos/MPAS-BMatrix
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Audit ecosystem contract
+        run: |
+          python repos/monan-jedi/tests/audit_ecosystem_contract.py \
+            --monan-jedi repos/monan-jedi \
+            --mpaswf repos/mpaswf \
+            --workflow repos/monan-jedi-workflow \
+            --bmatrix repos/MPAS-BMatrix
