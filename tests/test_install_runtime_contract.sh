@@ -75,15 +75,11 @@ printf 'obs alias fixture\n' > "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/mpas
 python3 "${repo_root}/scripts/write_runtime_manifest.py" \
   --output "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/install-manifest.json" \
   --install-root "${MONAN_JEDI_INSTALL_ROOT}" \
-  --stack-root "${tmp_root}/spack-stack" \
-  --stack-module-root "${tmp_root}/spack-stack/custom/modules" \
   --stack-env-name "jaci-mpas-jedi-gcc12-craympich" \
   --stack-env-module "cray-mpich/test/jedi-mpas-env/2.0.0" \
   --stack-site-setup "configs/sites/tier2/jaci/setup.sh" \
   --build-id "test-build" \
   --config "test-config.yaml" \
-  --wps-enabled "true" \
-  --obs2ioda-enabled "true" \
   --wps-ref "wps-test-ref" \
   --obs2ioda-ref "obs-test-ref"
 
@@ -97,13 +93,16 @@ assert payload["schema_version"] == 2
 assert payload["ecosystem_contract_version"] == 2
 assert payload["contract"] == "monan-jedi-runtime-v2"
 assert payload["public_anchors"] == ["MONAN_JEDI_INSTALL_ROOT", "STACK_ROOT"]
-assert payload["stack"]["module_root"] == "custom/modules"
-assert "module_root_template" not in payload["stack"]
+assert payload["stack"]["module_root_template"] == "envs/{env_name}/modules"
 assert payload["capabilities"]["mpas"] is True
 assert payload["capabilities"]["mpas_jedi"] is True
 assert payload["capabilities"]["wps"] is True
 assert payload["capabilities"]["obs2ioda"] is True
-assert not any("ufo/testinput_tier_1" in path for path in payload["runtime_support"])
+assert "ufo_testinput_tier_1" not in payload["layout"]
+assert not any(
+    "ufo/testinput_tier_1" in path
+    for path in payload["required_runtime_support"]
+)
 assert "install_root" not in payload
 assert "public_contract" not in payload
 PY
