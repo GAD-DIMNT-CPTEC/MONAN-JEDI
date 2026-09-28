@@ -42,7 +42,13 @@ Every supported MONAN-JEDI installation publishes:
 \${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/install-manifest.json
 ```
 
-The manifest currently retains `schema_version: 1` as a producer-side compatibility envelope, while `ecosystem_contract_version: 2` is the normative cross-repository API. Maintained consumers must validate the ecosystem contract version/identifier and the canonical `public_anchors`, and must obtain stack identity from the manifest's `stack` block instead of duplicating it locally. The `layout` and `capabilities` blocks are authoritative metadata for deriving or validating installed resources; consumers may use them directly or rely on the canonical relative paths defined by this standard, but they must not invent conflicting layout/capability values.
+The manifest uses `schema_version: 2` and `ecosystem_contract_version: 2`.
+It is the single machine-readable contract shared by the producer and all
+maintained consumers. Consumers must validate the schema, ecosystem contract
+version, identifier and canonical `public_anchors`, and must obtain stack
+identity from the manifest's `stack` block instead of duplicating it locally.
+The `layout`, `capabilities`, `canonical_executables` and
+`required_runtime_support` fields are authoritative.
 
 The v2 document contains:
 
@@ -53,10 +59,9 @@ The v2 document contains:
 - enabled capabilities;
 - producer provenance.
 
-The v2 contract is relocatable with respect to the selected stack: it never
-records an absolute `STACK_ROOT`. The outer schema-v1 compatibility envelope
-still records `install_root` only because the existing producer-side validator
-consumes it; downstream consumers must not use that compatibility field.
+The v2 contract is fully relocatable: it records neither an absolute
+`MONAN_JEDI_INSTALL_ROOT` nor an absolute `STACK_ROOT`. Both are supplied by
+the two public environment anchors.
 
 The operator chooses `STACK_ROOT`; the v2 `stack` block describes which
 environment inside that stack is compatible with the installation.
@@ -87,7 +92,7 @@ analysis/reference states, mesh/case inputs, date-specific IODA/UFO
 observations, NMC ensembles and B-matrix products.
 
 In particular, observations such as `sondes_obs_2018041500_m.nc4` belong to a
-case/reference-data root, not to the public v2 runtime API. MONAN-JEDI currently
+case/reference-data root, not to the public runtime API. MONAN-JEDI does not
 retains those historical files only inside its deprecated schema-v1 validation
 fixture area; maintained consumers must not resolve observations from there.
 
