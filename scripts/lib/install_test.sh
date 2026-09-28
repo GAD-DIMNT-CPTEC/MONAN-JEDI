@@ -137,7 +137,7 @@ monan_jedi_install_check_manifest() {
     return 0
   fi
 
-  if output="$(python3 "${MONAN_JEDI_SOURCE_DIR}/scripts/validate_runtime_manifest.py" \
+  if output="$(python3 "${repo_root}/scripts/validate_runtime_manifest.py" \
     --manifest "${manifest}" \
     --install-root "${MONAN_JEDI_INSTALL_ROOT}" 2>&1)"; then
     monan_jedi_install_record_pass "install manifest: runtime contract v2 is valid"
