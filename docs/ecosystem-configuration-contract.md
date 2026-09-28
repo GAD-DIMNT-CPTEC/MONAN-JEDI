@@ -42,7 +42,11 @@ Every supported MONAN-JEDI installation publishes:
 \${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/install-manifest.json
 ```
 
-The manifest currently retains `schema_version: 1` as a producer-side compatibility envelope, while `ecosystem_contract_version: 2` is the normative cross-repository API. Consumers must select the ecosystem contract version and read its `layout`, `stack`, `capabilities` and `public_anchors` fields instead of duplicating stack settings.
+The manifest uses `schema_version: 2` and `ecosystem_contract_version: 2`.
+It is the single machine-readable runtime contract for both the producer and
+all maintained consumers. Consumers read its `layout`, `stack`,
+`capabilities`, `runtime_support` and `public_anchors` fields instead of
+duplicating stack settings.
 
 The v2 document contains:
 
@@ -53,10 +57,10 @@ The v2 document contains:
 - enabled capabilities;
 - producer provenance.
 
-The v2 contract is relocatable with respect to the selected stack: it never
-records an absolute `STACK_ROOT`. The outer schema-v1 compatibility envelope
-still records `install_root` only because the existing producer-side validator
-consumes it; downstream consumers must not use that compatibility field.
+The v2 contract is relocatable: it records neither an absolute
+`MONAN_JEDI_INSTALL_ROOT` nor an absolute `STACK_ROOT`. The install prefix is
+supplied externally by the public anchor, and the selected stack root is chosen
+independently by the operator.
 
 The operator chooses `STACK_ROOT`; the v2 `stack` block describes which
 environment inside that stack is compatible with the installation.
@@ -87,9 +91,8 @@ analysis/reference states, mesh/case inputs, date-specific IODA/UFO
 observations, NMC ensembles and B-matrix products.
 
 In particular, observations such as `sondes_obs_2018041500_m.nc4` belong to a
-case/reference-data root, not to the public v2 runtime API. MONAN-JEDI currently
-retains those historical files only inside its deprecated schema-v1 validation
-fixture area; maintained consumers must not resolve observations from there.
+case/reference-data root, not to the public runtime API. MONAN-JEDI does not
+publish date-specific observation files into the installed runtime.
 
 ### Site/profile configuration owns machine policy
 
@@ -175,7 +178,7 @@ internal defaults
 Consumers must not read `MONAN_JEDI_INSTALL_ROOT` a second time after a
 resolved configuration object already owns that value.
 
-An unresolved `\${VARIABLE}` in a configuration-time field is an error.
+An unresolved `${VARIABLE}` in a configuration-time field is an error.
 Shell expressions intentionally deferred to PBS must remain literal.
 
 ## 6. Canonical executable derivation
