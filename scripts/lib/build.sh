@@ -63,15 +63,11 @@ monan_jedi_write_runtime_manifest() {
   python3 "${MONAN_JEDI_SOURCE_DIR}/scripts/write_runtime_manifest.py" \
     --output "${manifest}" \
     --install-root "${MONAN_JEDI_INSTALL_ROOT}" \
-    --stack-root "${STACK_ROOT}" \
-    --stack-module-root "${STACK_MODULE_ROOT}" \
     --stack-env-name "${STACK_ENV_NAME}" \
     --stack-env-module "${STACK_ENV_MODULE}" \
     --stack-site-setup "${STACK_SITE_SETUP}" \
     --build-id "${MONAN_JEDI_BUILD_ID}" \
     --config "${MONAN_JEDI_CONFIG:-}" \
-    --wps-enabled "${MONAN_JEDI_WPS_ENABLED:-0}" \
-    --obs2ioda-enabled "${MONAN_JEDI_OBS2IODA_ENABLED:-0}" \
     --wps-ref "${MONAN_JEDI_WPS_REF:-}" \
     --obs2ioda-ref "${MONAN_JEDI_OBS2IODA_REF:-}"
 
