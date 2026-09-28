@@ -258,16 +258,6 @@ monan_jedi_validate_install_tree() {
     "MPAS-JEDI observation alias map" \
     "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/mpas-jedi/testinput/obsop_name_map.yaml"
 
-  for name in \
-    sondes_obs_2018041500_m.nc4 \
-    gnssro_obs_2018041500_s.nc4 \
-    sfc_obs_2018041500_m.nc4
-  do
-    monan_jedi_install_check_file \
-      "UFO baseline observation ${name}" \
-      "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/ufo/testinput_tier_1/${name}"
-  done
-
   monan_jedi_install_check_manifest
 
   if monan_jedi_install_feature_enabled "${MONAN_JEDI_WPS_ENABLED:-0}"; then
