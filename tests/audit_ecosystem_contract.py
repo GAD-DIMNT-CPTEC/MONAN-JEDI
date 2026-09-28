@@ -21,7 +21,7 @@ FORBIDDEN_CONSUMER_TOKENS = (
 )
 FORBIDDEN_MAINTAINED_TOKENS = (
     "/p/projetos/monan_das/joao.gerd",
-    "/opt/cray/pals/",
+    "/opt/cray/pals/1.6/bin/mpiexec",
     "/opt/cray/pe/craype/",
     "cray-mpich/8.1.31/none/none/jedi-mpas-env/1.0.0",
     "jaci-mpas-jedi-gcc12-craympich",
