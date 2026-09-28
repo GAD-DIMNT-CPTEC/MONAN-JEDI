@@ -131,13 +131,18 @@ monan_jedi_install_check_path_resolves_inside_root() {
 monan_jedi_install_check_manifest() {
   local manifest="${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/install-manifest.json"
   local output=""
+  local library_dir repo_root validator
+
+  library_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  repo_root="$(cd "${library_dir}/../.." && pwd)"
+  validator="${repo_root}/scripts/validate_runtime_manifest.py"
 
   if [[ ! -f "${manifest}" ]]; then
     monan_jedi_install_record_fail "install manifest: missing ${manifest}"
     return 0
   fi
 
-  if output="$(python3 "${repo_root}/scripts/validate_runtime_manifest.py" \
+  if output="$(python3 "${validator}" \
     --manifest "${manifest}" \
     --install-root "${MONAN_JEDI_INSTALL_ROOT}" 2>&1)"; then
     monan_jedi_install_record_pass "install manifest: runtime contract v2 is valid"
