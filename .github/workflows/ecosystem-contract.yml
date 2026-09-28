@@ -1,0 +1,38 @@
+name: Ecosystem Contract
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 7 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout MONAN-JEDI
+        uses: actions/checkout@v4
+
+      - name: Checkout mpaswf
+        uses: actions/checkout@v4
+        with:
+          repository: joaogerd/mpaswf
+          path: _ecosystem/mpaswf
+
+      - name: Checkout monan-jedi-workflow
+        uses: actions/checkout@v4
+        with:
+          repository: joaogerd/monan-jedi-workflow
+          path: _ecosystem/monan-jedi-workflow
+
+      - name: Checkout MPAS-BMatrix
+        uses: actions/checkout@v4
+        with:
+          repository: joaogerd/MPAS-BMatrix
+          path: _ecosystem/MPAS-BMatrix
+
+      - name: Check cross-repository contract
+        run: |
+          python3 scripts/check_ecosystem_contract.py             --mpaswf _ecosystem/mpaswf             --workflow _ecosystem/monan-jedi-workflow             --bmatrix _ecosystem/MPAS-BMatrix
