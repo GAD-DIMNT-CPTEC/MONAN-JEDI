@@ -42,7 +42,7 @@ Every supported MONAN-JEDI installation publishes:
 \${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/install-manifest.json
 ```
 
-The manifest currently retains `schema_version: 1` as a producer-side compatibility envelope, while `ecosystem_contract_version: 2` is the normative cross-repository API. Consumers must select the ecosystem contract version and read its `layout`, `stack`, `capabilities` and `public_anchors` fields instead of duplicating stack settings.
+The manifest currently retains `schema_version: 1` as a producer-side compatibility envelope, while `ecosystem_contract_version: 2` is the normative cross-repository API. Maintained consumers must validate the ecosystem contract version/identifier and the canonical `public_anchors`, and must obtain stack identity from the manifest's `stack` block instead of duplicating it locally. The `layout` and `capabilities` blocks are authoritative metadata for deriving or validating installed resources; consumers may use them directly or rely on the canonical relative paths defined by this standard, but they must not invent conflicting layout/capability values.
 
 The v2 document contains:
 
