@@ -68,8 +68,6 @@ monan_jedi_write_runtime_manifest() {
     --stack-site-setup "${STACK_SITE_SETUP}" \
     --build-id "${MONAN_JEDI_BUILD_ID}" \
     --config "${MONAN_JEDI_CONFIG:-}" \
-    --wps-enabled "${MONAN_JEDI_WPS_ENABLED:-0}" \
-    --obs2ioda-enabled "${MONAN_JEDI_OBS2IODA_ENABLED:-0}" \
     --wps-ref "${MONAN_JEDI_WPS_REF:-}" \
     --obs2ioda-ref "${MONAN_JEDI_OBS2IODA_REF:-}"
 
@@ -82,15 +80,8 @@ monan_jedi_publish_runtime_support() {
   local target_namelists="${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/mpas-jedi/namelists"
   local source_testinput="${MONAN_JEDI_SOURCE_DIR}/mpas-jedi/test/testinput"
   local target_testinput="${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/mpas-jedi/testinput"
-  local source_ufo="${MONAN_JEDI_SOURCE_DIR}/ufo-data/testinput_tier_1"
-  local target_ufo="${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/ufo/testinput_tier_1"
   local manifest="${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/install-manifest.json"
   local name
-  local -a baseline_obs_files=(
-    "sondes_obs_2018041500_m.nc4"
-    "gnssro_obs_2018041500_s.nc4"
-    "sfc_obs_2018041500_m.nc4"
-  )
   local -a namelist_files=(
     "geovars.yaml"
     "keptvars.yaml"
@@ -100,7 +91,7 @@ monan_jedi_publish_runtime_support() {
     "stream_list.atmosphere.ensemble"
   )
 
-  mkdir -p "${target_namelists}" "${target_testinput}" "${target_ufo}" "$(dirname "${manifest}")"
+  mkdir -p "${target_namelists}" "${target_testinput}" "$(dirname "${manifest}")"
 
   # Publish only support files that are version-coupled to the installed
   # software. Scientific case data (including dated observations) remain owned
@@ -118,16 +109,6 @@ monan_jedi_publish_runtime_support() {
     exit 1
   fi
   install -m 644 "${source_testinput}/obsop_name_map.yaml" "${target_testinput}/obsop_name_map.yaml"
-
-  # Compatibility fixtures for the producer's own historical test suite.
-  # Downstream ecosystem consumers must not use these as scientific case data.
-  for name in "${baseline_obs_files[@]}"; do
-    if [[ ! -f "${source_ufo}/${name}" ]]; then
-      log_error "Required UFO compatibility fixture is missing: ${source_ufo}/${name}"
-      exit 1
-    fi
-    install -m 644 "${source_ufo}/${name}" "${target_ufo}/${name}"
-  done
 
   monan_jedi_write_runtime_manifest
 
