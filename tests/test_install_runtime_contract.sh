@@ -28,7 +28,6 @@ mkdir -p \
   "${MONAN_JEDI_INSTALL_ROOT}/share/MPAS/core_atmosphere" \
   "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/mpas-jedi/namelists" \
   "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/mpas-jedi/testinput" \
-  "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/ufo/testinput_tier_1" \
   "${MONAN_JEDI_WPS_INSTALL_DIR}/bin" \
   "${MONAN_JEDI_WPS_INSTALL_DIR}/share/wps/Variable_Tables"
 
@@ -71,61 +70,8 @@ do
   printf 'stream list fixture\n' > "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/mpas-jedi/namelists/${name}"
 done
 printf 'obs alias fixture\n' > "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/mpas-jedi/testinput/obsop_name_map.yaml"
-for name in \
-  sondes_obs_2018041500_m.nc4 \
-  gnssro_obs_2018041500_s.nc4 \
-  sfc_obs_2018041500_m.nc4
-do
-  printf 'obs fixture\n' > "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/ufo/testinput_tier_1/${name}"
-done
+# Generate the exact contract used by production installs.
 
-python3 - "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/install-manifest.json" "${MONAN_JEDI_INSTALL_ROOT}" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-manifest = Path(sys.argv[1])
-root = Path(sys.argv[2])
-manifest.write_text(
-    json.dumps(
-        {
-            "schema_version": 1,
-            "install_root": str(root),
-            "public_contract": {
-                "bin": "bin",
-                "include": "include",
-                "lib": "lib",
-                "share": "share",
-                "mpas_atmosphere_share": "share/MPAS/core_atmosphere",
-                "wps_variable_tables": "share/wps/Variable_Tables",
-                "mpas_jedi_namelists": "share/monan-jedi/mpas-jedi/namelists",
-                "mpas_jedi_testinput": "share/monan-jedi/mpas-jedi/testinput",
-                "ufo_testinput_tier_1": "share/monan-jedi/ufo/testinput_tier_1",
-            },
-            "required_runtime_support": [
-                "share/monan-jedi/mpas-jedi/namelists/geovars.yaml",
-                "share/monan-jedi/mpas-jedi/namelists/keptvars.yaml",
-                "share/monan-jedi/mpas-jedi/namelists/stream_list.atmosphere.background",
-                "share/monan-jedi/mpas-jedi/namelists/stream_list.atmosphere.analysis",
-                "share/monan-jedi/mpas-jedi/namelists/stream_list.atmosphere.control",
-                "share/monan-jedi/mpas-jedi/namelists/stream_list.atmosphere.ensemble",
-                "share/monan-jedi/mpas-jedi/testinput/obsop_name_map.yaml",
-                "share/monan-jedi/ufo/testinput_tier_1/sondes_obs_2018041500_m.nc4",
-                "share/monan-jedi/ufo/testinput_tier_1/gnssro_obs_2018041500_s.nc4",
-                "share/monan-jedi/ufo/testinput_tier_1/sfc_obs_2018041500_m.nc4",
-            ],
-        },
-        indent=2,
-        sort_keys=True,
-    )
-    + "\n",
-    encoding="utf-8",
-)
-PY
-
-# Replace the hand-written legacy fixture with the real producer writer. This
-# proves that one generated manifest satisfies the legacy install validator and
-# publishes the normative ecosystem v2 fields consumed by downstream repos.
 python3 "${repo_root}/scripts/write_runtime_manifest.py" \
   --output "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/install-manifest.json" \
   --install-root "${MONAN_JEDI_INSTALL_ROOT}" \
@@ -145,7 +91,7 @@ import sys
 from pathlib import Path
 
 payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-assert payload["schema_version"] == 1
+assert payload["schema_version"] == 2
 assert payload["ecosystem_contract_version"] == 2
 assert payload["contract"] == "monan-jedi-runtime-v2"
 assert payload["public_anchors"] == ["MONAN_JEDI_INSTALL_ROOT", "STACK_ROOT"]
@@ -154,8 +100,9 @@ assert payload["capabilities"]["mpas"] is True
 assert payload["capabilities"]["mpas_jedi"] is True
 assert payload["capabilities"]["wps"] is True
 assert payload["capabilities"]["obs2ioda"] is True
-assert "ufo_testinput_tier_1" not in payload["layout"]
 assert not any("ufo/testinput_tier_1" in path for path in payload["runtime_support"])
+assert "install_root" not in payload
+assert "public_contract" not in payload
 PY
 
 fake_bin="${tmp_root}/fake-bin"
@@ -176,6 +123,12 @@ monan_jedi_validate_install_tree > "${positive_log}"
 grep -Fq 'RESULT=PASS' "${positive_log}"
 grep -Fq 'warnings=0' "${positive_log}"
 grep -Fq 'project-group readability: all files are group-readable' "${positive_log}"
+grep -Fq 'runtime contract v2 is valid' "${positive_log}"
+
+if find "${MONAN_JEDI_INSTALL_ROOT}" -path '*/share/monan-jedi/ufo/*' -print -quit | grep -q .; then
+  echo "Scientific observation data leaked into installed runtime" >&2
+  exit 1
+fi
 
 # Warnings are diagnostic and must not increment the fatal failure count.
 MONAN_JEDI_INSTALL_CHECKS=0
