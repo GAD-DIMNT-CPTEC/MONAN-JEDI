@@ -137,51 +137,10 @@ monan_jedi_install_check_manifest() {
     return 0
   fi
 
-  if output="$(python3 - "${manifest}" "${MONAN_JEDI_INSTALL_ROOT}" 2>&1 <<'PY'
-import json
-import sys
-from pathlib import Path
-
-manifest = Path(sys.argv[1])
-root = Path(sys.argv[2]).resolve()
-record = json.loads(manifest.read_text(encoding="utf-8"))
-
-if record.get("schema_version") != 1:
-    raise SystemExit("schema_version must be 1")
-
-recorded_root = Path(record.get("install_root", "")).resolve()
-if recorded_root != root:
-    raise SystemExit(
-        "manifest install_root mismatch: {0} != {1}".format(recorded_root, root)
-    )
-
-expected_contract = {
-    "bin": "bin",
-    "include": "include",
-    "lib": "lib",
-    "share": "share",
-    "mpas_atmosphere_share": "share/MPAS/core_atmosphere",
-    "wps_variable_tables": "share/wps/Variable_Tables",
-    "mpas_jedi_namelists": "share/monan-jedi/mpas-jedi/namelists",
-    "mpas_jedi_testinput": "share/monan-jedi/mpas-jedi/testinput",
-    "ufo_testinput_tier_1": "share/monan-jedi/ufo/testinput_tier_1",
-}
-contract = record.get("public_contract", {})
-for key, value in expected_contract.items():
-    if contract.get(key) != value:
-        raise SystemExit(
-            "public_contract.{0} mismatch: {1!r} != {2!r}".format(
-                key, contract.get(key), value
-            )
-        )
-
-for relative in record.get("required_runtime_support", []):
-    path = root / relative
-    if not path.is_file():
-        raise SystemExit("manifest runtime support is missing: {0}".format(path))
-PY
-)"; then
-    monan_jedi_install_record_pass "install manifest: schema and paths are valid"
+  if output="$(python3 "${MONAN_JEDI_SOURCE_DIR}/scripts/validate_runtime_manifest.py" \
+    --manifest "${manifest}" \
+    --install-root "${MONAN_JEDI_INSTALL_ROOT}" 2>&1)"; then
+    monan_jedi_install_record_pass "install manifest: runtime contract v2 is valid"
   else
     monan_jedi_install_record_fail "install manifest: invalid"
     [[ -z "${output}" ]] || printf '%s\n' "${output}"
