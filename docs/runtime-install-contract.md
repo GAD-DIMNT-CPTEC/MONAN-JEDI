@@ -59,7 +59,6 @@ ${MONAN_JEDI_INSTALL_ROOT}/
 │       │   │   └── stream_list.atmosphere.{background,analysis,control,ensemble}
 │       │   └── testinput/
 │       │       └── obsop_name_map.yaml
-│       └── ufo/testinput_tier_1/    # deprecated producer-validation fixtures
 └── libexec/
     └── monan-jedi/
         └── wps/
@@ -124,12 +123,10 @@ The namelist directory includes `geovars.yaml`, `keptvars.yaml` and the
 background/analysis/control/ensemble stream lists. Consumers use these
 installed copies and must not require a MONAN-JEDI source checkout.
 
-Date-specific observations are scientific case data. They are not part of the
-ecosystem v2 public layout and maintained consumers must obtain them from their
-case/reference-data roots. The producer temporarily retains the three
-2018-04-15 UFO files below `share/monan-jedi/ufo/testinput_tier_1/` only
-because its historical schema-v1 installation validator still checks them.
-That directory is a deprecated compatibility fixture, not a consumer API.
+Date-specific observations are scientific case data. They are not installed
+under `MONAN_JEDI_INSTALL_ROOT`; maintained consumers must obtain them from
+their case/reference-data roots. This boundary is enforced by producer tests so
+an experiment-specific observation set cannot silently become runtime API.
 
 ## Separation from spack-stack
 

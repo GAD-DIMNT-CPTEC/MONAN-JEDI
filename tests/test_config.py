@@ -242,7 +242,7 @@ class ConfigurationTests(unittest.TestCase):
         self.assertIn('canonical_exe="${MONAN_JEDI_INSTALL_ROOT}/bin/obs2ioda_v3"', obs2ioda)
         self.assertIn('MONAN_JEDI_INSTALL_ROOT}/bin/${name}', install_test)
 
-    def test_runtime_support_publishes_baseline_inputs_under_install_root(self) -> None:
+    def test_runtime_support_publishes_only_version_coupled_inputs(self) -> None:
         build = BUILD_SH.read_text(encoding="utf-8")
 
         for name in (
@@ -251,14 +251,17 @@ class ConfigurationTests(unittest.TestCase):
             "stream_list.atmosphere.control",
             "stream_list.atmosphere.ensemble",
             "obsop_name_map.yaml",
-            "sondes_obs_2018041500_m.nc4",
-            "gnssro_obs_2018041500_s.nc4",
-            "sfc_obs_2018041500_m.nc4",
         ):
             self.assertIn(name, build)
 
         self.assertIn("share/monan-jedi/mpas-jedi/testinput", build)
-        self.assertIn("share/monan-jedi/ufo/testinput_tier_1", build)
+        for scientific_input in (
+            "sondes_obs_2018041500_m.nc4",
+            "gnssro_obs_2018041500_s.nc4",
+            "sfc_obs_2018041500_m.nc4",
+            "share/monan-jedi/ufo/testinput_tier_1",
+        ):
+            self.assertNotIn(scientific_input, build)
 
     def test_configure_does_not_publish_build_outputs_directly(self) -> None:
         source = CONFIGURE_SH.read_text(encoding="utf-8")

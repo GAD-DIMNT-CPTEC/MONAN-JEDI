@@ -146,16 +146,16 @@ manifest = Path(sys.argv[1])
 root = Path(sys.argv[2]).resolve()
 record = json.loads(manifest.read_text(encoding="utf-8"))
 
-if record.get("schema_version") != 1:
-    raise SystemExit("schema_version must be 1")
+if record.get("schema_version") != 2:
+    raise SystemExit("schema_version must be 2")
+if record.get("ecosystem_contract_version") != 2:
+    raise SystemExit("ecosystem_contract_version must be 2")
+if record.get("contract") != "monan-jedi-runtime-v2":
+    raise SystemExit("contract must be monan-jedi-runtime-v2")
+if record.get("public_anchors") != ["MONAN_JEDI_INSTALL_ROOT", "STACK_ROOT"]:
+    raise SystemExit("public_anchors mismatch")
 
-recorded_root = Path(record.get("install_root", "")).resolve()
-if recorded_root != root:
-    raise SystemExit(
-        "manifest install_root mismatch: {0} != {1}".format(recorded_root, root)
-    )
-
-expected_contract = {
+expected_layout = {
     "bin": "bin",
     "include": "include",
     "lib": "lib",
@@ -164,24 +164,40 @@ expected_contract = {
     "wps_variable_tables": "share/wps/Variable_Tables",
     "mpas_jedi_namelists": "share/monan-jedi/mpas-jedi/namelists",
     "mpas_jedi_testinput": "share/monan-jedi/mpas-jedi/testinput",
-    "ufo_testinput_tier_1": "share/monan-jedi/ufo/testinput_tier_1",
 }
-contract = record.get("public_contract", {})
-for key, value in expected_contract.items():
-    if contract.get(key) != value:
+layout = record.get("layout", {})
+for key, value in expected_layout.items():
+    if layout.get(key) != value:
         raise SystemExit(
-            "public_contract.{0} mismatch: {1!r} != {2!r}".format(
-                key, contract.get(key), value
+            "layout.{0} mismatch: {1!r} != {2!r}".format(
+                key, layout.get(key), value
             )
         )
 
-for relative in record.get("required_runtime_support", []):
+stack = record.get("stack", {})
+for key in ("env_name", "env_module", "site_setup", "module_root_template"):
+    if not isinstance(stack.get(key), str) or not stack[key]:
+        raise SystemExit("stack.{0} must be a non-empty string".format(key))
+if stack["module_root_template"] != "envs/{env_name}/modules":
+    raise SystemExit("unsupported stack.module_root_template")
+
+capabilities = record.get("capabilities", {})
+for key in ("mpas", "mpas_jedi", "wps", "obs2ioda"):
+    if not isinstance(capabilities.get(key), bool):
+        raise SystemExit("capabilities.{0} must be boolean".format(key))
+
+for relative in record.get("runtime_support", []):
     path = root / relative
     if not path.is_file():
         raise SystemExit("manifest runtime support is missing: {0}".format(path))
+
+for name in record.get("canonical_executables", []):
+    path = root / "bin" / name
+    if not path.exists():
+        raise SystemExit("manifest executable is missing: {0}".format(path))
 PY
 )"; then
-    monan_jedi_install_record_pass "install manifest: schema and paths are valid"
+    monan_jedi_install_record_pass "install manifest: runtime contract v2 is valid"
   else
     monan_jedi_install_record_fail "install manifest: invalid"
     [[ -z "${output}" ]] || printf '%s\n' "${output}"
@@ -298,16 +314,6 @@ monan_jedi_validate_install_tree() {
   monan_jedi_install_check_file \
     "MPAS-JEDI observation alias map" \
     "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/mpas-jedi/testinput/obsop_name_map.yaml"
-
-  for name in \
-    sondes_obs_2018041500_m.nc4 \
-    gnssro_obs_2018041500_s.nc4 \
-    sfc_obs_2018041500_m.nc4
-  do
-    monan_jedi_install_check_file \
-      "UFO baseline observation ${name}" \
-      "${MONAN_JEDI_INSTALL_ROOT}/share/monan-jedi/ufo/testinput_tier_1/${name}"
-  done
 
   monan_jedi_install_check_manifest
 
