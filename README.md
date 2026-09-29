@@ -191,6 +191,13 @@ public filesystem layout and [the ecosystem runtime standard](docs/ecosystem-con
 for the shared `MONAN_JEDI_INSTALL_ROOT` / `STACK_ROOT` interface and the
 installed ecosystem contract v2.
 
+Scientific/model compatibility is a separate contract. Changes to MONAN/MPAS
+state, geometry, time integration, restart files, diagnostics or B-matrix
+compatibility must follow the
+[MONAN--JEDI compatibility contract](docs/CONTRATO_COMPATIBILIDADE_MONAN_JEDI.md).
+A runtime that satisfies the installation/configuration contract is not, by
+itself, evidence of scientific compatibility between MONAN and JEDI.
+
 For a downstream repository, the supported hand-off is:
 
 ```bash
