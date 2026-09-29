@@ -83,17 +83,29 @@ The current workflow validates all Git LFS tracked files in `ioda-data`,
 `ufo-data` and `mpas-jedi-data`; `test-pbs` also validates the exact
 build-tree `Data` links before allocating a compute node.
 
-Use:
+First use the workflow to confirm which Git LFS provider the configured stack
+selects:
 
 ```bash
 bash scripts/monan-jedi.sh load --config config/jaci.yaml
+```
+
+The command above validates the provider in its own process; it does **not**
+export the loaded module environment back into the caller shell. For manual
+`git lfs` commands, activate the same configured stack in the current shell
+(or add the reported project-local fallback `bin` directory to `PATH`) and
+only then run:
+
+```bash
+git lfs version
 git -C ioda-data lfs status
 git -C ufo-data lfs status
 git -C mpas-jedi-data lfs status
 ```
 
-Then follow [jedi-test-data.md](jedi-test-data.md). Do not increase PBS
-walltime to hide missing or pointer-only test data.
+The exact current-shell activation and fallback recovery commands are maintained
+in [jedi-test-data.md](jedi-test-data.md). Do not increase PBS walltime to hide
+missing or pointer-only test data.
 
 ## 5. Build failures
 
