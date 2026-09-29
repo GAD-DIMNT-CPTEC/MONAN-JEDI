@@ -371,6 +371,12 @@ This keeps `MPAS-BMatrix` independent of the MONAN-JEDI source tree.
 
 ## Validation
 
+For diagnosis by validation layer, common Git LFS/NetCDF failures, PBS failures
+and a reproducible recovery sequence, see
+[the test troubleshooting guide](docs/TEST_TROUBLESHOOTING.md). Detailed Git LFS
+materialization and recovery remain documented in
+[the JEDI test-data guide](docs/jedi-test-data.md).
+
 A login-node-safe subset can be run with:
 
 ```bash
